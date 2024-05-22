@@ -4,6 +4,7 @@ go 1.22.0
 
 require (
 	github.com/ncruces/go-sqlite3 v0.15.0
+	github.com/robfig/cron/v3 v3.0.1
 	gopkg.in/telebot.v3 v3.2.1
 )
 

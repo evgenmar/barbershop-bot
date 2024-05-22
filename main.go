@@ -6,17 +6,29 @@ import (
 	"context"
 	"log"
 	"os"
+	"sync"
 	"time"
 
+	"github.com/robfig/cron/v3"
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/middleware"
 )
 
 const sqliteStoragePath = "data/sqlite/storage.db"
 
+var (
+	location      *time.Location
+	scheduledDays uint16 = 183
+)
+
+func init() {
+	location = time.FixedZone("MSK", 3*60*60)
+}
+
 func main() {
 	var s storage.Storage
-	s, err := sqlite.New(sqliteStoragePath)
+	mutex := sync.Mutex{}
+	s, err := sqlite.New(sqliteStoragePath, location, &mutex)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -31,6 +43,22 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	err = makeSchedules(&s, barberIDs, scheduledDays)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	c := cron.New(cron.WithLocation(location))
+	c.AddFunc("0 3 * * 1", //Triggers at 03:00 AM every Monday0 3 * * 1
+		func() {
+			err = makeSchedules(&s, barberIDs, scheduledDays)
+			if err != nil {
+				log.Fatal(err)
+			}
+		})
+	c.Start()
+	defer c.Stop()
 
 	pref := tele.Settings{
 		Token: os.Getenv("TOKEN"),
