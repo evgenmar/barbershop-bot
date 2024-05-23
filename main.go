@@ -50,9 +50,9 @@ func main() {
 	}
 
 	c := cron.New(cron.WithLocation(location))
-	c.AddFunc("0 3 * * 1", //Triggers at 03:00 AM every Monday0 3 * * 1
+	c.AddFunc("0 3 * * 1", //Triggers at 03:00 AM every Monday
 		func() {
-			err = makeSchedules(&s, barberIDs, scheduledDays)
+			err := makeSchedules(&s, barberIDs, scheduledDays)
 			if err != nil {
 				log.Fatal(err)
 			}
