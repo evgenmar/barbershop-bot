@@ -26,52 +26,22 @@ func init() {
 }
 
 func main() {
-	var s storage.Storage
-	mutex := sync.Mutex{}
-	s, err := sqlite.New(sqliteStoragePath, location, &mutex)
-	if err != nil {
-		log.Fatal(err)
-	}
+	s := createStorage()
 	defer s.Close()
-
-	err = s.Init(context.TODO())
+	err := s.Init(context.TODO())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	barberIDs, err := s.BarberIDs(context.TODO())
-	if err != nil {
-		log.Fatal(err)
-	}
+	barberIDs := getBarberIDs(s)
 
-	err = makeSchedules(&s, barberIDs, scheduledDays)
-	if err != nil {
-		log.Fatal(err)
-	}
+	makeBarbersScedules(s, barberIDs)
 
-	c := cron.New(cron.WithLocation(location))
-	c.AddFunc("0 3 * * 1", //Triggers at 03:00 AM every Monday
-		func() {
-			err := makeSchedules(&s, barberIDs, scheduledDays)
-			if err != nil {
-				log.Fatal(err)
-			}
-		})
-	c.Start()
+	//Triggers at 03:00 AM every Monday
+	c := scheduleMakingBarbersScedules(s, barberIDs, "0 3 * * 1")
 	defer c.Stop()
 
-	pref := tele.Settings{
-		Token: os.Getenv("TOKEN"),
-		Poller: &tele.LongPoller{Timeout: 10 * time.Second,
-			AllowedUpdates: []string{"message", "callback_query"}},
-	}
-
-	b, err := tele.NewBot(pref)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	b.Use(middleware.Recover())
+	b := createBot()
 
 	barbers := b.Group()
 	barbers.Use(middleware.Whitelist(barberIDs...))
@@ -100,4 +70,55 @@ func main() {
 	}))
 
 	b.Start()
+}
+
+func scheduleMakingBarbersScedules(s storage.Storage, barberIDs []int64, specOfCron string) *cron.Cron {
+	c := cron.New(cron.WithLocation(location))
+	c.AddFunc(specOfCron,
+		func() {
+			makeBarbersScedules(s, barberIDs)
+		})
+	c.Start()
+	return c
+}
+
+func getBarberIDs(s storage.Storage) []int64 {
+	barberIDs, err := s.BarberIDs(context.TODO())
+	if err != nil {
+		log.Fatal(err)
+	}
+	return barberIDs
+}
+
+func createStorage() storage.Storage {
+	var s storage.Storage
+	mutex := sync.Mutex{}
+	s, err := sqlite.New(sqliteStoragePath, location, &mutex)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return s
+}
+
+func makeBarbersScedules(s storage.Storage, barberIDs []int64) {
+	err := makeSchedules(&s, barberIDs, scheduledDays)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func createBot() *tele.Bot {
+	pref := tele.Settings{
+		Token: os.Getenv("TOKEN"),
+		Poller: &tele.LongPoller{Timeout: 10 * time.Second,
+			AllowedUpdates: []string{"message", "callback_query"}},
+	}
+
+	b, err := tele.NewBot(pref)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	b.Use(middleware.Recover())
+	return b
 }
