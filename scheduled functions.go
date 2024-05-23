@@ -43,8 +43,6 @@ func makeSchedule(s *storage.Storage, barberID int64, days uint16) (err error) {
 			if err != nil {
 				return err
 			}
-		} else {
-			return nil
 		}
 	}
 	return nil
