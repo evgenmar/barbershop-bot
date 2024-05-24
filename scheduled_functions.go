@@ -10,9 +10,9 @@ import (
 
 // makeSchedules just calls makeSchedule for all barbers specified in barberIDs.
 // See makeSchedule for details.
-func makeSchedules(s *storage.Storage, barberIDs []int64, days uint16) error {
+func makeSchedules(rep storage.Storage, barberIDs []int64, days uint16) error {
 	for _, barberID := range barberIDs {
-		err := makeSchedule(s, barberID, days)
+		err := makeSchedule(rep, barberID, days)
 		if err != nil {
 			return e.Wrap("can't make schedules", err)
 		}
@@ -28,20 +28,22 @@ func makeSchedules(s *storage.Storage, barberIDs []int64, days uint16) error {
 // for which there was no schedule.
 //
 // Mondays are accepted as non-working days. On other days the working time is from 10:00 to 19:00.
-func makeSchedule(s *storage.Storage, barberID int64, days uint16) (err error) {
+func makeSchedule(rep storage.Storage, barberID int64, days uint16) (err error) {
 	defer func() { err = e.WrapIfErr("can't make schedule", err) }()
 
-	LatestWorkDate, err := (*s).LatestWorkDate(context.TODO(), barberID)
+	LatestWorkDate, err := rep.LatestWorkDate(context.TODO(), barberID)
 	if err != nil && !errors.Is(err, storage.ErrNoSavedWorkdates) {
 		return err
 	}
 	dayDuration := 24 * time.Hour
 	today := time.Now().In(location).Truncate(dayDuration)
 	for date := today.Add(time.Duration(days) * dayDuration); date.Compare(today) >= 0; date = date.Add(-dayDuration) {
-		if date.Compare(LatestWorkDate) == 1 && date.Weekday() != time.Monday {
-			err := (*s).SaveWorkday(context.TODO(), storage.Workday{BarberID: barberID, Date: date, StartTime: "10:00", EndTime: "19:00"})
-			if err != nil {
-				return err
+		if date.Compare(LatestWorkDate) == 1 {
+			if date.Weekday() != time.Monday {
+				err := rep.SaveWorkday(context.TODO(), storage.Workday{BarberID: barberID, Date: date, StartTime: "10:00", EndTime: "19:00"})
+				if err != nil {
+					return err
+				}
 			}
 		} else {
 			return nil

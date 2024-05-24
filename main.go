@@ -14,90 +14,136 @@ import (
 	"gopkg.in/telebot.v3/middleware"
 )
 
-const sqliteStoragePath = "data/sqlite/storage.db"
+const (
+	sqliteStoragePath = "data/sqlite/storage.db"
 
-var (
-	location      *time.Location
+	//scheduledDays is the number of days for which the barbershop schedule is compiled.
 	scheduledDays uint16 = 183
 )
+
+// location is the time zone where the barbershop is located.
+var location *time.Location
 
 func init() {
 	location = time.FixedZone("MSK", 3*60*60)
 }
 
 func main() {
-	var s storage.Storage
+	rep := createRepository()
+	defer rep.Close()
+
+	barberIDs := getBarberIDs(rep)
+
+	makeBarbersScedules(rep, barberIDs)
+
+	crn := scheduleEvents(rep, barberIDs)
+	defer crn.Stop()
+
+	bot := botWithMiddleware(rep)
+
+	bot = setHandlers(bot, barberIDs)
+
+	bot.Start()
+	defer bot.Stop()
+}
+
+// createRepository creates repository and prepares it for use
+func createRepository() (rep storage.Storage) {
 	mutex := sync.Mutex{}
-	s, err := sqlite.New(sqliteStoragePath, location, &mutex)
+	rep, err := sqlite.New(sqliteStoragePath, location, &mutex)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer s.Close()
-
-	err = s.Init(context.TODO())
+	err = rep.Init(context.TODO())
 	if err != nil {
 		log.Fatal(err)
 	}
+	return
+}
 
-	barberIDs, err := s.BarberIDs(context.TODO())
+func getBarberIDs(rep storage.Storage) []int64 {
+	barberIDs, err := rep.BarberIDs(context.TODO())
 	if err != nil {
 		log.Fatal(err)
 	}
+	return barberIDs
+}
 
-	err = makeSchedules(&s, barberIDs, scheduledDays)
+func makeBarbersScedules(rep storage.Storage, barberIDs []int64) {
+	err := makeSchedules(rep, barberIDs, scheduledDays)
 	if err != nil {
 		log.Fatal(err)
 	}
+}
 
-	c := cron.New(cron.WithLocation(location))
-	c.AddFunc("0 3 * * 1", //Triggers at 03:00 AM every Monday0 3 * * 1
+// scheduleEvents triggers events on a schedule.
+// Triggered events:
+//   - making schedules for barbers - every Monday at 03:00 AM
+func scheduleEvents(rep storage.Storage, barberIDs []int64) *cron.Cron {
+	crn := cron.New(cron.WithLocation(location))
+	crn.AddFunc("0 3 * * 1",
 		func() {
-			err = makeSchedules(&s, barberIDs, scheduledDays)
+			err := makeSchedules(rep, barberIDs, scheduledDays)
 			if err != nil {
-				log.Fatal(err)
+				log.Print(err)
 			}
 		})
-	c.Start()
-	defer c.Stop()
+	crn.Start()
+	return crn
+}
 
+// botWithMiddleware creates bot with Recover(), AutoRespond() and withStorage(rep) middleware.
+func botWithMiddleware(rep storage.Storage) *tele.Bot {
 	pref := tele.Settings{
 		Token: os.Getenv("TOKEN"),
 		Poller: &tele.LongPoller{Timeout: 10 * time.Second,
 			AllowedUpdates: []string{"message", "callback_query"}},
 	}
 
-	b, err := tele.NewBot(pref)
+	bot, err := tele.NewBot(pref)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	b.Use(middleware.Recover())
+	bot.Use(middleware.Recover())
+	bot.Use(middleware.AutoRespond())
+	bot.Use(withStorage(rep))
+	return bot
+}
 
-	barbers := b.Group()
+func setHandlers(bot *tele.Bot, barberIDs []int64) *tele.Bot {
+	barbers := bot.Group()
 	barbers.Use(middleware.Whitelist(barberIDs...))
 
 	//TODO barberHandlers
 
-	barbers.Handle("/barber", func(c tele.Context) error {
-		return c.Send("hello barber")
-	})
-
-	users := b.Group()
-	users.Use(NotInWhitelist(barberIDs...))
+	users := bot.Group()
+	users.Use(notInWhitelist(barberIDs...))
 
 	//TODO userHandlers
 
-	users.Handle("/user", func(c tele.Context) error {
-		return c.Send("hello user")
-	})
+	users.Handle("/user", onUser)
 
 	// TODO sameCommandHandlers
 
-	b.Handle("/start", func(c tele.Context) error { return nil }, middleware.Restrict(middleware.RestrictConfig{
+	bot.Handle("/start", noAction, middleware.Restrict(middleware.RestrictConfig{
 		Chats: barberIDs,
-		In:    func(c tele.Context) error { return c.Send("wellcome barber") },
-		Out:   func(c tele.Context) error { return c.Send("wellcome user") },
+		In:    onStartBarber,
+		Out:   onStartUser, //TODO
 	}))
 
-	b.Start()
+	bot.Handle(&btnBackToMain, noAction, middleware.Restrict(middleware.RestrictConfig{
+		Chats: barberIDs,
+		In:    onBackToMainBarber,
+		Out:   onStartUser, //TODO
+	}))
+
+	bot.Handle(&btnUpdName, noAction, middleware.Restrict(middleware.RestrictConfig{
+		Chats: barberIDs,
+		In:    onUpdNameBarber,
+		Out:   onStartUser, //TODO
+	}))
+
+	bot.Handle(&btnUpdPersonal, onUpdPersonal)
+	return bot
 }

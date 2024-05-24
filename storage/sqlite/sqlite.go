@@ -120,6 +120,35 @@ func (s *Storage) SaveWorkday(ctx context.Context, workday storage.Workday) erro
 	return nil
 }
 
+// SaveBarberName saves name for barber with barberID
+func (s *Storage) SaveBarberName(ctx context.Context, name string, barberID int64) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	q := `UPDATE barbers SET name = ? WHERE id = ?`
+
+	_, err := s.db.ExecContext(ctx, q, name, barberID)
+	if err != nil {
+		return e.Wrap("can't save barber name", err)
+	}
+	return nil
+}
+
+// SaveBarberState saves state of dialog for barber with barberID.
+// It also saves expiration time for this state taking it as 24 hours after SaveBarberState call.
+func (s *Storage) SaveBarberState(ctx context.Context, state uint8, barberID int64) error {
+	expiration := time.Now().In(s.location).Add(24 * time.Hour).Format(time.DateTime)
+	q := `UPDATE barbers SET state = ? , state_expiration = ? WHERE id = ?`
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	_, err := s.db.ExecContext(ctx, q, state, expiration, barberID)
+	if err != nil {
+		return e.Wrap("can't save state of dialog with barber", err)
+	}
+	return nil
+}
+
 func (s *Storage) Close() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -166,7 +195,7 @@ func (s *Storage) createTables(ctx context.Context) (err error) {
 		name TEXT, 
 		phone TEXT, 
 		chat_id INTEGER UNIQUE, 
-		state TEXT DEFAULT "StateStart",
+		state INTEGER,
 		state_expiration TEXT)`
 	_, err = s.db.ExecContext(ctx, q)
 	if err != nil {
@@ -176,10 +205,9 @@ func (s *Storage) createTables(ctx context.Context) (err error) {
 	q = `CREATE TABLE IF NOT EXISTS barbers (
 		id INTEGER PRIMARY KEY, 
 		name TEXT UNIQUE, 
-		bio TEXT UNIQUE, 
 		phone TEXT UNIQUE, 
 		chat_id INTEGER UNIQUE, 
-		state TEXT DEFAULT "StateStart",
+		state INTEGER,
 		state_expiration TEXT)`
 	_, err = s.db.ExecContext(ctx, q)
 	if err != nil {

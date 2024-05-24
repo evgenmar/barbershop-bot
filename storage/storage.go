@@ -24,6 +24,13 @@ type Storage interface {
 	//SaveWorkday saves Workday type value to storage
 	SaveWorkday(ctx context.Context, workday Workday) error
 
+	//SaveBarberName saves name for barber with barberID
+	SaveBarberName(ctx context.Context, name string, barberID int64) error
+
+	//SaveBarberState saves state of dialog for barber with barberID.
+	//It also saves expiration time for this state taking it as 24 hours after SaveBarberState call.
+	SaveBarberState(ctx context.Context, state uint8, barberID int64) error
+
 	Close() error
 }
 
