@@ -5,23 +5,19 @@ import (
 	"barbershop-bot/storage"
 	"context"
 	"database/sql"
-	"os"
-	"strconv"
 	"sync"
-	"time"
 
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"
 )
 
 type Storage struct {
-	db       *sql.DB
-	location *time.Location
-	mutex    *sync.Mutex
+	db    *sql.DB
+	mutex *sync.Mutex
 }
 
 // New creates a new SQLite storage.
-func New(path string, location *time.Location, mutex *sync.Mutex) (*Storage, error) {
+func New(path string, mutex *sync.Mutex) (*Storage, error) {
 	db, err := sql.Open("sqlite3", path)
 	if err != nil {
 		return nil, e.Wrap("can't open database", err)
@@ -30,34 +26,43 @@ func New(path string, location *time.Location, mutex *sync.Mutex) (*Storage, err
 	if err := db.Ping(); err != nil {
 		return nil, e.Wrap("can't connect to database", err)
 	}
-	return &Storage{db: db, location: location, mutex: mutex}, nil
+	return &Storage{db: db, mutex: mutex}, nil
 }
 
-// Init prepares the storage for use. It creates the necessary tables if they do not exist
-// and imports the barber ID from the environment variable into the storage
-// if there is not a single barber in the storage.
-func (s *Storage) Init(ctx context.Context) (err error) {
-	defer func() { err = e.WrapIfErr("can't initialize storage", err) }()
+func (s *Storage) Close() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	return s.db.Close()
+}
 
-	err = s.createTables(ctx)
-	if err != nil {
-		return err
-	}
+// CreateBarberID saves new BarberID to storage
+func (s *Storage) CreateBarberID(ctx context.Context, barberID int64) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	q := `INSERT INTO barbers (id) VALUES (?)`
 
-	check, err := s.checkBarbers(ctx)
-	if err != nil {
-		return err
-	}
-	if !check {
-		return s.addBarberFromEnv(ctx)
+	if _, err := s.db.ExecContext(ctx, q, barberID); err != nil {
+		return e.Wrap("can't save barberID", err)
 	}
 	return nil
 }
 
-// BarberIDs return a slice of IDs of all barbers.
-func (s *Storage) BarberIDs(ctx context.Context) (barberIDs []int64, err error) {
+// CreateWorkday saves new Workday to storage
+func (s *Storage) CreateWorkday(ctx context.Context, workday storage.Workday) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	q := `INSERT INTO schedule (barber_id, date, start_time, end_time) VALUES (?, ?, ?, ?)`
+
+	_, err := s.db.ExecContext(ctx, q, workday.BarberID, workday.Date, workday.StartTime, workday.EndTime)
+	if err != nil {
+		return e.Wrap("can't save workday", err)
+	}
+	return nil
+}
+
+// FindAllBarberIDs return a slice of IDs of all barbers.
+func (s *Storage) FindAllBarberIDs(ctx context.Context) (barberIDs []int64, err error) {
 	defer func() { err = e.WrapIfErr("can't get barber IDs", err) }()
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -82,9 +87,9 @@ func (s *Storage) BarberIDs(ctx context.Context) (barberIDs []int64, err error) 
 	return barberIDs, nil
 }
 
-// LatestWorkDate return the latest work date saved for barber with barberID.
-// Result have a format of time.Time with HH:MM:SS set to 00:00:00.
-func (s *Storage) LatestWorkDate(ctx context.Context, barberID int64) (time.Time, error) {
+// GetLatestWorkDate returns the latest work date saved for barber with barberID.
+// If there is no saved work dates it returns ("2000-01-01", ErrNoSavedWorkdates).
+func (s *Storage) GetLatestWorkDate(ctx context.Context, barberID int64) (string, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -92,103 +97,25 @@ func (s *Storage) LatestWorkDate(ctx context.Context, barberID int64) (time.Time
 
 	var count int
 	if err := s.db.QueryRowContext(ctx, q, barberID).Scan(&count); err != nil {
-		return time.Time{}, e.Wrap("can't check if any work date exists", err)
+		return "", e.Wrap("can't check if any work date exists", err)
 	}
 	if count == 0 {
-		return time.Time{}, storage.ErrNoSavedWorkdates
+		return "2000-01-01", storage.ErrNoSavedWorkdates
 	} else {
 		q = `SELECT MAX(date) FROM schedule WHERE barber_id = ?`
 		var date string
 		if err := s.db.QueryRowContext(ctx, q, barberID).Scan(&date); err != nil {
-			return time.Time{}, e.Wrap("can't get latest workdate", err)
+			return "", e.Wrap("can't get latest workdate", err)
 		}
-		return time.ParseInLocation(time.DateOnly, date, s.location)
+		return date, nil
 	}
 }
 
-// SaveWorkday saves Workday type value to storage
-func (s *Storage) SaveWorkday(ctx context.Context, workday storage.Workday) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	q := `INSERT INTO schedule (barber_id, date, start_time, end_time) VALUES (?, ?, ?, ?)`
-
-	_, err := s.db.ExecContext(ctx, q, workday.BarberID, workday.Date.Format(time.DateOnly), workday.StartTime, workday.EndTime)
-	if err != nil {
-		return e.Wrap("can't save workday", err)
-	}
-	return nil
-}
-
-// SaveBarberName saves name for barber with barberID
-func (s *Storage) SaveBarberName(ctx context.Context, name string, barberID int64) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	q := `UPDATE barbers SET name = ? WHERE id = ?`
-
-	_, err := s.db.ExecContext(ctx, q, name, barberID)
-	if err != nil {
-		return e.Wrap("can't save barber name", err)
-	}
-	return nil
-}
-
-// SaveBarberState saves state of dialog for barber with barberID.
-// It also saves expiration time for this state taking it as 24 hours after SaveBarberState call.
-func (s *Storage) SaveBarberState(ctx context.Context, state uint8, barberID int64) error {
-	expiration := time.Now().In(s.location).Add(24 * time.Hour).Format(time.DateTime)
-	q := `UPDATE barbers SET state = ? , state_expiration = ? WHERE id = ?`
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	_, err := s.db.ExecContext(ctx, q, state, expiration, barberID)
-	if err != nil {
-		return e.Wrap("can't save state of dialog with barber", err)
-	}
-	return nil
-}
-
-func (s *Storage) Close() error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	return s.db.Close()
-}
-
-// checkBarbers checks if there is at least one saved barber. It returns true if there is at least one saved barber.
-// Othewise it returns false. checkBarbers should be protected with mutex externally.
-func (s *Storage) checkBarbers(ctx context.Context) (bool, error) {
-	q := `SELECT COUNT(*) FROM barbers`
-
-	var count int
-
-	if err := s.db.QueryRowContext(ctx, q).Scan(&count); err != nil {
-		return false, e.Wrap("can't check barbers", err)
-	}
-	if count == 0 {
-		return false, nil
-	}
-	return true, nil
-}
-
-// addBarberFromEnv gets Barber ID from environment variable and saves it.
-// addBarberFromEnv should be protected with mutex externally.
-func (s *Storage) addBarberFromEnv(ctx context.Context) error {
-	barberID, err := strconv.ParseInt(os.Getenv("BarberID"), 10, 64)
-	if err != nil {
-		return e.Wrap("can't get barberID from environment variable", err)
-	}
-	q := `INSERT INTO barbers (id) VALUES (?)`
-
-	if _, err := s.db.ExecContext(ctx, q, barberID); err != nil {
-		return e.Wrap("can't save barberID", err)
-	}
-	return nil
-}
-
-// createTables create tables if not exists.
-func (s *Storage) createTables(ctx context.Context) (err error) {
+// Init prepares the storage for use. It creates the necessary tables if not exists.
+func (s *Storage) Init(ctx context.Context) (err error) {
 	defer func() { err = e.WrapIfErr("can't create table", err) }()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	q := `CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY, 
@@ -248,6 +175,32 @@ func (s *Storage) createTables(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
+	return nil
+}
 
+// UpdateBarberName saves new name for barber with barberID
+func (s *Storage) UpdateBarberName(ctx context.Context, name string, barberID int64) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	q := `UPDATE barbers SET name = ? WHERE id = ?`
+
+	_, err := s.db.ExecContext(ctx, q, name, barberID)
+	if err != nil {
+		return e.Wrap("can't save barber name", err)
+	}
+	return nil
+}
+
+// UpdateBarberStatus saves new status of dialog for barber with barberID.
+func (s *Storage) UpdateBarberStatus(ctx context.Context, status storage.Status, barberID int64) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	q := `UPDATE barbers SET state = ? , state_expiration = ? WHERE id = ?`
+
+	_, err := s.db.ExecContext(ctx, q, status.State, status.Expiration, barberID)
+	if err != nil {
+		return e.Wrap("can't save state of dialog with barber", err)
+	}
 	return nil
 }
