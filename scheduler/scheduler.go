@@ -19,7 +19,7 @@ func CronWithSettings(rep storage.Storage, barberIDs []int64) *cron.Cron {
 	crn := cron.New(cron.WithLocation(config.Location))
 	crn.AddFunc("0 3 * * 1",
 		func() {
-			err := MakeSchedules(rep, barberIDs, config.ScheduledDays)
+			err := MakeSchedules(rep, barberIDs, config.ScheduledWeeks)
 			if err != nil {
 				log.Print(err)
 			}
@@ -29,9 +29,9 @@ func CronWithSettings(rep storage.Storage, barberIDs []int64) *cron.Cron {
 
 // MakeSchedules just calls makeSchedule for all barbers specified in barberIDs.
 // See makeSchedule for details.
-func MakeSchedules(rep storage.Storage, barberIDs []int64, days uint16) error {
+func MakeSchedules(rep storage.Storage, barberIDs []int64, weeks uint8) error {
 	for _, barberID := range barberIDs {
-		err := makeSchedule(rep, barberID, days)
+		err := makeSchedule(rep, barberID, weeks)
 		if err != nil {
 			return e.Wrap("can't make schedules", err)
 		}
@@ -47,36 +47,56 @@ func MakeSchedules(rep storage.Storage, barberIDs []int64, days uint16) error {
 // for which there was no schedule.
 //
 // Mondays are accepted as non-working days. On other days the working time is from 10:00 to 19:00.
-func makeSchedule(rep storage.Storage, barberID int64, days uint16) (err error) {
+func makeSchedule(rep storage.Storage, barberID int64, weeks uint8) (err error) {
 	defer func() { err = e.WrapIfErr("can't make schedule", err) }()
-
-	latestWD, err := rep.GetLatestWorkDate(context.TODO(), barberID)
-	if err != nil && !errors.Is(err, storage.ErrNoSavedWorkdates) {
-		return err
-	}
-	latestWorkDate, err := time.ParseInLocation(time.DateOnly, latestWD, config.Location)
+	latestWorkDate, err := getLatestWorkDate(rep, barberID)
 	if err != nil {
 		return err
 	}
+	var workdays []storage.Workday
 	dayDuration := 24 * time.Hour
-	today := time.Now().In(config.Location).Truncate(dayDuration)
-	for date := today.Add(time.Duration(days) * dayDuration); date.Compare(today) >= 0; date = date.Add(-dayDuration) {
-		if date.Compare(latestWorkDate) == 1 {
-			if date.Weekday() != time.Monday {
-				workday := storage.Workday{
-					BarberID:  barberID,
-					Date:      date.Format(time.DateOnly),
-					StartTime: "10:00",
-					EndTime:   "19:00",
-				}
-				err := rep.CreateWorkday(context.TODO(), workday)
-				if err != nil {
-					return err
-				}
-			}
-		} else {
-			return nil
+	today := today()
+	for date := today.Add(time.Duration(weeks) * dayDuration * 7); date.Compare(today) >= 0 && date.After(latestWorkDate); date = date.Add(-dayDuration) {
+		if date.Weekday() != time.Monday {
+			workdays = append(workdays, storage.Workday{
+				BarberID:  barberID,
+				Date:      date.Format(time.DateOnly),
+				StartTime: "10:00",
+				EndTime:   "19:00",
+			})
 		}
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutWrite)
+	err = rep.CreateWorkdays(ctx, workdays...)
+	cancel()
+	if err != nil {
+		return err
+	}
 	return nil
+}
+
+// getLatestWorkDate returns the latest working date existing in storage
+func getLatestWorkDate(rep storage.Storage, barberID int64) (latestWorkDate time.Time, err error) {
+	defer func() { err = e.WrapIfErr("can't get latest work date", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutRead)
+	latestWD, err := rep.GetLatestWorkDate(ctx, barberID)
+	cancel()
+	if err != nil && !errors.Is(err, storage.ErrNoSavedWorkdates) {
+		return time.Time{}, err
+	}
+	latestWorkDate, err = time.ParseInLocation(time.DateOnly, latestWD, config.Location)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return latestWorkDate, nil
+}
+
+// latestScheduledDate returns the latest date for which the schedule should be made
+func today() time.Time {
+	return time.Date(
+		time.Now().In(config.Location).Year(),
+		time.Now().In(config.Location).Month(),
+		time.Now().In(config.Location).Day(),
+		0, 0, 0, 0, config.Location,
+	)
 }

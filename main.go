@@ -10,7 +10,6 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"sync"
 )
 
 func main() {
@@ -33,12 +32,13 @@ func main() {
 
 // createRepository creates repository and prepares it for use
 func createRepository() storage.Storage {
-	mutex := sync.Mutex{}
-	rep, err := sqlite.New(config.SqliteStoragePath, &mutex)
+	rep, err := sqlite.New(config.SqliteStoragePath)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = rep.Init(context.TODO())
+	ctx, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutWrite)
+	err = rep.Init(ctx)
+	cancel()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -46,7 +46,9 @@ func createRepository() storage.Storage {
 }
 
 func getBarberIDs(rep storage.Storage) []int64 {
-	barberIDs, err := rep.FindAllBarberIDs(context.TODO())
+	ctx, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutRead)
+	barberIDs, err := rep.FindAllBarberIDs(ctx)
+	cancel()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,7 +57,9 @@ func getBarberIDs(rep storage.Storage) []int64 {
 		if err != nil {
 			log.Fatal("can't get barberID from environment variable", err)
 		}
-		err = rep.CreateBarberID(context.TODO(), barberID)
+		ctx, cancel = context.WithTimeout(context.Background(), config.DbQueryTimoutWrite)
+		err = rep.CreateBarberID(ctx, barberID)
+		cancel()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -65,7 +69,7 @@ func getBarberIDs(rep storage.Storage) []int64 {
 }
 
 func makeBarbersSchedules(rep storage.Storage, barberIDs []int64) {
-	err := scheduler.MakeSchedules(rep, barberIDs, config.ScheduledDays)
+	err := scheduler.MakeSchedules(rep, barberIDs, config.ScheduledWeeks)
 	if err != nil {
 		log.Fatal(err)
 	}

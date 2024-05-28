@@ -1,7 +1,9 @@
 package telegram
 
 import (
+	"barbershop-bot/lib/e"
 	"barbershop-bot/storage"
+	"errors"
 	"log"
 	"os"
 	"time"
@@ -15,6 +17,7 @@ type state uint8
 const (
 	stateStart state = iota
 	stateUpdName
+	stateUpdPhone
 )
 
 // botWithMiddleware creates bot with Recover(), AutoRespond() and withStorage(rep) global middleware.
@@ -47,6 +50,11 @@ func SetHandlers(bot *tele.Bot, barberIDs []int64) *tele.Bot {
 		In:    onStartBarber,
 		Out:   onStartUser,
 	}))
+	bot.Handle(tele.OnText, noAction, middleware.Restrict(middleware.RestrictConfig{
+		Chats: barberIDs,
+		In:    onTextBarber,
+		Out:   onStartUser, // TODO
+	}))
 	// TODO sameCommandHandlers
 
 	barbers.Handle(&btnUpdPersonalBarber, onUpdPersonalBarber)
@@ -65,13 +73,12 @@ func SetHandlers(bot *tele.Bot, barberIDs []int64) *tele.Bot {
 func noAction(tele.Context) error { return nil }
 
 // store fetches storage.Storage from tele.Context
-func store(ctx tele.Context) storage.Storage {
+func store(ctx tele.Context) (storage.Storage, error) {
 	rep, ok := ctx.Get("storage").(storage.Storage)
 	if !ok {
-		log.Print("can't get storage from Context")
-		return nil
+		return nil, errors.New("can't get storage from tele.Context")
 	}
-	return rep
+	return rep, nil
 }
 
 func newStatus(state state) storage.Status {
@@ -85,4 +92,25 @@ func newStatus(state state) storage.Status {
 		State:      uint8(state),
 		Expiration: expiration,
 	}
+}
+
+// getState returns state. If the state has not expired yet, the second returned value is false.
+// If the state has already expired, the second returned value is true.
+func getState(status storage.Status) (state, bool, error) {
+	expiration, err := time.Parse(time.DateTime, status.Expiration)
+	if err != nil {
+		return 0, false, e.Wrap("can't parse state expiration time", err)
+	}
+	if expiration.After(time.Now().In(time.FixedZone("UTC", 0))) {
+		return state(status.State), false, nil
+	}
+	return state(status.State), true, nil
+}
+
+func getRepository(ctx tele.Context, errMsg string) storage.Storage {
+	rep, err := store(ctx)
+	if err != nil {
+		log.Panicf("%s: %s", errMsg, err)
+	}
+	return rep
 }
