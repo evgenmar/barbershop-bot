@@ -6,10 +6,13 @@ import (
 	"barbershop-bot/storage"
 	"context"
 	"errors"
+	"fmt"
 	"log"
 
 	tele "gopkg.in/telebot.v3"
 )
+
+var ID int64
 
 const (
 	mainBarber     = "Добрый день. Вы находитесь в главном меню. Выберите действие."
@@ -141,6 +144,11 @@ func onTextBarber(ctx tele.Context) error {
 	default:
 		return ctx.Send(unknownCmdBarber)
 	}
+}
+
+func onContactBarber(ctx tele.Context) error {
+	fmt.Println(*ctx.Message().Contact) //TODO
+	return nil
 }
 
 // getBarberState returns barbers state. If the state has not expired yet, the second returned value is true.

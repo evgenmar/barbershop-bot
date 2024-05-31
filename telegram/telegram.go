@@ -29,12 +29,10 @@ func BotWithMiddleware(rep storage.Storage) *tele.Bot {
 		Poller: &tele.LongPoller{Timeout: 10 * time.Second,
 			AllowedUpdates: []string{"message", "callback_query"}},
 	}
-
 	bot, err := tele.NewBot(pref)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	bot.Use(middleware.Recover())
 	bot.Use(middleware.AutoRespond())
 	bot.Use(withStorage(rep))
@@ -64,6 +62,8 @@ func SetHandlers(bot *tele.Bot, barberIDs []int64) *tele.Bot {
 	barbers.Handle(&btnUpdNameBarber, onUpdNameBarber)
 	barbers.Handle(&btnUpdPhoneBarber, onUpdPhoneBarber)
 	barbers.Handle(&btnBackToMainBarber, onBackToMainBarber)
+
+	barbers.Handle(tele.OnContact, onContactBarber)
 	//TODO barberHandlers
 
 	users.Handle("/user", onUser)
@@ -135,7 +135,8 @@ func normalizePhone(phone string) (normalized string) {
 		}
 	}
 	if len(normalized) == 11 {
-		return normalized[1:]
+		normalized = normalized[1:]
 	}
+	normalized = "+7" + normalized
 	return normalized
 }
