@@ -6,7 +6,9 @@ import (
 	"errors"
 	"log"
 	"os"
+	"regexp"
 	"time"
+	"unicode"
 
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/middleware"
@@ -73,7 +75,7 @@ func SetHandlers(bot *tele.Bot, barberIDs []int64) *tele.Bot {
 func noAction(tele.Context) error { return nil }
 
 // store fetches storage.Storage from tele.Context
-func store(ctx tele.Context) (storage.Storage, error) {
+func getRepository(ctx tele.Context) (storage.Storage, error) {
 	rep, ok := ctx.Get("storage").(storage.Storage)
 	if !ok {
 		return nil, errors.New("can't get storage from tele.Context")
@@ -94,23 +96,46 @@ func newStatus(state state) storage.Status {
 	}
 }
 
-// getState returns state. If the state has not expired yet, the second returned value is false.
-// If the state has already expired, the second returned value is true.
+// getState returns state. If the state has not expired yet, the second returned value is true.
+// If the state has already expired, the second returned value is false.
 func getState(status storage.Status) (state, bool, error) {
 	expiration, err := time.Parse(time.DateTime, status.Expiration)
 	if err != nil {
-		return 0, false, e.Wrap("can't parse state expiration time", err)
+		return stateStart, false, e.Wrap("can't parse state expiration time", err)
 	}
 	if expiration.After(time.Now().In(time.FixedZone("UTC", 0))) {
-		return state(status.State), false, nil
+		return state(status.State), true, nil
 	}
-	return state(status.State), true, nil
+	return state(status.State), false, nil
 }
 
-func getRepository(ctx tele.Context, errMsg string) storage.Storage {
-	rep, err := store(ctx)
-	if err != nil {
-		log.Panicf("%s: %s", errMsg, err)
+func isValidName(text string) bool {
+	namePattern := `^[a-zA-Zа-яА-Я0-9\s]{2,20}$`
+	regex := regexp.MustCompile(namePattern)
+	var hasLetter bool
+	for _, r := range text {
+		if unicode.IsLetter(r) {
+			hasLetter = true
+			break
+		}
 	}
-	return rep
+	return regex.MatchString(text) && hasLetter
+}
+
+func isValidPhone(text string) bool {
+	phonePattern := `^(\+?\d?[\s-]?)?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}$`
+	regex := regexp.MustCompile(phonePattern)
+	return regex.MatchString(text)
+}
+
+func normalizePhone(phone string) (normalized string) {
+	for _, r := range phone {
+		if unicode.IsDigit(r) {
+			normalized = normalized + string(r)
+		}
+	}
+	if len(normalized) == 11 {
+		return normalized[1:]
+	}
+	return normalized
 }

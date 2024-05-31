@@ -66,11 +66,13 @@ func makeSchedule(rep storage.Storage, barberID int64, weeks uint8) (err error) 
 			})
 		}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutWrite)
-	err = rep.CreateWorkdays(ctx, workdays...)
-	cancel()
-	if err != nil {
-		return err
+	if len(workdays) > 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutWrite)
+		err = rep.CreateWorkdays(ctx, workdays...)
+		cancel()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

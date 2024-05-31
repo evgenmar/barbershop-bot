@@ -5,7 +5,10 @@ import (
 	"errors"
 )
 
-var ErrNoSavedWorkdates = errors.New("no saved workdates")
+var (
+	ErrNoSavedWorkdates = errors.New("no saved workdates")
+	ErrNonUniqueData    = errors.New("data to save must be unique")
+)
 
 type Storage interface {
 	Close() error
@@ -31,6 +34,9 @@ type Storage interface {
 
 	// UpdateBarberNameAndStatus saves new name and status for barber with barberID.
 	UpdateBarberNameAndStatus(ctx context.Context, name string, status Status, barberID int64) error
+
+	// UpdateBarberPhoneAndStatus saves new phone and status for barber with barberID.
+	UpdateBarberPhoneAndStatus(ctx context.Context, phone string, status Status, barberID int64) error
 
 	// UpdateBarberStatus saves new status for barber with barberID.
 	UpdateBarberStatus(ctx context.Context, status Status, barberID int64) error

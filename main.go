@@ -2,6 +2,7 @@ package main
 
 import (
 	"barbershop-bot/config"
+	"barbershop-bot/lib/e"
 	"barbershop-bot/scheduler"
 	"barbershop-bot/storage"
 	"barbershop-bot/storage/sqlite"
@@ -55,7 +56,7 @@ func getBarberIDs(rep storage.Storage) []int64 {
 	if len(barberIDs) == 0 {
 		barberID, err := strconv.ParseInt(os.Getenv("BarberID"), 10, 64)
 		if err != nil {
-			log.Fatal("can't get barberID from environment variable", err)
+			log.Fatal(e.Wrap("can't get barberID from environment variable", err))
 		}
 		ctx, cancel = context.WithTimeout(context.Background(), config.DbQueryTimoutWrite)
 		err = rep.CreateBarberID(ctx, barberID)

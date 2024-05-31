@@ -1,3 +1,4 @@
 *.txt
 data/sqlite/*.db
 go.sum
+.VSCodeCounter/

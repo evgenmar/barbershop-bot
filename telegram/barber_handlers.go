@@ -2,19 +2,43 @@ package telegram
 
 import (
 	"barbershop-bot/config"
+	"barbershop-bot/lib/e"
 	"barbershop-bot/storage"
 	"context"
+	"errors"
 	"log"
 
 	tele "gopkg.in/telebot.v3"
 )
 
 const (
-	textMainBarber       = "Добрый день. Вы находитесь в главном меню. Выберите действие."
-	textPersonalBarber   = "Выберите данные, которые вы хотите обновить."
-	textUpdNameBarber    = "Как Вас зовут?"
-	textUpdPhoneBarber   = "" //TODO
-	textUnknownCmdBarber = "Неизвестная команда. Пожалуйста, выберите команду из меню. Для вызова главного меню воспользуйтесь командой /start"
+	mainBarber     = "Добрый день. Вы находитесь в главном меню. Выберите действие."
+	personalBarber = "Выберите данные, которые вы хотите обновить."
+
+	updNameBarber        = "Как Вас зовут?"
+	updNameSuccessBarber = "Имя успешно обновлено. Хотите обновить другие данные?"
+	updNameFailBarber    = `Введенное имя не соответствует установленным критериям:
+		- имя может содержать русские и английские буквы, цифры и пробелы;
+		- длина имени должна быть не менее 2 символов и не более 20 символов.
+Пожалуйста, попробуйте ввести имя еще раз. При необходимости вернуться в главное меню воспользуйтесь командой /start`
+	notUniqueBarberName = `Имя не сохранено. Другой барбер с таким именем уже зарегистрирован в приложении. Введите другое имя.
+При необходимости вернуться в главное меню воспользуйтесь командой /start`
+
+	updPhoneBarber        = "Введите свой номер телефона"
+	updPhoneSuccessBarber = "Номер телефона успешно обновлен. Хотите обновить другие данные?"
+	updPhoneFailBarber    = `Неизвестный формат номера телефона. Примеры поддерживаемых форматов:
+		1234567890
+		(123)-456-78-90
+		81234567890
+		8(123)-456-7890
+		+71234567890
+		+7 123 456 7890
+Пожалуйста, попробуйте ввести номер телефона еще раз. При необходимости вернуться в главное меню воспользуйтесь командой /start`
+	notUniqueBarberPhone = `Номер телефона не сохранен. Другой барбер с таким номером уже зарегистрирован в приложении. Введите другой номер.
+При необходимости вернуться в главное меню воспользуйтесь командой /start`
+
+	unknownCmdBarber = "Неизвестная команда. Пожалуйста, выберите команду из меню. Для вызова главного меню воспользуйтесь командой /start"
+	errorBarber      = "Произошла ошибка обработки команды. Если ошибка будет повторяться, возможно, потребуется перезапуск сервиса"
 )
 
 var (
@@ -39,99 +63,156 @@ func init() {
 }
 
 func onStartBarber(ctx tele.Context) error {
-	updateBarberState(ctx, stateStart, "can't open the barber's main menu")
-	return ctx.Send(textMainBarber, markupMainBarber)
+	if err := updBarberState(ctx, stateStart); err != nil {
+		log.Print(e.Wrap("can't open the barber's main menu", err))
+		return ctx.Send(errorBarber)
+	}
+	return ctx.Send(mainBarber, markupMainBarber)
 }
 
 func onUpdPersonalBarber(ctx tele.Context) error {
-	updateBarberState(ctx, stateStart, "can't open the barber's personal data menu")
-	return ctx.Edit(textPersonalBarber, markupPersonalBarber)
+	if err := updBarberState(ctx, stateStart); err != nil {
+		log.Print(e.Wrap("can't open the barber's personal data menu", err))
+		return ctx.Send(errorBarber)
+	}
+	return ctx.Edit(personalBarber, markupPersonalBarber)
 }
 
 func onUpdNameBarber(ctx tele.Context) error {
-	updateBarberState(ctx, stateUpdName, "can't ask barber to enter name")
-	return ctx.Send(textUpdNameBarber)
+	if err := updBarberState(ctx, stateUpdName); err != nil {
+		log.Print(e.Wrap("can't ask barber to enter name", err))
+		return ctx.Send(errorBarber)
+	}
+	return ctx.Send(updNameBarber)
 }
 
 func onUpdPhoneBarber(ctx tele.Context) error {
-	updateBarberState(ctx, stateUpdPhone, "can't ask barber to enter phone")
-	return ctx.Send(textUpdPhoneBarber)
+	if err := updBarberState(ctx, stateUpdPhone); err != nil {
+		log.Print(e.Wrap("can't ask barber to enter phone", err))
+		return ctx.Send(errorBarber)
+	}
+	return ctx.Send(updPhoneBarber)
 }
 
 func onBackToMainBarber(ctx tele.Context) error {
-	updateBarberState(ctx, stateStart, "can't go back to the barber's main menu")
-	return ctx.Edit(textMainBarber, markupMainBarber)
+	if err := updBarberState(ctx, stateStart); err != nil {
+		log.Print(e.Wrap("can't go back to the barber's main menu", err))
+		return ctx.Send(errorBarber)
+	}
+	return ctx.Edit(mainBarber, markupMainBarber)
 }
 
 func onTextBarber(ctx tele.Context) error {
-	errMsg := "can't handle barber's text message"
-	rep := getRepository(ctx, errMsg)
-	state, expired := getBarberState(ctx, rep, errMsg)
-	if expired {
-		updBarberState(ctx, rep, stateStart, errMsg)
-		return ctx.Send(textUnknownCmdBarber)
+	state, err := actualizeBarberState(ctx)
+	if err != nil {
+		log.Print(e.Wrap("can't handle barber's text message", err))
+		return ctx.Send(errorBarber)
 	}
 
 	switch state {
+	case stateStart:
+		return ctx.Send(unknownCmdBarber)
 	case stateUpdName:
-		errMsg = "can't update barber's name"
-		ok, err := isValidName(ctx.Message().Text)
-		if err != nil {
-			log.Panic(errMsg, err)
+		if ok := isValidName(ctx.Message().Text); ok {
+			if err := updBarberNameAndState(ctx, stateStart); err != nil {
+				if errors.Is(err, storage.ErrNonUniqueData) {
+					log.Print(e.Wrap("barber's name must be unique", err))
+					return ctx.Send(notUniqueBarberName)
+				}
+				log.Print(e.Wrap("can't update barber's name", err))
+				return ctx.Send(errorBarber)
+			}
+			return ctx.Send(updNameSuccessBarber, markupPersonalBarber)
 		}
-		if ok {
-			updBarberNameAndState(ctx, rep, stateStart, errMsg) //TODO
-		}
-		return ctx.Send(ctx.Message().Text) //TODO
+		return ctx.Send(updNameFailBarber)
 	case stateUpdPhone:
-		return ctx.Send("Обновляем телефон") //TODO
+		if ok := isValidPhone(ctx.Message().Text); ok {
+			if err := updBarberPhoneAndState(ctx, stateStart); err != nil {
+				if errors.Is(err, storage.ErrNonUniqueData) {
+					log.Print(e.Wrap("barber's phone must be unique", err))
+					return ctx.Send(notUniqueBarberPhone)
+				}
+				log.Print(e.Wrap("can't update barber's phone", err))
+				return ctx.Send(errorBarber)
+			}
+			return ctx.Send(updPhoneSuccessBarber, markupPersonalBarber)
+		}
+		return ctx.Send(updPhoneFailBarber)
 	default:
-		return ctx.Send(textUnknownCmdBarber)
+		return ctx.Send(unknownCmdBarber)
 	}
 }
 
-// getBarberState returns barbers state. If the state has not expired yet, the second returned value is false.
-// If the state has already expired, the second returned value is true.
-func getBarberState(ctxTl tele.Context, rep storage.Storage, errMsg string) (state, bool) {
+// getBarberState returns barbers state. If the state has not expired yet, the second returned value is true.
+// If the state has already expired, the second returned value is false.
+func getBarberState(ctxTl tele.Context, rep storage.Storage) (state, bool, error) {
 	ctxDb, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutRead)
 	status, err := rep.GetBarberStatus(ctxDb, ctxTl.Sender().ID)
 	cancel()
 	if err != nil {
-		log.Panicf("%s: %s", errMsg, err)
+		return stateStart, false, err
 	}
-	state, expired, err := getState(status)
+	return getState(status)
+}
+
+func updBarberNameAndState(ctxTl tele.Context, state state) (err error) {
+	defer func() { err = e.WrapIfErr("can't update barber name and state", err) }()
+	rep, err := getRepository(ctxTl)
 	if err != nil {
-		log.Panicf("%s: %s", errMsg, err)
+		return err
 	}
-	return state, expired
-}
-
-func isValidName(text string) (bool, error) {
-	_ = text
-	return true, nil //TODO
-}
-
-func updBarberNameAndState(ctxTl tele.Context, rep storage.Storage, state state, errMsg string) {
 	ctxDb, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutWrite)
+	defer cancel()
 	if err := rep.UpdateBarberNameAndStatus(ctxDb, ctxTl.Message().Text, newStatus(state), ctxTl.Sender().ID); err != nil {
-		log.Panicf("%s: %s", errMsg, err)
+		return err
 	}
-	cancel()
+	return nil
 }
 
-func updateBarberState(ctxTl tele.Context, state state, errMsg string) {
-	rep := getRepository(ctxTl, errMsg)
-	ctxDb, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutWrite)
-	if err := rep.UpdateBarberStatus(ctxDb, newStatus(state), ctxTl.Sender().ID); err != nil {
-		log.Panicf("%s: %s", errMsg, err)
+func updBarberPhoneAndState(ctxTl tele.Context, state state) (err error) {
+	defer func() { err = e.WrapIfErr("can't update barber phone and state", err) }()
+	rep, err := getRepository(ctxTl)
+	if err != nil {
+		return err
 	}
-	cancel()
+	ctxDb, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutWrite)
+	defer cancel()
+	phone := normalizePhone(ctxTl.Message().Text)
+	if err := rep.UpdateBarberPhoneAndStatus(ctxDb, phone, newStatus(state), ctxTl.Sender().ID); err != nil {
+		return err
+	}
+	return nil
 }
 
-func updBarberState(ctxTl tele.Context, rep storage.Storage, state state, errMsg string) {
-	ctxDb, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutWrite)
-	if err := rep.UpdateBarberStatus(ctxDb, newStatus(state), ctxTl.Sender().ID); err != nil {
-		log.Panicf("%s: %s", errMsg, err)
+func updBarberState(ctxTl tele.Context, state state) (err error) {
+	defer func() { err = e.WrapIfErr("can't update barber state", err) }()
+	rep, err := getRepository(ctxTl)
+	if err != nil {
+		return err
 	}
-	cancel()
+	ctxDb, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutWrite)
+	defer cancel()
+	if err := rep.UpdateBarberStatus(ctxDb, newStatus(state), ctxTl.Sender().ID); err != nil {
+		return err
+	}
+	return nil
+}
+
+func actualizeBarberState(ctx tele.Context) (state state, err error) {
+	defer func() { err = e.WrapIfErr("can't actualize barber state", err) }()
+	rep, err := getRepository(ctx)
+	if err != nil {
+		return stateStart, err
+	}
+	state, ok, err := getBarberState(ctx, rep)
+	if err != nil {
+		return stateStart, err
+	}
+	if !ok {
+		if err := updBarberState(ctx, stateStart); err != nil {
+			return stateStart, err
+		}
+		return stateStart, nil
+	}
+	return state, nil
 }

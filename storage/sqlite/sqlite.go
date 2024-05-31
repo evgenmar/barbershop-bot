@@ -5,10 +5,12 @@ import (
 	"barbershop-bot/storage"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
 
+	"github.com/ncruces/go-sqlite3"
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"
 )
@@ -185,28 +187,31 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 }
 
 // UpdateBarberNameAndStatus saves new name and status for barber with barberID.
-func (s *Storage) UpdateBarberNameAndStatus(ctx context.Context, name string, status storage.Status, barberID int64) (err error) {
-	defer func() { err = e.WrapIfErr("can't save barber's name and status", err) }()
+func (s *Storage) UpdateBarberNameAndStatus(ctx context.Context, name string, status storage.Status, barberID int64) error {
 	s.rwMutex.Lock()
 	defer s.rwMutex.Unlock()
-	tx, err := s.db.BeginTx(ctx, nil)
+	q := `UPDATE barbers SET name = ? , state = ? , state_expiration = ? WHERE id = ?`
+	_, err := s.db.ExecContext(ctx, q, name, status.State, status.Expiration, barberID)
 	if err != nil {
-		return err
+		if errors.Is(err, sqlite3.CONSTRAINT) {
+			err = storage.ErrNonUniqueData
+		}
+		return e.Wrap("can't save barber's name and status", err)
 	}
-	q := `UPDATE barbers SET name = ? WHERE id = ?`
-	_, err = s.db.ExecContext(ctx, q, name, barberID)
+	return nil
+}
+
+// UpdateBarberPhoneAndStatus saves new phone and status for barber with barberID.
+func (s *Storage) UpdateBarberPhoneAndStatus(ctx context.Context, phone string, status storage.Status, barberID int64) error {
+	s.rwMutex.Lock()
+	defer s.rwMutex.Unlock()
+	q := `UPDATE barbers SET phone = ? , state = ? , state_expiration = ? WHERE id = ?`
+	_, err := s.db.ExecContext(ctx, q, phone, status.State, status.Expiration, barberID)
 	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	q = `UPDATE barbers SET state = ? , state_expiration = ? WHERE id = ?`
-	_, err = s.db.ExecContext(ctx, q, status.State, status.Expiration, barberID)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	if err := tx.Commit(); err != nil {
-		return err
+		if errors.Is(err, sqlite3.CONSTRAINT) {
+			err = storage.ErrNonUniqueData
+		}
+		return e.Wrap("can't save barber's name and status", err)
 	}
 	return nil
 }
