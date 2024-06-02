@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 )
 
@@ -13,8 +14,8 @@ var (
 type Storage interface {
 	Close() error
 
-	//CreateBarberID saves new BarberID to storage
-	CreateBarberID(ctx context.Context, barberID int64) error
+	//CreateBarber saves new BarberID to storage
+	CreateBarber(ctx context.Context, barberID int64) error
 
 	//CreateWorkdays saves new Workdays to storage
 	CreateWorkdays(ctx context.Context, workdays ...Workday) error
@@ -22,8 +23,8 @@ type Storage interface {
 	//FindAllBarberIDs return a slice of IDs of all barbers.
 	FindAllBarberIDs(ctx context.Context) ([]int64, error)
 
-	//GetBarberStatus returns status of dialog for barber with barberID.
-	GetBarberStatus(ctx context.Context, barberID int64) (Status, error)
+	//GetBarberByID returns status of dialog for barber with barberID.
+	GetBarberByID(ctx context.Context, barberID int64) (Barber, error)
 
 	//GetLatestWorkDate returns the latest work date saved for barber with barberID.
 	//If there is no saved work dates it returns ("2000-01-01", ErrNoSavedWorkdates).
@@ -31,6 +32,9 @@ type Storage interface {
 
 	// Init prepares the storage for use. It creates the necessary tables if not exists.
 	Init(ctx context.Context) error
+
+	//IsBarberExists reports if barber with specified ID exists in storage
+	IsBarberExists(ctx context.Context, barberID int64) (bool, error)
 
 	// UpdateBarberNameAndStatus saves new name and status for barber with barberID.
 	UpdateBarberNameAndStatus(ctx context.Context, name string, status Status, barberID int64) error
@@ -55,9 +59,18 @@ type Workday struct {
 	EndTime string `db:"end_time"`
 }
 
+type Barber struct {
+	ID   sql.NullInt64  `db:"id"`
+	Name sql.NullString `db:"name"`
+
+	//Format of phone number is +71234567890
+	Phone sql.NullString `db:"phone"`
+	Status
+}
+
 type Status struct {
-	State uint8 `db:"state"`
+	State sql.NullByte `db:"state"`
 
 	//State expiration in YYYY-MM-DD HH:MM:SS format in UTC.
-	Expiration string `db:"state_expiration"`
+	Expiration sql.NullString `db:"state_expiration"`
 }

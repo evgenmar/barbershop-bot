@@ -3,6 +3,7 @@ package telegram
 import (
 	"barbershop-bot/lib/e"
 	"barbershop-bot/storage"
+	"database/sql"
 	"errors"
 	"log"
 	"os"
@@ -14,12 +15,13 @@ import (
 	"gopkg.in/telebot.v3/middleware"
 )
 
-type state uint8
+type state byte
 
 const (
 	stateStart state = iota
 	stateUpdName
 	stateUpdPhone
+	stateAddBarber
 )
 
 // botWithMiddleware creates bot with Recover(), AutoRespond() and withStorage(rep) global middleware.
@@ -57,10 +59,16 @@ func SetHandlers(bot *tele.Bot, barberIDs []int64) *tele.Bot {
 	}))
 	// TODO sameCommandHandlers
 
-	barbers.Handle(&btnUpdPersonalBarber, onUpdPersonalBarber)
+	barbers.Handle(&btnSettingsBarber, onSettingsBarber)
 
+	barbers.Handle(&btnUpdPersonalBarber, onUpdPersonalBarber)
 	barbers.Handle(&btnUpdNameBarber, onUpdNameBarber)
 	barbers.Handle(&btnUpdPhoneBarber, onUpdPhoneBarber)
+
+	barbers.Handle(&btnManageBarbers, onManageBarbers)
+	barbers.Handle(&btnAddBarber, onAddBarber)
+	barbers.Handle(&btnDeleteBarber, onDeleteBarber)
+
 	barbers.Handle(&btnBackToMainBarber, onBackToMainBarber)
 
 	barbers.Handle(tele.OnContact, onContactBarber)
@@ -91,22 +99,25 @@ func newStatus(state state) storage.Status {
 		expiration = time.Now().In(time.FixedZone("UTC", 0)).Add(24 * time.Hour).Format(time.DateTime)
 	}
 	return storage.Status{
-		State:      uint8(state),
-		Expiration: expiration,
+		State:      sql.NullByte{Byte: byte(state), Valid: true},
+		Expiration: sql.NullString{String: expiration, Valid: true},
 	}
 }
 
 // getState returns state. If the state has not expired yet, the second returned value is true.
 // If the state has already expired, the second returned value is false.
 func getState(status storage.Status) (state, bool, error) {
-	expiration, err := time.Parse(time.DateTime, status.Expiration)
+	if !status.State.Valid {
+		return stateStart, true, nil
+	}
+	expiration, err := time.Parse(time.DateTime, status.Expiration.String)
 	if err != nil {
 		return stateStart, false, e.Wrap("can't parse state expiration time", err)
 	}
 	if expiration.After(time.Now().In(time.FixedZone("UTC", 0))) {
-		return state(status.State), true, nil
+		return state(status.State.Byte), true, nil
 	}
-	return state(status.State), false, nil
+	return state(status.State.Byte), false, nil
 }
 
 func isValidName(text string) bool {

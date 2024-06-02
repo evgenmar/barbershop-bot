@@ -36,8 +36,8 @@ func (s *Storage) Close() error {
 	return s.db.Close()
 }
 
-// CreateBarberID saves new BarberID to storage
-func (s *Storage) CreateBarberID(ctx context.Context, barberID int64) error {
+// CreateBarber saves new BarberID to storage
+func (s *Storage) CreateBarber(ctx context.Context, barberID int64) error {
 	s.rwMutex.Lock()
 	defer s.rwMutex.Unlock()
 	q := `INSERT INTO barbers (id) VALUES (?)`
@@ -90,16 +90,17 @@ func (s *Storage) FindAllBarberIDs(ctx context.Context) (barberIDs []int64, err 
 	return barberIDs, nil
 }
 
-// GetBarberStatus returns status of dialog for barber with barberID.
-func (s *Storage) GetBarberStatus(ctx context.Context, barberID int64) (storage.Status, error) {
+// GetBarberByID returns status of dialog for barber with barberID.
+func (s *Storage) GetBarberByID(ctx context.Context, barberID int64) (storage.Barber, error) {
 	s.rwMutex.RLock()
 	defer s.rwMutex.RUnlock()
-	q := `SELECT state, state_expiration FROM barbers WHERE id = ?`
-	var status storage.Status
-	if err := s.db.QueryRowContext(ctx, q, barberID).Scan(&status.State, &status.Expiration); err != nil {
-		return storage.Status{}, e.Wrap("can't get status of dialog for barber with barberID", err)
+	q := `SELECT name, phone, state, state_expiration FROM barbers WHERE id = ?`
+	var barber storage.Barber
+	if err := s.db.QueryRowContext(ctx, q, barberID).Scan(&barber.Name, &barber.Phone, &barber.State, &barber.Expiration); err != nil {
+		return storage.Barber{}, e.Wrap("can't get barber", err)
 	}
-	return status, nil
+	barber.ID = sql.NullInt64{Int64: barberID, Valid: true}
+	return barber, nil
 }
 
 // GetLatestWorkDate returns the latest work date saved for barber with barberID.
@@ -184,6 +185,18 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 		return err
 	}
 	return nil
+}
+
+// IsBarberExists reports if barber with specified ID exists in database
+func (s *Storage) IsBarberExists(ctx context.Context, barberID int64) (bool, error) {
+	s.rwMutex.RLock()
+	defer s.rwMutex.RUnlock()
+	q := `SELECT COUNT(*) FROM barbers WHERE id = ?`
+	var count int
+	if err := s.db.QueryRowContext(ctx, q, barberID).Scan(&count); err != nil {
+		return false, e.Wrap("can't check if barber exists", err)
+	}
+	return count > 0, nil
 }
 
 // UpdateBarberNameAndStatus saves new name and status for barber with barberID.

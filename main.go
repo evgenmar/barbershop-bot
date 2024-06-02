@@ -28,7 +28,7 @@ func main() {
 	defer crn.Stop()
 
 	bot.Start()
-	defer bot.Stop()
+	bot.Stop()
 }
 
 // createRepository creates repository and prepares it for use
@@ -59,7 +59,7 @@ func getBarberIDs(rep storage.Storage) []int64 {
 			log.Fatal(e.Wrap("can't get barberID from environment variable", err))
 		}
 		ctx, cancel = context.WithTimeout(context.Background(), config.DbQueryTimoutWrite)
-		err = rep.CreateBarberID(ctx, barberID)
+		err = rep.CreateBarber(ctx, barberID)
 		cancel()
 		if err != nil {
 			log.Fatal(err)
