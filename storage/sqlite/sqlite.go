@@ -32,10 +32,6 @@ func New(path string) (*Storage, error) {
 	return &Storage{db: db}, nil
 }
 
-func (s *Storage) Close() error {
-	return s.db.Close()
-}
-
 // CreateBarber saves new BarberID to storage
 func (s *Storage) CreateBarber(ctx context.Context, barberID int64) error {
 	s.rwMutex.Lock()

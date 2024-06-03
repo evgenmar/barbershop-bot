@@ -12,8 +12,6 @@ var (
 )
 
 type Storage interface {
-	Close() error
-
 	//CreateBarber saves new BarberID to storage
 	CreateBarber(ctx context.Context, barberID int64) error
 

@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"sync"
 	"time"
 	"unicode"
 
@@ -23,6 +24,29 @@ const (
 	stateUpdPhone
 	stateAddBarber
 )
+
+type protectedIDs struct {
+	ids     []int64
+	rwMutex sync.RWMutex
+}
+
+var barberIDs protectedIDs
+
+func SetBarberIDs(IDs ...int64) {
+	barberIDs.ids = IDs
+}
+
+func (p *protectedIDs) iDs() []int64 {
+	p.rwMutex.RLock()
+	defer p.rwMutex.RUnlock()
+	return p.ids
+}
+
+func (p *protectedIDs) setIDs(ids []int64) {
+	p.rwMutex.Lock()
+	defer p.rwMutex.Unlock()
+	p.ids = ids
+}
 
 // botWithMiddleware creates bot with Recover(), AutoRespond() and withStorage(rep) global middleware.
 func BotWithMiddleware(rep storage.Storage) *tele.Bot {
@@ -41,22 +65,14 @@ func BotWithMiddleware(rep storage.Storage) *tele.Bot {
 	return bot
 }
 
-func SetHandlers(bot *tele.Bot, barberIDs []int64) *tele.Bot {
+func SetHandlers(bot *tele.Bot) *tele.Bot {
 	barbers := bot.Group()
-	barbers.Use(middleware.Whitelist(barberIDs...))
+	barbers.Use(Whitelist())
 	users := bot.Group()
-	users.Use(notInWhitelist(barberIDs...))
+	users.Use(notInWhitelist())
 
-	bot.Handle("/start", noAction, middleware.Restrict(middleware.RestrictConfig{
-		Chats: barberIDs,
-		In:    onStartBarber,
-		Out:   onStartUser,
-	}))
-	bot.Handle(tele.OnText, noAction, middleware.Restrict(middleware.RestrictConfig{
-		Chats: barberIDs,
-		In:    onTextBarber,
-		Out:   onStartUser, // TODO
-	}))
+	bot.Handle("/start", noAction, onStartRestrict())
+	bot.Handle(tele.OnText, noAction, onTextRestrict())
 	// TODO sameCommandHandlers
 
 	barbers.Handle(&btnSettingsBarber, onSettingsBarber)

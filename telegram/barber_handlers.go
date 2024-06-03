@@ -275,6 +275,7 @@ func addNewBarber(ctx tele.Context, errMsg string) error {
 		log.Print(e.Wrap(errMsg, err))
 		return ctx.Send(errorBarber)
 	}
+	barberIDs.setIDs(append(barberIDs.iDs(), ctx.Message().Contact.UserID))
 	return ctx.Send(addedNewBarber, markupBackToMainBarber)
 }
 

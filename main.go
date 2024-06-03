@@ -15,20 +15,18 @@ import (
 
 func main() {
 	rep := createRepository()
-	defer rep.Close()
 
 	barberIDs := getBarberIDs(rep)
 	makeBarbersSchedules(rep, barberIDs)
 
+	telegram.SetBarberIDs(barberIDs...)
 	bot := telegram.BotWithMiddleware(rep)
-	bot = telegram.SetHandlers(bot, barberIDs)
+	bot = telegram.SetHandlers(bot)
 
 	crn := scheduler.CronWithSettings(rep, barberIDs)
 	crn.Start()
-	defer crn.Stop()
 
 	bot.Start()
-	bot.Stop()
 }
 
 // createRepository creates repository and prepares it for use
