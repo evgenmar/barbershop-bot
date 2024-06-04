@@ -67,7 +67,7 @@ func BotWithMiddleware(rep storage.Storage) *tele.Bot {
 
 func SetHandlers(bot *tele.Bot) *tele.Bot {
 	barbers := bot.Group()
-	barbers.Use(Whitelist())
+	barbers.Use(whitelist())
 	users := bot.Group()
 	users.Use(notInWhitelist())
 

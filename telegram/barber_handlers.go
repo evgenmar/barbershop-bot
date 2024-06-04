@@ -3,6 +3,7 @@ package telegram
 import (
 	"barbershop-bot/config"
 	"barbershop-bot/lib/e"
+	"barbershop-bot/scheduler"
 	"barbershop-bot/storage"
 	"context"
 	"errors"
@@ -11,8 +12,6 @@ import (
 
 	tele "gopkg.in/telebot.v3"
 )
-
-var ID int64
 
 const (
 	mainBarber = "Добрый день. Вы находитесь в главном меню. Выберите действие."
@@ -51,9 +50,13 @@ const (
 4. В открывшемся меню выберите "Поделиться контактом".
 5. В открывшемся списке Ваших чатов выберите чат с ботом (чат, в котором Вы читаете эту инструкцию).
 6. В правом нижнем углу нажмите на значек отправки сообщения.`
-	userIsAlreadyBarber    = "Статус пользователя не изменен, поскольку он уже является барбером. При необходимости вернуться в главное меню воспользуйтесь командой /start"
-	addedNewBarber         = `Статус пользователя изменен на "барбер"`
-	noBarbersToDelete      = "Вы единственный зарегистрированный барбер в приложении. Некого удалять"
+	userIsAlreadyBarber       = "Статус пользователя не изменен, поскольку он уже является барбером."
+	addedNewBarberWithShedule = `Статус пользователя изменен на "барбер". Для нового барбера составлено расписание работы на ближайшие полгода.
+Для доступа к записи клиентов на стрижку новый барбер должен заполнить персональные данные.`
+	addedNewBarberWithoutShedule = `Статус пользователя изменен на "барбер".
+ВНИМАНИЕ!!! При попытке составить расписание работы для нового барбера произошла ошибка. Расписание не составлено!
+Для доступа к записи клиентов на стрижку новый барбер должен заполнить персональные данные, а также составить расписание работы.`
+	noBarbersToDelete      = "Вы единственный зарегистрированный барбер в приложении. Некого удалять."
 	endpntBarberToDeletion = "barber_to_deletion"
 	selectBarberToDeletion = "Выберите барбера, которого Вы хотите удалить"
 
@@ -66,7 +69,7 @@ var (
 	btnSettingsBarber = markupMainBarber.Data("Настройки", "settings_barber")
 
 	markupSettingsBarber = &tele.ReplyMarkup{}
-	btnUpdPersonalBarber = markupSettingsBarber.Data("Обновить личные данные", "upd_personal_data_barber")
+	btnUpdPersonalBarber = markupSettingsBarber.Data("Обновить персональные данные", "upd_personal_data_barber")
 	btnManageBarbers     = markupSettingsBarber.Data("Управление барберами", "manage_barbers")
 
 	markupPersonalBarber = &tele.ReplyMarkup{}
@@ -269,25 +272,33 @@ func addNewBarber(ctx tele.Context, errMsg string) error {
 		return ctx.Send(errorBarber)
 	}
 	if isBarberExists {
-		return ctx.Send(userIsAlreadyBarber)
+		return ctx.Send(userIsAlreadyBarber, markupBackToMainBarber)
 	}
 	if err := saveNewBarberID(ctx); err != nil {
 		log.Print(e.Wrap(errMsg, err))
 		return ctx.Send(errorBarber)
 	}
 	barberIDs.setIDs(append(barberIDs.iDs(), ctx.Message().Contact.UserID))
-	return ctx.Send(addedNewBarber, markupBackToMainBarber)
+	if err := makeBarberSchedule(ctx, ctx.Message().Contact.UserID); err != nil {
+		log.Print(e.Wrap(errMsg, err))
+		return ctx.Send(addedNewBarberWithoutShedule, markupBackToMainBarber)
+	}
+	return ctx.Send(addedNewBarberWithShedule, markupBackToMainBarber)
 }
 
-func saveNewBarberID(ctxTl tele.Context) (err error) {
-	defer func() { err = e.WrapIfErr("can't save new barber ID", err) }()
-	rep, err := getRepository(ctxTl)
+func actualizeBarberState(ctx tele.Context) (state state, err error) {
+	defer func() { err = e.WrapIfErr("can't actualize barber state", err) }()
+	state, ok, err := getBarberState(ctx)
 	if err != nil {
-		return err
+		return stateStart, err
 	}
-	ctxDb, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutWrite)
-	defer cancel()
-	return rep.CreateBarber(ctxDb, ctxTl.Message().Contact.UserID)
+	if !ok {
+		if err := updBarberState(ctx, stateStart); err != nil {
+			return stateStart, err
+		}
+		return stateStart, nil
+	}
+	return state, nil
 }
 
 func getBarberNameByID(ctxTl tele.Context, barberID int64) (name string, err error) {
@@ -348,6 +359,26 @@ func isBarberExists(ctxTl tele.Context) (exists bool, err error) {
 	return rep.IsBarberExists(ctxDb, ctxTl.Message().Contact.UserID)
 }
 
+func makeBarberSchedule(ctx tele.Context, barberID int64) (err error) {
+	defer func() { err = e.WrapIfErr("can't make barber schedule", err) }()
+	rep, err := getRepository(ctx)
+	if err != nil {
+		return err
+	}
+	return scheduler.MakeSchedule(rep, barberID)
+}
+
+func saveNewBarberID(ctxTl tele.Context) (err error) {
+	defer func() { err = e.WrapIfErr("can't save new barber ID", err) }()
+	rep, err := getRepository(ctxTl)
+	if err != nil {
+		return err
+	}
+	ctxDb, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutWrite)
+	defer cancel()
+	return rep.CreateBarber(ctxDb, ctxTl.Message().Contact.UserID)
+}
+
 func updBarberNameAndState(ctxTl tele.Context, state state) (err error) {
 	defer func() { err = e.WrapIfErr("can't update barber name and state", err) }()
 	rep, err := getRepository(ctxTl)
@@ -389,19 +420,4 @@ func updBarberState(ctxTl tele.Context, state state) (err error) {
 		return err
 	}
 	return nil
-}
-
-func actualizeBarberState(ctx tele.Context) (state state, err error) {
-	defer func() { err = e.WrapIfErr("can't actualize barber state", err) }()
-	state, ok, err := getBarberState(ctx)
-	if err != nil {
-		return stateStart, err
-	}
-	if !ok {
-		if err := updBarberState(ctx, stateStart); err != nil {
-			return stateStart, err
-		}
-		return stateStart, nil
-	}
-	return state, nil
 }

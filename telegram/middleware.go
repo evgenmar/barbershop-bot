@@ -18,7 +18,7 @@ func withStorage(storage storage.Storage) tele.MiddlewareFunc {
 
 // Whitelist returns a middleware that skips the update for users
 // NOT specified in the chats field.
-func Whitelist() tele.MiddlewareFunc {
+func whitelist() tele.MiddlewareFunc {
 	return func(next tele.HandlerFunc) tele.HandlerFunc {
 		chats := barberIDs.iDs()
 		return middleware.Restrict(middleware.RestrictConfig{

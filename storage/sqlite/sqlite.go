@@ -130,7 +130,6 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 		id INTEGER PRIMARY KEY, 
 		name TEXT, 
 		phone TEXT, 
-		chat_id INTEGER UNIQUE, 
 		state INTEGER,
 		state_expiration TEXT)`
 	_, err = s.db.ExecContext(ctx, q)
@@ -141,7 +140,6 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 		id INTEGER PRIMARY KEY, 
 		name TEXT UNIQUE, 
 		phone TEXT UNIQUE, 
-		chat_id INTEGER UNIQUE, 
 		state INTEGER,
 		state_expiration TEXT)`
 	_, err = s.db.ExecContext(ctx, q)

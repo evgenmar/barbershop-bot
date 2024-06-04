@@ -15,11 +15,11 @@ import (
 // CronWithSettings creates *cron.Cron and set it with several functions to be run on a schedule.
 // Triggered events:
 //   - making schedules for barbers - every Monday at 03:00 AM
-func CronWithSettings(rep storage.Storage, barberIDs []int64) *cron.Cron {
+func CronWithSettings(rep storage.Storage) *cron.Cron {
 	crn := cron.New(cron.WithLocation(config.Location))
 	crn.AddFunc("0 3 * * 1",
 		func() {
-			err := MakeSchedules(rep, barberIDs, config.ScheduledWeeks)
+			err := MakeSchedules(rep)
 			if err != nil {
 				log.Print(err)
 			}
@@ -29,11 +29,18 @@ func CronWithSettings(rep storage.Storage, barberIDs []int64) *cron.Cron {
 
 // MakeSchedules just calls makeSchedule for all barbers specified in barberIDs.
 // See makeSchedule for details.
-func MakeSchedules(rep storage.Storage, barberIDs []int64, weeks uint8) error {
+func MakeSchedules(rep storage.Storage) (err error) {
+	defer func() { err = e.WrapIfErr("can't make schedules", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutRead)
+	barberIDs, err := rep.FindAllBarberIDs(ctx)
+	cancel()
+	if err != nil {
+		return err
+	}
 	for _, barberID := range barberIDs {
-		err := makeSchedule(rep, barberID, weeks)
+		err := MakeSchedule(rep, barberID)
 		if err != nil {
-			return e.Wrap("can't make schedules", err)
+			return err
 		}
 	}
 	return nil
@@ -47,7 +54,7 @@ func MakeSchedules(rep storage.Storage, barberIDs []int64, weeks uint8) error {
 // for which there was no schedule.
 //
 // Mondays are accepted as non-working days. On other days the working time is from 10:00 to 19:00.
-func makeSchedule(rep storage.Storage, barberID int64, weeks uint8) (err error) {
+func MakeSchedule(rep storage.Storage, barberID int64) (err error) {
 	defer func() { err = e.WrapIfErr("can't make schedule", err) }()
 	latestWorkDate, err := getLatestWorkDate(rep, barberID)
 	if err != nil {
@@ -56,7 +63,7 @@ func makeSchedule(rep storage.Storage, barberID int64, weeks uint8) (err error) 
 	var workdays []storage.Workday
 	dayDuration := 24 * time.Hour
 	today := today()
-	for date := today.Add(time.Duration(weeks) * dayDuration * 7); date.Compare(today) >= 0 && date.After(latestWorkDate); date = date.Add(-dayDuration) {
+	for date := today.Add(time.Duration(config.ScheduledWeeks) * dayDuration * 7); date.Compare(today) >= 0 && date.After(latestWorkDate); date = date.Add(-dayDuration) {
 		if date.Weekday() != time.Monday {
 			workdays = append(workdays, storage.Workday{
 				BarberID:  barberID,

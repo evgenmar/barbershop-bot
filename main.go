@@ -17,13 +17,13 @@ func main() {
 	rep := createRepository()
 
 	barberIDs := getBarberIDs(rep)
-	makeBarbersSchedules(rep, barberIDs)
+	makeBarbersSchedules(rep)
 
 	telegram.SetBarberIDs(barberIDs...)
 	bot := telegram.BotWithMiddleware(rep)
 	bot = telegram.SetHandlers(bot)
 
-	crn := scheduler.CronWithSettings(rep, barberIDs)
+	crn := scheduler.CronWithSettings(rep)
 	crn.Start()
 
 	bot.Start()
@@ -67,8 +67,8 @@ func getBarberIDs(rep storage.Storage) []int64 {
 	return barberIDs
 }
 
-func makeBarbersSchedules(rep storage.Storage, barberIDs []int64) {
-	err := scheduler.MakeSchedules(rep, barberIDs, config.ScheduledWeeks)
+func makeBarbersSchedules(rep storage.Storage) {
+	err := scheduler.MakeSchedules(rep)
 	if err != nil {
 		log.Fatal(err)
 	}
