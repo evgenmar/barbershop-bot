@@ -1,8 +1,9 @@
 package telegram
 
 import (
+	"barbershop-bot/lib/config"
 	"barbershop-bot/lib/e"
-	"barbershop-bot/storage"
+	"barbershop-bot/repository/storage"
 	"database/sql"
 	"errors"
 	"log"
@@ -30,7 +31,21 @@ type protectedIDs struct {
 	rwMutex sync.RWMutex
 }
 
+type repository struct {
+	rep          storage.Storage
+	timeoutWrite time.Duration
+	timeoutRead  time.Duration
+}
+
+var rep repository
+
 var barberIDs protectedIDs
+
+func SetRepository(repos storage.Storage) {
+	rep.rep = repos
+	rep.timeoutWrite = config.DbQueryTimoutWrite
+	rep.timeoutRead = config.DbQueryTimoutRead
+}
 
 func SetBarberIDs(IDs ...int64) {
 	barberIDs.ids = IDs
@@ -49,7 +64,7 @@ func (p *protectedIDs) setIDs(ids []int64) {
 }
 
 // botWithMiddleware creates bot with Recover(), AutoRespond() and withStorage(rep) global middleware.
-func BotWithMiddleware(rep storage.Storage) *tele.Bot {
+func BotWithMiddleware(storage storage.Storage) *tele.Bot {
 	pref := tele.Settings{
 		Token: os.Getenv("TOKEN"),
 		Poller: &tele.LongPoller{Timeout: 10 * time.Second,
@@ -61,7 +76,7 @@ func BotWithMiddleware(rep storage.Storage) *tele.Bot {
 	}
 	bot.Use(middleware.Recover())
 	bot.Use(middleware.AutoRespond())
-	bot.Use(withStorage(rep))
+	bot.Use(withStorage(storage))
 	return bot
 }
 

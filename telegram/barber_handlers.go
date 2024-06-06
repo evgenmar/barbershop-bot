@@ -1,10 +1,10 @@
 package telegram
 
 import (
-	"barbershop-bot/config"
+	"barbershop-bot/lib/config"
 	"barbershop-bot/lib/e"
+	"barbershop-bot/repository/storage"
 	"barbershop-bot/scheduler"
-	"barbershop-bot/storage"
 	"context"
 	"errors"
 	"log"
@@ -21,7 +21,7 @@ const (
 	personalBarber       = "Выберите данные, которые вы хотите обновить."
 	updNameBarber        = "Введите Ваше имя"
 	updNameSuccessBarber = "Имя успешно обновлено. Хотите обновить другие данные?"
-	updNameFailBarber    = `Введенное имя не соответствует установленным критериям:
+	invalidBarberName    = `Введенное имя не соответствует установленным критериям:
 		- имя может содержать русские и английские буквы, цифры и пробелы;
 		- длина имени должна быть не менее 2 символов и не более 20 символов.
 Пожалуйста, попробуйте ввести имя еще раз. При необходимости вернуться в главное меню воспользуйтесь командой /start`
@@ -30,7 +30,7 @@ const (
 
 	updPhoneBarber        = "Введите свой номер телефона"
 	updPhoneSuccessBarber = "Номер телефона успешно обновлен. Хотите обновить другие данные?"
-	updPhoneFailBarber    = `Неизвестный формат номера телефона. Примеры поддерживаемых форматов:
+	invalidBarberPhone    = `Неизвестный формат номера телефона. Примеры поддерживаемых форматов:
 		1234567890
 		(123)-456-78-90
 		81234567890
@@ -61,7 +61,8 @@ const (
 	selectBarberToDeletion = "Выберите барбера, которого Вы хотите удалить"
 
 	unknownCmdBarber = "Неизвестная команда. Пожалуйста, выберите команду из меню. Для вызова главного меню воспользуйтесь командой /start"
-	errorBarber      = "Произошла ошибка обработки команды. Если ошибка будет повторяться, возможно, потребуется перезапуск сервиса"
+	errorBarber      = `Произошла ошибка обработки команды. Команда не была выполнена. Если ошибка будет повторяться, возможно, потребуется перезапуск сервиса.
+Пожалуйста, перейдите в главное меню и попробуйте выполнить команду заново.`
 )
 
 var (
@@ -116,7 +117,7 @@ func init() {
 func onStartBarber(ctx tele.Context) error {
 	if err := updBarberState(ctx, stateStart); err != nil {
 		log.Print(e.Wrap("can't open the barber's main menu", err))
-		return ctx.Send(errorBarber)
+		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
 	return ctx.Send(mainBarber, markupMainBarber)
 }
@@ -124,7 +125,7 @@ func onStartBarber(ctx tele.Context) error {
 func onSettingsBarber(ctx tele.Context) error {
 	if err := updBarberState(ctx, stateStart); err != nil {
 		log.Print(e.Wrap("can't open the barber settings menu", err))
-		return ctx.Send(errorBarber)
+		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
 	return ctx.Edit(settingsBarber, markupSettingsBarber)
 }
@@ -132,7 +133,7 @@ func onSettingsBarber(ctx tele.Context) error {
 func onUpdPersonalBarber(ctx tele.Context) error {
 	if err := updBarberState(ctx, stateStart); err != nil {
 		log.Print(e.Wrap("can't open the barber's personal data menu", err))
-		return ctx.Send(errorBarber)
+		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
 	return ctx.Edit(personalBarber, markupPersonalBarber)
 }
@@ -140,7 +141,7 @@ func onUpdPersonalBarber(ctx tele.Context) error {
 func onUpdNameBarber(ctx tele.Context) error {
 	if err := updBarberState(ctx, stateUpdName); err != nil {
 		log.Print(e.Wrap("can't ask barber to enter name", err))
-		return ctx.Send(errorBarber)
+		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
 	return ctx.Edit(updNameBarber)
 }
@@ -148,7 +149,7 @@ func onUpdNameBarber(ctx tele.Context) error {
 func onUpdPhoneBarber(ctx tele.Context) error {
 	if err := updBarberState(ctx, stateUpdPhone); err != nil {
 		log.Print(e.Wrap("can't ask barber to enter phone", err))
-		return ctx.Send(errorBarber)
+		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
 	return ctx.Edit(updPhoneBarber)
 }
@@ -156,7 +157,7 @@ func onUpdPhoneBarber(ctx tele.Context) error {
 func onManageBarbers(ctx tele.Context) error {
 	if err := updBarberState(ctx, stateStart); err != nil {
 		log.Print(e.Wrap("can't open the set barbers menu", err))
-		return ctx.Send(errorBarber)
+		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
 	return ctx.Edit(manageBarbers, markupManageBarbers)
 }
@@ -164,7 +165,7 @@ func onManageBarbers(ctx tele.Context) error {
 func onAddBarber(ctx tele.Context) error {
 	if err := updBarberState(ctx, stateAddBarber); err != nil {
 		log.Print(e.Wrap("can't ask barber to point on user to add", err))
-		return ctx.Send(errorBarber)
+		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
 	return ctx.Edit(addBarber)
 }
@@ -173,11 +174,12 @@ func onDeleteBarber(ctx tele.Context) error {
 	errMsg := "can't suggest actions to delete barber"
 	if err := updBarberState(ctx, stateStart); err != nil {
 		log.Print(e.Wrap(errMsg, err))
-		return ctx.Send(errorBarber)
+		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
 	barberIDs, err := getAllBarberIDs(ctx)
 	if err != nil {
 		log.Print(e.Wrap(errMsg, err))
+		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
 	if len(barberIDs) == 1 {
 		return ctx.Edit(noBarbersToDelete, markupBackToMainBarber)
@@ -189,6 +191,7 @@ func onDeleteBarber(ctx tele.Context) error {
 			barberName, err := getBarberNameByID(ctx, barberID)
 			if err != nil {
 				log.Print(e.Wrap(errMsg, err))
+				return ctx.Send(errorBarber, markupBackToMainBarber)
 			}
 			barberIDStr := strconv.FormatInt(barberID, 10)
 			row := markupSelectBarber.Row(markupSelectBarber.Data(barberName, endpntBarberToDeletion, barberIDStr))
@@ -202,7 +205,7 @@ func onDeleteBarber(ctx tele.Context) error {
 func onBackToMainBarber(ctx tele.Context) error {
 	if err := updBarberState(ctx, stateStart); err != nil {
 		log.Print(e.Wrap("can't go back to the barber's main menu", err))
-		return ctx.Send(errorBarber)
+		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
 	return ctx.Edit(mainBarber, markupMainBarber)
 }
@@ -211,36 +214,42 @@ func onTextBarber(ctx tele.Context) error {
 	state, err := actualizeBarberState(ctx)
 	if err != nil {
 		log.Print(e.Wrap("can't handle barber's text message", err))
-		return ctx.Send(errorBarber)
+		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
 
 	switch state {
 	case stateUpdName:
 		if ok := isValidName(ctx.Message().Text); ok {
-			if err := updBarberNameAndState(ctx, stateStart); err != nil {
+			if err := updBarberName(ctx); err != nil {
 				if errors.Is(err, storage.ErrNonUniqueData) {
 					log.Print(e.Wrap("barber's name must be unique", err))
 					return ctx.Send(notUniqueBarberName)
 				}
 				log.Print(e.Wrap("can't update barber's name", err))
-				return ctx.Send(errorBarber)
+				return ctx.Send(errorBarber, markupBackToMainBarber)
+			}
+			if err := updBarberState(ctx, stateStart); err != nil {
+				log.Print(e.Wrap("can't update barber's state", err))
 			}
 			return ctx.Send(updNameSuccessBarber, markupPersonalBarber)
 		}
-		return ctx.Send(updNameFailBarber)
+		return ctx.Send(invalidBarberName)
 	case stateUpdPhone:
 		if ok := isValidPhone(ctx.Message().Text); ok {
-			if err := updBarberPhoneAndState(ctx, stateStart); err != nil {
+			if err := updBarberPhone(ctx); err != nil {
 				if errors.Is(err, storage.ErrNonUniqueData) {
 					log.Print(e.Wrap("barber's phone must be unique", err))
 					return ctx.Send(notUniqueBarberPhone)
 				}
 				log.Print(e.Wrap("can't update barber's phone", err))
-				return ctx.Send(errorBarber)
+				return ctx.Send(errorBarber, markupBackToMainBarber)
+			}
+			if err := updBarberState(ctx, stateStart); err != nil {
+				log.Print(e.Wrap("can't update barber's state", err))
 			}
 			return ctx.Send(updPhoneSuccessBarber, markupPersonalBarber)
 		}
-		return ctx.Send(updPhoneFailBarber)
+		return ctx.Send(invalidBarberPhone)
 	default:
 		return ctx.Send(unknownCmdBarber)
 	}
@@ -251,7 +260,7 @@ func onContactBarber(ctx tele.Context) error {
 	state, err := actualizeBarberState(ctx)
 	if err != nil {
 		log.Print(e.Wrap(errMsg, err))
-		return ctx.Send(errorBarber)
+		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
 	switch state {
 	case stateAddBarber:
@@ -265,18 +274,18 @@ func addNewBarber(ctx tele.Context, errMsg string) error {
 	isBarberExists, err := isBarberExists(ctx)
 	if err != nil {
 		log.Print(e.Wrap(errMsg, err))
-		return ctx.Send(errorBarber)
+		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
 	if err := updBarberState(ctx, stateStart); err != nil {
 		log.Print(e.Wrap(errMsg, err))
-		return ctx.Send(errorBarber)
+		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
 	if isBarberExists {
 		return ctx.Send(userIsAlreadyBarber, markupBackToMainBarber)
 	}
 	if err := saveNewBarberID(ctx); err != nil {
 		log.Print(e.Wrap(errMsg, err))
-		return ctx.Send(errorBarber)
+		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
 	barberIDs.setIDs(append(barberIDs.iDs(), ctx.Message().Contact.UserID))
 	if err := makeBarberSchedule(ctx, ctx.Message().Contact.UserID); err != nil {
@@ -379,21 +388,21 @@ func saveNewBarberID(ctxTl tele.Context) (err error) {
 	return rep.CreateBarber(ctxDb, ctxTl.Message().Contact.UserID)
 }
 
-func updBarberNameAndState(ctxTl tele.Context, state state) (err error) {
-	defer func() { err = e.WrapIfErr("can't update barber name and state", err) }()
+func updBarberName(ctxTl tele.Context) (err error) {
+	defer func() { err = e.WrapIfErr("can't update barber name", err) }()
 	rep, err := getRepository(ctxTl)
 	if err != nil {
 		return err
 	}
 	ctxDb, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutWrite)
 	defer cancel()
-	if err := rep.UpdateBarberNameAndStatus(ctxDb, ctxTl.Message().Text, newStatus(state), ctxTl.Sender().ID); err != nil {
+	if err := rep.UpdateBarberName(ctxDb, ctxTl.Message().Text, ctxTl.Sender().ID); err != nil {
 		return err
 	}
 	return nil
 }
 
-func updBarberPhoneAndState(ctxTl tele.Context, state state) (err error) {
+func updBarberPhone(ctxTl tele.Context) (err error) {
 	defer func() { err = e.WrapIfErr("can't update barber phone and state", err) }()
 	rep, err := getRepository(ctxTl)
 	if err != nil {
@@ -402,7 +411,7 @@ func updBarberPhoneAndState(ctxTl tele.Context, state state) (err error) {
 	ctxDb, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutWrite)
 	defer cancel()
 	phone := normalizePhone(ctxTl.Message().Text)
-	if err := rep.UpdateBarberPhoneAndStatus(ctxDb, phone, newStatus(state), ctxTl.Sender().ID); err != nil {
+	if err := rep.UpdateBarberPhone(ctxDb, phone, ctxTl.Sender().ID); err != nil {
 		return err
 	}
 	return nil

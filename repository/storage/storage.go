@@ -8,6 +8,7 @@ import (
 
 var (
 	ErrNoSavedWorkdates = errors.New("no saved workdates")
+	ErrNoSavedBarber    = errors.New("no saved barber with specified ID")
 	ErrNonUniqueData    = errors.New("data to save must be unique")
 )
 
@@ -34,27 +35,27 @@ type Storage interface {
 	//IsBarberExists reports if barber with specified ID exists in storage
 	IsBarberExists(ctx context.Context, barberID int64) (bool, error)
 
-	// UpdateBarberNameAndStatus saves new name and status for barber with barberID.
-	UpdateBarberNameAndStatus(ctx context.Context, name string, status Status, barberID int64) error
+	// UpdateBarberName saves new name for barber with barberID.
+	UpdateBarberName(ctx context.Context, name string, barberID int64) error
 
-	// UpdateBarberPhoneAndStatus saves new phone and status for barber with barberID.
-	UpdateBarberPhoneAndStatus(ctx context.Context, phone string, status Status, barberID int64) error
+	// UpdateBarberPhone saves new phone for barber with barberID.
+	UpdateBarberPhone(ctx context.Context, phone string, barberID int64) error
 
 	// UpdateBarberStatus saves new status for barber with barberID.
 	UpdateBarberStatus(ctx context.Context, status Status, barberID int64) error
 }
 
 type Workday struct {
-	BarberID int64 `db:"barber_id"`
+	BarberID sql.NullInt64 `db:"barber_id"`
 
 	//Date in YYYY-MM-DD format in local time zone
-	Date string `db:"date"`
+	Date sql.NullString `db:"date"`
 
 	//Beginning of the working day in HH:MM in local time zone
-	StartTime string `db:"start_time"`
+	StartTime sql.NullString `db:"start_time"`
 
 	//End of the working day in HH:MM in local time zone
-	EndTime string `db:"end_time"`
+	EndTime sql.NullString `db:"end_time"`
 }
 
 type Barber struct {

@@ -1,7 +1,7 @@
 package telegram
 
 import (
-	"barbershop-bot/storage"
+	"barbershop-bot/repository/storage"
 
 	tele "gopkg.in/telebot.v3"
 	"gopkg.in/telebot.v3/middleware"

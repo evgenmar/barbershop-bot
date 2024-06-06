@@ -3,8 +3,6 @@ package config
 import "time"
 
 const (
-	SqliteStoragePath = "data/sqlite/storage.db"
-
 	//scheduledWeeks is the number of weeks for which the barbershop schedule is compiled.
 	ScheduledWeeks uint8 = 26
 
