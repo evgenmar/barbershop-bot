@@ -16,10 +16,10 @@ type Status struct {
 type State byte
 
 const (
-	stateStart State = iota
-	stateUpdName
-	stateUpdPhone
-	stateAddBarber
+	StateStart State = iota
+	StateUpdName
+	StateUpdPhone
+	StateAddBarber
 )
 
 var StatusStart Status
@@ -30,18 +30,22 @@ func init() {
 		log.Fatal(e.Wrap("can't parse default expiration for StatusStart", err))
 	}
 	StatusStart = Status{
-		State:      stateStart,
+		State:      StateStart,
 		Expiration: expiration,
 	}
 }
 
 // By default new Status lifetime is 24 hours except of StatusStart with a lifetime till 3000-01-01 00:00:00 UTC.
 func NewStatus(state State) Status {
-	if state == stateStart {
+	if state == StateStart {
 		return StatusStart
 	}
 	return Status{
 		State:      state,
 		Expiration: time.Now().In(time.FixedZone("UTC", 0)).Add(24 * time.Hour),
 	}
+}
+
+func (s *Status) IsValid() bool {
+	return s.Expiration.After(time.Now().In(time.FixedZone("UTC", 0)))
 }

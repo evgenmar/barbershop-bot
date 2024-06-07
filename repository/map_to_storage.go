@@ -1,15 +1,15 @@
 package repository
 
 import (
-	"barbershop-bot/entities"
+	ent "barbershop-bot/entities"
 	tm "barbershop-bot/lib/time"
-	"barbershop-bot/repository/storage"
+	st "barbershop-bot/repository/storage"
 	"database/sql"
 	"time"
 )
 
-func mapWorkdayToStorage(workday *entities.Workday) storage.Workday {
-	return storage.Workday{
+func mapWorkdayToStorage(workday *ent.Workday) st.Workday {
+	return st.Workday{
 		BarberID:  mapIDToStorage(workday.BarberID),
 		Date:      mapDateToStorage(workday.Date),
 		StartTime: mapDurationToStorage(workday.StartTime),
@@ -29,14 +29,14 @@ func mapDurationToStorage(dur tm.Duration) sql.NullString {
 	return sql.NullString{String: dur.String(), Valid: true}
 }
 
-func mapStatusToStorage(status *entities.Status) storage.Status {
-	return storage.Status{
+func mapStatusToStorage(status *ent.Status) st.Status {
+	return st.Status{
 		State:      mapStateToStorage(status.State),
 		Expiration: mapExpirationToStorage(status.Expiration),
 	}
 }
 
-func mapStateToStorage(state entities.State) sql.NullByte {
+func mapStateToStorage(state ent.State) sql.NullByte {
 	return sql.NullByte{Byte: byte(state), Valid: true}
 }
 

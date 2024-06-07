@@ -1,27 +1,32 @@
 package scheduler
 
 import (
-	"barbershop-bot/lib/config"
+	ent "barbershop-bot/entities"
+	cfg "barbershop-bot/lib/config"
 	"barbershop-bot/lib/e"
-	"barbershop-bot/repository/storage"
+	tm "barbershop-bot/lib/time"
+	rep "barbershop-bot/repository"
 	"context"
-	"database/sql"
-	"errors"
 	"log"
 	"time"
 
 	"github.com/robfig/cron/v3"
 )
 
+var Cron *cron.Cron
+
+func InitCron() {
+	Cron = CronWithSettings()
+}
+
 // CronWithSettings creates *cron.Cron and set it with several functions to be run on a schedule.
 // Triggered events:
 //   - making schedules for barbers - every Monday at 03:00 AM
-func CronWithSettings(storage storage.Storage) *cron.Cron {
-	crn := cron.New(cron.WithLocation(config.Location))
+func CronWithSettings() *cron.Cron {
+	crn := cron.New(cron.WithLocation(cfg.Location))
 	crn.AddFunc("0 3 * * 1",
 		func() {
-			err := MakeSchedules(storage)
-			if err != nil {
+			if err := MakeSchedules(); err != nil {
 				log.Print(err)
 			}
 		})
@@ -30,18 +35,11 @@ func CronWithSettings(storage storage.Storage) *cron.Cron {
 
 // MakeSchedules just calls makeSchedule for all barbers specified in barberIDs.
 // See makeSchedule for details.
-func MakeSchedules(storage storage.Storage) (err error) {
-	defer func() { err = e.WrapIfErr("can't make schedules", err) }()
-	ctx, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutRead)
-	barberIDs, err := storage.FindAllBarberIDs(ctx)
-	cancel()
-	if err != nil {
-		return err
-	}
+func MakeSchedules() (err error) {
+	barberIDs := cfg.Barbers.IDs()
 	for _, barberID := range barberIDs {
-		err := MakeSchedule(storage, barberID)
-		if err != nil {
-			return err
+		if err := MakeSchedule(barberID); err != nil {
+			return e.Wrap("can't make schedules", err)
 		}
 	}
 	return nil
@@ -55,57 +53,35 @@ func MakeSchedules(storage storage.Storage) (err error) {
 // for which there was no schedule.
 //
 // Mondays are accepted as non-working days. On other days the working time is from 10:00 to 19:00.
-func MakeSchedule(stor storage.Storage, barberID int64) (err error) {
+func MakeSchedule(barberID int64) (err error) {
 	defer func() { err = e.WrapIfErr("can't make schedule", err) }()
-	latestWorkDate, err := getLatestWorkDate(stor, barberID)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutRead)
+	latestWorkDate, err := rep.Rep.GetLatestWorkDate(ctx, barberID)
+	cancel()
 	if err != nil {
 		return err
 	}
-	var workdays []storage.Workday
-	dayDuration := 24 * time.Hour
-	today := today()
-	for date := today.Add(time.Duration(config.ScheduledWeeks) * dayDuration * 7); date.Compare(today) >= 0 && date.After(latestWorkDate); date = date.Add(-dayDuration) {
-		if date.Weekday() != time.Monday {
-			workdays = append(workdays, storage.Workday{
-				BarberID:  sql.NullInt64{Int64: barberID, Valid: true},
-				Date:      sql.NullString{String: date.Format(time.DateOnly), Valid: true},
-				StartTime: sql.NullString{String: "10:00", Valid: true},
-				EndTime:   sql.NullString{String: "19:00", Valid: true},
-			})
-		}
-	}
+	workdays := calculateSchedule(latestWorkDate, barberID)
 	if len(workdays) > 0 {
-		ctx, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutWrite)
-		err = stor.CreateWorkdays(ctx, workdays...)
-		cancel()
-		if err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutWrite)
+		defer cancel()
+		if err = rep.Rep.CreateWorkdays(ctx, workdays...); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// getLatestWorkDate returns the latest working date existing in storage
-func getLatestWorkDate(stor storage.Storage, barberID int64) (latestWorkDate time.Time, err error) {
-	defer func() { err = e.WrapIfErr("can't get latest work date", err) }()
-	ctx, cancel := context.WithTimeout(context.Background(), config.DbQueryTimoutRead)
-	latestWD, err := stor.GetLatestWorkDate(ctx, barberID)
-	cancel()
-	if err != nil && !errors.Is(err, storage.ErrNoSavedWorkdates) {
-		return time.Time{}, err
+func calculateSchedule(latestWorkDate time.Time, barberID int64) (workdays []ent.Workday) {
+	dayDuration := 24 * time.Hour
+	today := tm.Today()
+	if latestWorkDate.Before(today) {
+		latestWorkDate = today.Add(-dayDuration)
 	}
-	latestWorkDate, err = time.ParseInLocation(time.DateOnly, latestWD, config.Location)
-	if err != nil {
-		return time.Time{}, err
+	for date := today.Add(time.Duration(cfg.ScheduledWeeks) * dayDuration * 7); date.After(latestWorkDate); date = date.Add(-dayDuration) {
+		if date.Weekday() != cfg.NonWorkingDay {
+			workdays = append(workdays, ent.NewWorkday(barberID, date, ent.DefaultStart, ent.DefaultEnd))
+		}
 	}
-	return latestWorkDate, nil
-}
-
-func today() time.Time {
-	return time.Date(
-		time.Now().In(config.Location).Year(),
-		time.Now().In(config.Location).Month(),
-		time.Now().In(config.Location).Day(),
-		0, 0, 0, 0, config.Location,
-	)
+	return workdays
 }

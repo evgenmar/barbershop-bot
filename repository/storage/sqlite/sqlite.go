@@ -2,7 +2,7 @@ package sqlite
 
 import (
 	"barbershop-bot/lib/e"
-	"barbershop-bot/repository/storage"
+	st "barbershop-bot/repository/storage"
 	"context"
 	"database/sql"
 	"errors"
@@ -44,7 +44,7 @@ func (s *Storage) CreateBarber(ctx context.Context, barberID int64) error {
 }
 
 // CreateWorkdays saves new Workdays to storage
-func (s *Storage) CreateWorkdays(ctx context.Context, workdays ...storage.Workday) error {
+func (s *Storage) CreateWorkdays(ctx context.Context, workdays ...st.Workday) error {
 	exprs := make([]string, 0, len(workdays))
 	args := make([]interface{}, 0, len(workdays))
 	for _, workday := range workdays {
@@ -87,17 +87,17 @@ func (s *Storage) FindAllBarberIDs(ctx context.Context) (barberIDs []int64, err 
 }
 
 // GetBarberByID returns status of dialog for barber with barberID.
-func (s *Storage) GetBarberByID(ctx context.Context, barberID int64) (storage.Barber, error) {
+func (s *Storage) GetBarberByID(ctx context.Context, barberID int64) (st.Barber, error) {
 	s.rwMutex.RLock()
 	defer s.rwMutex.RUnlock()
 	q := `SELECT name, phone, state, state_expiration FROM barbers WHERE id = ?`
-	var barber storage.Barber
+	var barber st.Barber
 	err := s.db.QueryRowContext(ctx, q, barberID).Scan(&barber.Name, &barber.Phone, &barber.State, &barber.Expiration)
 	if errors.Is(err, sql.ErrNoRows) {
-		return storage.Barber{}, storage.ErrNoSavedBarber
+		return st.Barber{}, st.ErrNoSavedBarber
 	}
 	if err != nil {
-		return storage.Barber{}, e.Wrap("can't get barber", err)
+		return st.Barber{}, e.Wrap("can't get barber", err)
 	}
 	barber.ID = sql.NullInt64{Int64: barberID, Valid: true}
 	return barber, nil
@@ -114,7 +114,7 @@ func (s *Storage) GetLatestWorkDate(ctx context.Context, barberID int64) (string
 		return "", e.Wrap("can't check if any work date exists", err)
 	}
 	if count == 0 {
-		return "2000-01-01", storage.ErrNoSavedWorkdates
+		return "2000-01-01", st.ErrNoSavedWorkdates
 	} else {
 		q = `SELECT MAX(date) FROM schedule WHERE barber_id = ?`
 		var date string
@@ -185,18 +185,6 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 	return nil
 }
 
-// IsBarberExists reports if barber with specified ID exists in database
-func (s *Storage) IsBarberExists(ctx context.Context, barberID int64) (bool, error) {
-	s.rwMutex.RLock()
-	defer s.rwMutex.RUnlock()
-	q := `SELECT COUNT(*) FROM barbers WHERE id = ?`
-	var count int
-	if err := s.db.QueryRowContext(ctx, q, barberID).Scan(&count); err != nil {
-		return false, e.Wrap("can't check if barber exists", err)
-	}
-	return count > 0, nil
-}
-
 // UpdateBarberName saves new name for barber with barberID.
 func (s *Storage) UpdateBarberName(ctx context.Context, name string, barberID int64) error {
 	s.rwMutex.Lock()
@@ -205,7 +193,7 @@ func (s *Storage) UpdateBarberName(ctx context.Context, name string, barberID in
 	_, err := s.db.ExecContext(ctx, q, name, barberID)
 	if err != nil {
 		if errors.Is(err, sqlite3.CONSTRAINT) {
-			err = storage.ErrNonUniqueData
+			err = st.ErrNonUniqueData
 		}
 		return e.Wrap("can't save barber's name", err)
 	}
@@ -220,7 +208,7 @@ func (s *Storage) UpdateBarberPhone(ctx context.Context, phone string, barberID 
 	_, err := s.db.ExecContext(ctx, q, phone, barberID)
 	if err != nil {
 		if errors.Is(err, sqlite3.CONSTRAINT) {
-			err = storage.ErrNonUniqueData
+			err = st.ErrNonUniqueData
 		}
 		return e.Wrap("can't save barber's name", err)
 	}
@@ -228,7 +216,7 @@ func (s *Storage) UpdateBarberPhone(ctx context.Context, phone string, barberID 
 }
 
 // UpdateBarberStatus saves new status for barber with barberID.
-func (s *Storage) UpdateBarberStatus(ctx context.Context, status storage.Status, barberID int64) error {
+func (s *Storage) UpdateBarberStatus(ctx context.Context, status st.Status, barberID int64) error {
 	s.rwMutex.Lock()
 	defer s.rwMutex.Unlock()
 	q := `UPDATE barbers SET state = ? , state_expiration = ? WHERE id = ?`

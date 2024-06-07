@@ -1,23 +1,23 @@
 package repository
 
 import (
-	"barbershop-bot/entities"
-	"barbershop-bot/lib/config"
+	ent "barbershop-bot/entities"
+	cfg "barbershop-bot/lib/config"
 	"barbershop-bot/lib/e"
-	"barbershop-bot/repository/storage"
+	st "barbershop-bot/repository/storage"
 	"database/sql"
 	"errors"
 	"time"
 )
 
 func mapDateToEntity(date string) (time.Time, error) {
-	return time.ParseInLocation(time.DateOnly, date, config.Location)
+	return time.ParseInLocation(time.DateOnly, date, cfg.Location)
 }
 
-func mapBarberToEntity(barber *storage.Barber) (entities.Barber, error) {
-	var br entities.Barber
+func mapBarberToEntity(barber *st.Barber) (ent.Barber, error) {
+	var br ent.Barber
 	if !barber.ID.Valid {
-		return entities.Barber{}, errors.New("invalid barber ID")
+		return ent.Barber{}, errors.New("invalid barber ID")
 	}
 	br.ID = barber.ID.Int64
 	br.Name = mapBarberNameToEntity(barber.Name)
@@ -32,7 +32,7 @@ func mapBarberToEntity(barber *storage.Barber) (entities.Barber, error) {
 
 func mapBarberNameToEntity(name sql.NullString) string {
 	if !name.Valid {
-		return entities.NoPhoneBarber
+		return ent.NoNameBarber
 	} else {
 		return name.String
 	}
@@ -40,22 +40,22 @@ func mapBarberNameToEntity(name sql.NullString) string {
 
 func mapBarberPhoneToEntity(phone sql.NullString) string {
 	if !phone.Valid {
-		return entities.NoNameBarber
+		return ent.NoPhoneBarber
 	} else {
 		return phone.String
 	}
 }
 
-func mapStatusToEntity(status *storage.Status) (entities.Status, error) {
+func mapStatusToEntity(status *st.Status) (ent.Status, error) {
 	if !status.State.Valid || !status.Expiration.Valid {
-		return entities.StatusStart, nil
+		return ent.StatusStart, nil
 	}
 	expiration, err := time.Parse(time.DateTime, status.Expiration.String)
 	if err != nil {
-		return entities.StatusStart, e.Wrap("can't map Status to entity", err)
+		return ent.StatusStart, e.Wrap("can't map Status to entity", err)
 	}
-	return entities.Status{
-		State:      entities.State(status.State.Byte),
+	return ent.Status{
+		State:      ent.State(status.State.Byte),
 		Expiration: expiration,
 	}, nil
 }

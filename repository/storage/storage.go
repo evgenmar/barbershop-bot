@@ -32,9 +32,6 @@ type Storage interface {
 	// Init prepares the storage for use. It creates the necessary tables if not exists.
 	Init(ctx context.Context) error
 
-	//IsBarberExists reports if barber with specified ID exists in storage
-	IsBarberExists(ctx context.Context, barberID int64) (bool, error)
-
 	// UpdateBarberName saves new name for barber with barberID.
 	UpdateBarberName(ctx context.Context, name string, barberID int64) error
 

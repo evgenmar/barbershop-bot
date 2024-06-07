@@ -11,5 +11,5 @@ type Barber struct {
 
 const (
 	NoNameBarber  = "Барбер без имени"
-	NoPhoneBarber = "Барбер не указал номер телефона"
+	NoPhoneBarber = "Номер не указан"
 )
