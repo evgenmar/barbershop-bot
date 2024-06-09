@@ -38,6 +38,9 @@ func (s *Storage) CreateBarber(ctx context.Context, barberID int64) error {
 	defer s.rwMutex.Unlock()
 	q := `INSERT INTO barbers (id) VALUES (?)`
 	if _, err := s.db.ExecContext(ctx, q, barberID); err != nil {
+		if errors.Is(err, sqlite3.CONSTRAINT) {
+			err = st.ErrAlreadyExists
+		}
 		return e.Wrap("can't save barberID", err)
 	}
 	return nil
@@ -56,6 +59,9 @@ func (s *Storage) CreateWorkdays(ctx context.Context, workdays ...st.Workday) er
 	q := fmt.Sprintf(`INSERT INTO schedule (barber_id, date, start_time, end_time) VALUES %s`, strings.Join(exprs, ", "))
 	_, err := s.db.ExecContext(ctx, q, args...)
 	if err != nil {
+		if errors.Is(err, sqlite3.CONSTRAINT) {
+			err = st.ErrAlreadyExists
+		}
 		return e.Wrap("can't save workdays", err)
 	}
 	return nil
@@ -135,7 +141,8 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 		name TEXT, 
 		phone TEXT, 
 		state INTEGER,
-		state_expiration TEXT)`
+		state_expiration TEXT
+		)`
 	_, err = s.db.ExecContext(ctx, q)
 	if err != nil {
 		return err
@@ -145,39 +152,53 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 		name TEXT UNIQUE, 
 		phone TEXT UNIQUE, 
 		state INTEGER,
-		state_expiration TEXT)`
+		state_expiration TEXT
+		)`
 	_, err = s.db.ExecContext(ctx, q)
 	if err != nil {
 		return err
 	}
 	q = `CREATE TABLE IF NOT EXISTS services (
 		id INTEGER PRIMARY KEY, 
-		name TEXT UNIQUE, 
-		description TEXT UNIQUE, 
-		price REAL, 
-		duration TEXT)`
+		barber_id INTEGER NOT NULL,
+		name TEXT NOT NULL, 
+		description TEXT NOT NULL, 
+		price INTEGER NOT NULL, 
+		duration TEXT NOT NULL,
+		UNIQUE (barber_id, name),
+		FOREIGN KEY (barber_id) REFERENCES barbers(id) ON DELETE CASCADE
+		)`
 	_, err = s.db.ExecContext(ctx, q)
 	if err != nil {
 		return err
 	}
 	q = `CREATE TABLE IF NOT EXISTS appointments (
 		id INTEGER PRIMARY KEY, 
-		user_id INTEGER, 
-		barber_id INTEGER, 
+		user_id INTEGER NOT NULL, 
+		barber_id INTEGER NOT NULL, 
 		service_id INTEGER, 
-		date TEXT, 
-		time TEXT,
-		cteated_at TEXT)`
+		date TEXT NOT NULL, 
+		time TEXT NOT NULL,
+		duration TEXT NOT NULL,
+		cteated_at TEXT NOT NULL,
+		UNIQUE (barber_id, date, time),
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+		FOREIGN KEY (barber_id) REFERENCES barbers(id) ON DELETE RESTRICT,
+		FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+		)`
 	_, err = s.db.ExecContext(ctx, q)
 	if err != nil {
 		return err
 	}
 	q = `CREATE TABLE IF NOT EXISTS schedule (
 		id INTEGER PRIMARY KEY, 
-		barber_id INTEGER, 
-		date TEXT, 
-		start_time TEXT, 
-		end_time TEXT)`
+		barber_id INTEGER NOT NULL, 
+		date TEXT NOT NULL, 
+		start_time TEXT NOT NULL, 
+		end_time TEXT NOT NULL,
+		UNIQUE (barber_id, date),
+		FOREIGN KEY (barber_id) REFERENCES barbers(id) ON DELETE CASCADE
+		)`
 	_, err = s.db.ExecContext(ctx, q)
 	if err != nil {
 		return err

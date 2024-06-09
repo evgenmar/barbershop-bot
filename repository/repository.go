@@ -16,6 +16,7 @@ type Repository struct {
 var (
 	ErrNoSavedBarber = st.ErrNoSavedBarber
 	ErrNonUniqueData = st.ErrNonUniqueData
+	ErrAlreadyExists = st.ErrAlreadyExists
 )
 
 var Rep *Repository
@@ -30,11 +31,21 @@ func New(storage st.Storage) *Repository {
 	}
 }
 
-func (r *Repository) CreateBarber(ctx context.Context, barberID int64) error {
+func (r *Repository) CreateBarber(ctx context.Context, barberID int64) (err error) {
+	defer func() {
+		if errors.Is(err, st.ErrAlreadyExists) {
+			err = ErrAlreadyExists
+		}
+	}()
 	return r.storage.CreateBarber(ctx, barberID)
 }
 
-func (r *Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) error {
+func (r *Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (err error) {
+	defer func() {
+		if errors.Is(err, st.ErrAlreadyExists) {
+			err = ErrAlreadyExists
+		}
+	}()
 	var workdays []st.Workday
 	for _, workday := range wds {
 		workdays = append(workdays, mapWorkdayToStorage(&workday))

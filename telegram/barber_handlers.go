@@ -248,19 +248,14 @@ func actualizeBarberStatus(barberID int64) (status ent.Status, err error) {
 }
 
 func addNewBarber(ctx tele.Context, errMsg string) error {
-	isBarberExists, err := isBarberExists(ctx.Message().Contact.UserID)
-	if err != nil {
-		log.Print(e.Wrap(errMsg, err))
-		return ctx.Send(errorBarber, markupBackToMainBarber)
-	}
 	if err := updBarberStatus(ent.StatusStart, ctx.Sender().ID); err != nil {
 		log.Print(e.Wrap(errMsg, err))
 		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
-	if isBarberExists {
-		return ctx.Send(userIsAlreadyBarber, markupBackToMainBarber)
-	}
 	if err := saveNewBarberID(ctx.Message().Contact.UserID); err != nil {
+		if errors.Is(err, rep.ErrAlreadyExists) {
+			return ctx.Send(userIsAlreadyBarber, markupBackToMainBarber)
+		}
 		log.Print(e.Wrap(errMsg, err))
 		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
@@ -293,19 +288,6 @@ func getBarberStatusByID(barberID int64) (status ent.Status, err error) {
 	barber, err := rep.Rep.GetBarberByID(ctx, barberID)
 	cancel()
 	return barber.Status, err
-}
-
-func isBarberExists(barberID int64) (exists bool, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutRead)
-	_, err = rep.Rep.GetBarberByID(ctx, barberID)
-	cancel()
-	if err != nil {
-		if errors.Is(err, rep.ErrNoSavedBarber) {
-			return false, nil
-		}
-		return false, e.Wrap("can't check if barber exists", err)
-	}
-	return true, nil
 }
 
 func makeBarberSchedule(barberID int64) (err error) {

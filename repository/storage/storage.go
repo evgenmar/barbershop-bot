@@ -10,6 +10,7 @@ var (
 	ErrNoSavedWorkdates = errors.New("no saved workdates")
 	ErrNoSavedBarber    = errors.New("no saved barber with specified ID")
 	ErrNonUniqueData    = errors.New("data to save must be unique")
+	ErrAlreadyExists    = errors.New("the object being saved already exists")
 )
 
 type Storage interface {
