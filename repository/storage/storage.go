@@ -33,14 +33,8 @@ type Storage interface {
 	// Init prepares the storage for use. It creates the necessary tables if not exists.
 	Init(ctx context.Context) error
 
-	// UpdateBarberName saves new name for barber with barberID.
-	UpdateBarberName(ctx context.Context, name string, barberID int64) error
-
-	// UpdateBarberPhone saves new phone for barber with barberID.
-	UpdateBarberPhone(ctx context.Context, phone string, barberID int64) error
-
-	// UpdateBarberStatus saves new status for barber with barberID.
-	UpdateBarberStatus(ctx context.Context, status Status, barberID int64) error
+	//UpdateBarber updates valid fields of Barber
+	UpdateBarber(ctx context.Context, barber Barber) error
 }
 
 type Workday struct {

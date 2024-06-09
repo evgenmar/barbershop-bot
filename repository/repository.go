@@ -79,24 +79,12 @@ func (r *Repository) GetLatestWorkDate(ctx context.Context, barberID int64) (dat
 	return mapDateToEntity(latestWD)
 }
 
-func (r *Repository) UpdateBarberName(ctx context.Context, name string, barberID int64) (err error) {
+// UpdateBarber updates only non-empty fields of Barber
+func (r *Repository) UpdateBarber(ctx context.Context, barber ent.Barber) (err error) {
 	defer func() {
 		if errors.Is(err, st.ErrNonUniqueData) {
 			err = ErrNonUniqueData
 		}
 	}()
-	return r.storage.UpdateBarberName(ctx, name, barberID)
-}
-
-func (r *Repository) UpdateBarberPhone(ctx context.Context, phone string, barberID int64) (err error) {
-	defer func() {
-		if errors.Is(err, st.ErrNonUniqueData) {
-			err = ErrNonUniqueData
-		}
-	}()
-	return r.storage.UpdateBarberPhone(ctx, phone, barberID)
-}
-
-func (r *Repository) UpdateBarberStatus(ctx context.Context, status ent.Status, barberID int64) error {
-	return r.storage.UpdateBarberStatus(ctx, mapStatusToStorage(&status), barberID)
+	return r.storage.UpdateBarber(ctx, mapBarberToStorage(&barber))
 }

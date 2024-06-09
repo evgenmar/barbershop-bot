@@ -48,15 +48,15 @@ func (s *Storage) CreateBarber(ctx context.Context, barberID int64) error {
 
 // CreateWorkdays saves new Workdays to storage
 func (s *Storage) CreateWorkdays(ctx context.Context, workdays ...st.Workday) error {
-	exprs := make([]string, 0, len(workdays))
+	placeholders := make([]string, 0, len(workdays))
 	args := make([]interface{}, 0, len(workdays))
 	for _, workday := range workdays {
-		exprs = append(exprs, "(?, ?, ?, ?)")
+		placeholders = append(placeholders, "(?, ?, ?, ?)")
 		args = append(args, workday.BarberID, workday.Date, workday.StartTime, workday.EndTime)
 	}
 	s.rwMutex.Lock()
 	defer s.rwMutex.Unlock()
-	q := fmt.Sprintf(`INSERT INTO schedule (barber_id, date, start_time, end_time) VALUES %s`, strings.Join(exprs, ", "))
+	q := fmt.Sprintf(`INSERT INTO schedule (barber_id, date, start_time, end_time) VALUES %s`, strings.Join(placeholders, ", "))
 	_, err := s.db.ExecContext(ctx, q, args...)
 	if err != nil {
 		if errors.Is(err, sqlite3.CONSTRAINT) {
@@ -206,44 +206,32 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 	return nil
 }
 
-// UpdateBarberName saves new name for barber with barberID.
-func (s *Storage) UpdateBarberName(ctx context.Context, name string, barberID int64) error {
+// UpdateBarber updates valid fields of Barber
+func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) error {
+	query := make([]string, 0, 4)
+	args := make([]interface{}, 0, 4)
+	if barber.Name.Valid {
+		query = append(query, "name = ? ")
+		args = append(args, barber.Name)
+	}
+	if barber.Phone.Valid {
+		query = append(query, "phone = ? ")
+		args = append(args, barber.Phone)
+	}
+	if barber.State.Valid && barber.Expiration.Valid {
+		query = append(query, "state = ? , state_expiration = ?")
+		args = append(args, barber.State, barber.Expiration)
+	}
+	args = append(args, barber.ID)
+	q := fmt.Sprintf(`UPDATE barbers SET %s WHERE id = ?`, strings.Join(query, ", "))
 	s.rwMutex.Lock()
 	defer s.rwMutex.Unlock()
-	q := `UPDATE barbers SET name = ? WHERE id = ?`
-	_, err := s.db.ExecContext(ctx, q, name, barberID)
+	_, err := s.db.ExecContext(ctx, q, args...)
 	if err != nil {
 		if errors.Is(err, sqlite3.CONSTRAINT) {
 			err = st.ErrNonUniqueData
 		}
-		return e.Wrap("can't save barber's name", err)
-	}
-	return nil
-}
-
-// UpdateBarberPhone saves new phone for barber with barberID.
-func (s *Storage) UpdateBarberPhone(ctx context.Context, phone string, barberID int64) error {
-	s.rwMutex.Lock()
-	defer s.rwMutex.Unlock()
-	q := `UPDATE barbers SET phone = ? WHERE id = ?`
-	_, err := s.db.ExecContext(ctx, q, phone, barberID)
-	if err != nil {
-		if errors.Is(err, sqlite3.CONSTRAINT) {
-			err = st.ErrNonUniqueData
-		}
-		return e.Wrap("can't save barber's name", err)
-	}
-	return nil
-}
-
-// UpdateBarberStatus saves new status for barber with barberID.
-func (s *Storage) UpdateBarberStatus(ctx context.Context, status st.Status, barberID int64) error {
-	s.rwMutex.Lock()
-	defer s.rwMutex.Unlock()
-	q := `UPDATE barbers SET state = ? , state_expiration = ? WHERE id = ?`
-	_, err := s.db.ExecContext(ctx, q, status.State, status.Expiration, barberID)
-	if err != nil {
-		return e.Wrap("can't save barber's status", err)
+		return e.Wrap("can't save barber", err)
 	}
 	return nil
 }

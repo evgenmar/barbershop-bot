@@ -16,7 +16,7 @@ type Status struct {
 type State byte
 
 const (
-	StateStart State = iota
+	StateStart State = iota + 1
 	StateUpdName
 	StateUpdPhone
 	StateAddBarber
