@@ -4,7 +4,6 @@ import (
 	ent "barbershop-bot/entities"
 	cfg "barbershop-bot/lib/config"
 	"barbershop-bot/lib/e"
-	u "barbershop-bot/lib/utils"
 	rep "barbershop-bot/repository"
 	sched "barbershop-bot/scheduler"
 	"context"
@@ -329,37 +328,33 @@ func updBarber(barber ent.Barber) (err error) {
 }
 
 func updateBarberName(ctx tele.Context) error {
-	text := ctx.Message().Text
-	if ok := u.IsValidName(text); ok {
-		if err := updBarber(ent.Barber{ID: ctx.Sender().ID, Name: text, Status: ent.StatusStart}); err != nil {
-			if errors.Is(err, rep.ErrNonUniqueData) {
-				log.Print(e.Wrap("barber's name must be unique", err))
-				return ctx.Send(notUniqueBarberName)
-			}
-			log.Print(e.Wrap("can't update barber's name", err))
-			return ctx.Send(errorBarber, markupBackToMainBarber)
+	if err := updBarber(ent.Barber{ID: ctx.Sender().ID, Name: ctx.Message().Text, Status: ent.StatusStart}); err != nil {
+		if errors.Is(err, rep.ErrInvalidName) {
+			log.Print(e.Wrap("invalid barber name", err))
+			return ctx.Send(invalidBarberName)
 		}
-		return ctx.Send(updNameSuccessBarber, markupPersonalBarber)
+		if errors.Is(err, rep.ErrNonUniqueData) {
+			log.Print(e.Wrap("barber's name must be unique", err))
+			return ctx.Send(notUniqueBarberName)
+		}
+		log.Print(e.Wrap("can't update barber's name", err))
+		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
-	return ctx.Send(invalidBarberName)
+	return ctx.Send(updNameSuccessBarber, markupPersonalBarber)
 }
 
 func updateBarberPhone(ctx tele.Context) error {
-	text := ctx.Message().Text
-	if ok := u.IsValidPhone(text); ok {
-		phone := u.NormalizePhone(text)
-		if err := updBarber(ent.Barber{ID: ctx.Sender().ID, Phone: phone, Status: ent.StatusStart}); err != nil {
-			if errors.Is(err, rep.ErrNonUniqueData) {
-				log.Print(e.Wrap("barber's phone must be unique", err))
-				return ctx.Send(notUniqueBarberPhone)
-			}
-			log.Print(e.Wrap("can't update barber's phone", err))
-			return ctx.Send(errorBarber, markupBackToMainBarber)
+	if err := updBarber(ent.Barber{ID: ctx.Sender().ID, Phone: ctx.Message().Text, Status: ent.StatusStart}); err != nil {
+		if errors.Is(err, rep.ErrInvalidPhone) {
+			log.Print(e.Wrap("invalid barber phone", err))
+			return ctx.Send(invalidBarberPhone)
 		}
-		if err := updBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
-			log.Print(e.Wrap("can't update barber's state", err))
+		if errors.Is(err, rep.ErrNonUniqueData) {
+			log.Print(e.Wrap("barber's phone must be unique", err))
+			return ctx.Send(notUniqueBarberPhone)
 		}
-		return ctx.Send(updPhoneSuccessBarber, markupPersonalBarber)
+		log.Print(e.Wrap("can't update barber's phone", err))
+		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
-	return ctx.Send(invalidBarberPhone)
+	return ctx.Send(updPhoneSuccessBarber, markupPersonalBarber)
 }

@@ -32,7 +32,7 @@ func New(path string) (*Storage, error) {
 	return &Storage{db: db}, nil
 }
 
-// CreateBarber saves new BarberID to storage
+// CreateBarber saves new BarberID to storage.
 func (s *Storage) CreateBarber(ctx context.Context, barberID int64) error {
 	s.rwMutex.Lock()
 	defer s.rwMutex.Unlock()
@@ -46,7 +46,7 @@ func (s *Storage) CreateBarber(ctx context.Context, barberID int64) error {
 	return nil
 }
 
-// CreateWorkdays saves new Workdays to storage
+// CreateWorkdays saves new Workdays to storage.
 func (s *Storage) CreateWorkdays(ctx context.Context, workdays ...st.Workday) error {
 	placeholders := make([]string, 0, len(workdays))
 	args := make([]interface{}, 0, len(workdays))
@@ -206,7 +206,7 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 	return nil
 }
 
-// UpdateBarber updates valid fields of Barber
+// UpdateBarber updates valid fields of Barber. ID field must be valid.
 func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) error {
 	query := make([]string, 0, 4)
 	args := make([]interface{}, 0, 4)

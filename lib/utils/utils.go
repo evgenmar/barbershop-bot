@@ -1,6 +1,7 @@
 package utils
 
 import (
+	ent "barbershop-bot/entities"
 	"regexp"
 	"unicode"
 )
@@ -15,7 +16,7 @@ func IsValidName(text string) bool {
 			break
 		}
 	}
-	return regex.MatchString(text) && hasLetter
+	return regex.MatchString(text) && hasLetter && text != ent.NoNameBarber
 }
 
 func IsValidPhone(text string) bool {

@@ -14,9 +14,13 @@ type Repository struct {
 }
 
 var (
-	ErrNoSavedBarber = st.ErrNoSavedBarber
-	ErrNonUniqueData = st.ErrNonUniqueData
-	ErrAlreadyExists = st.ErrAlreadyExists
+	ErrNoSavedBarber  = st.ErrNoSavedBarber
+	ErrNonUniqueData  = st.ErrNonUniqueData
+	ErrAlreadyExists  = st.ErrAlreadyExists
+	ErrInvalidID      = errors.New("invalid ID")
+	ErrInvalidWorkday = errors.New("invalid workday")
+	ErrInvalidName    = errors.New("invalid name")
+	ErrInvalidPhone   = errors.New("invalid phone")
 )
 
 var Rep *Repository
@@ -48,7 +52,11 @@ func (r *Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (er
 	}()
 	var workdays []st.Workday
 	for _, workday := range wds {
-		workdays = append(workdays, mapWorkdayToStorage(&workday))
+		wd, err := mapToStorage.workday(&workday)
+		if err != nil {
+			return err
+		}
+		workdays = append(workdays, wd)
 	}
 	return r.storage.CreateWorkdays(ctx, workdays...)
 }
@@ -67,7 +75,7 @@ func (r *Repository) GetBarberByID(ctx context.Context, barberID int64) (barber 
 	if err != nil {
 		return ent.Barber{}, err
 	}
-	return mapBarberToEntity(&br)
+	return mapToEntity.barber(&br)
 }
 
 func (r *Repository) GetLatestWorkDate(ctx context.Context, barberID int64) (date time.Time, err error) {
@@ -76,7 +84,7 @@ func (r *Repository) GetLatestWorkDate(ctx context.Context, barberID int64) (dat
 	if err != nil && !errors.Is(err, st.ErrNoSavedWorkdates) {
 		return time.Time{}, err
 	}
-	return mapDateToEntity(latestWD)
+	return mapToEntity.date(latestWD)
 }
 
 // UpdateBarber updates only non-empty fields of Barber
@@ -86,5 +94,9 @@ func (r *Repository) UpdateBarber(ctx context.Context, barber ent.Barber) (err e
 			err = ErrNonUniqueData
 		}
 	}()
-	return r.storage.UpdateBarber(ctx, mapBarberToStorage(&barber))
+	br, err := mapToStorage.barber(&barber)
+	if err != nil {
+		return err
+	}
+	return r.storage.UpdateBarber(ctx, br)
 }

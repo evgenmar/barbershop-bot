@@ -14,10 +14,10 @@ var (
 )
 
 type Storage interface {
-	//CreateBarber saves new BarberID to storage
+	//CreateBarber saves new BarberID to storage.
 	CreateBarber(ctx context.Context, barberID int64) error
 
-	//CreateWorkdays saves new Workdays to storage
+	//CreateWorkdays saves new Workdays to storage.
 	CreateWorkdays(ctx context.Context, workdays ...Workday) error
 
 	//FindAllBarberIDs return a slice of IDs of all barbers.
@@ -33,7 +33,7 @@ type Storage interface {
 	// Init prepares the storage for use. It creates the necessary tables if not exists.
 	Init(ctx context.Context) error
 
-	//UpdateBarber updates valid fields of Barber
+	//UpdateBarber updates valid fields of Barber. ID field must be valid.
 	UpdateBarber(ctx context.Context, barber Barber) error
 }
 
