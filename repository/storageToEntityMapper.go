@@ -4,8 +4,8 @@ import (
 	ent "barbershop-bot/entities"
 	cfg "barbershop-bot/lib/config"
 	"barbershop-bot/lib/e"
+	tm "barbershop-bot/lib/time"
 	st "barbershop-bot/repository/storage"
-	"errors"
 	"time"
 )
 
@@ -15,9 +15,7 @@ var mapToEntity storageToEntityMapper
 
 func (s *storageToEntityMapper) barber(barber *st.Barber) (ent.Barber, error) {
 	var br ent.Barber
-	if !barber.ID.Valid {
-		return ent.Barber{}, errors.New("invalid barber ID")
-	}
+	//st.Barber.ID is always valid
 	br.ID = barber.ID.Int64
 
 	if !barber.Name.Valid {
@@ -57,4 +55,26 @@ func (s *storageToEntityMapper) barber(barber *st.Barber) (ent.Barber, error) {
 
 func (s *storageToEntityMapper) date(date string) (time.Time, error) {
 	return time.ParseInLocation(time.DateOnly, date, cfg.Location)
+}
+
+func (s *storageToEntityMapper) workday(workday *st.Workday) (ent.Workday, error) {
+	//All fields of st.Workday are always valid
+	date, err := s.date(workday.Date.String)
+	if err != nil {
+		return ent.Workday{}, e.Wrap("can't map date to entity", err)
+	}
+	startTime, err := tm.ParseDuration(workday.StartTime.String)
+	if err != nil {
+		return ent.Workday{}, e.Wrap("can't map start time to entity", err)
+	}
+	endTime, err := tm.ParseDuration(workday.EndTime.String)
+	if err != nil {
+		return ent.Workday{}, e.Wrap("can't map end time to entity", err)
+	}
+	return ent.Workday{
+		BarberID:  workday.BarberID.Int64,
+		Date:      date,
+		StartTime: startTime,
+		EndTime:   endTime,
+	}, nil
 }

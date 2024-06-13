@@ -97,6 +97,22 @@ func (r *Repository) GetLatestWorkDate(ctx context.Context, barberID int64) (dat
 	return mapToEntity.date(latestWD)
 }
 
+func (r *Repository) GetWorkdaysByDateRange(ctx context.Context, barberID int64, startDate, endDate time.Time) (workdays []ent.Workday, err error) {
+	defer func() { err = e.WrapIfErr("can't get workdays", err) }()
+	wds, err := r.storage.GetWorkdaysByDateRange(ctx, barberID, mapToStorage.date(startDate), mapToStorage.date(endDate))
+	if err != nil {
+		return nil, err
+	}
+	for _, wd := range wds {
+		workday, err := mapToEntity.workday(&wd)
+		if err != nil {
+			return nil, err
+		}
+		workdays = append(workdays, workday)
+	}
+	return workdays, nil
+}
+
 // UpdateBarber updates only non-empty fields of Barber
 func (r *Repository) UpdateBarber(ctx context.Context, barber ent.Barber) (err error) {
 	defer func() {

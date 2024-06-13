@@ -21,6 +21,15 @@ func (d Duration) String() string {
 	return fmt.Sprintf("%02d:%02d", hours, minutes)
 }
 
+func ParseDuration(str string) (Duration, error) {
+	var hours, minutes int16
+	_, err := fmt.Sscanf(str, "%d:%d", &hours, &minutes)
+	if err != nil {
+		return 0, err
+	}
+	return Duration(hours*60 + minutes), nil
+}
+
 func Today() time.Time {
 	return time.Date(
 		time.Now().In(cfg.Location).Year(),

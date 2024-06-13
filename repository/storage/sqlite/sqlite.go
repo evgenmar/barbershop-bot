@@ -34,10 +34,11 @@ func New(path string) (*Storage, error) {
 
 // CreateBarber saves new BarberID to storage.
 func (s *Storage) CreateBarber(ctx context.Context, barberID int64) error {
-	s.rwMutex.Lock()
-	defer s.rwMutex.Unlock()
 	q := `INSERT INTO barbers (id) VALUES (?)`
-	if _, err := s.db.ExecContext(ctx, q, barberID); err != nil {
+	s.rwMutex.Lock()
+	_, err := s.db.ExecContext(ctx, q, barberID)
+	s.rwMutex.Unlock()
+	if err != nil {
 		if errors.Is(err, sqlite3.CONSTRAINT) {
 			err = st.ErrAlreadyExists
 		}
@@ -54,10 +55,10 @@ func (s *Storage) CreateWorkdays(ctx context.Context, workdays ...st.Workday) er
 		placeholders = append(placeholders, "(?, ?, ?, ?)")
 		args = append(args, workday.BarberID, workday.Date, workday.StartTime, workday.EndTime)
 	}
+	q := fmt.Sprintf(`INSERT INTO workdays (barber_id, date, start_time, end_time) VALUES %s`, strings.Join(placeholders, ", "))
 	s.rwMutex.Lock()
-	defer s.rwMutex.Unlock()
-	q := fmt.Sprintf(`INSERT INTO schedule (barber_id, date, start_time, end_time) VALUES %s`, strings.Join(placeholders, ", "))
 	_, err := s.db.ExecContext(ctx, q, args...)
+	s.rwMutex.Unlock()
 	if err != nil {
 		if errors.Is(err, sqlite3.CONSTRAINT) {
 			err = st.ErrAlreadyExists
@@ -68,12 +69,12 @@ func (s *Storage) CreateWorkdays(ctx context.Context, workdays ...st.Workday) er
 }
 
 // DeleteWorkdaysByDateRange removes working days that fall within the date range.
-// It only removes working days for barber with barberID.
+// It only removes working days for barber with specified barberID.
 func (s *Storage) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, startDate, endDate string) error {
+	q := `DELETE FROM workdays WHERE barber_id = ? AND date BETWEEN ? AND ?`
 	s.rwMutex.Lock()
-	defer s.rwMutex.Unlock()
-	q := `DELETE FROM schedule WHERE barber_id = ? AND date BETWEEN ? AND ?`
 	_, err := s.db.ExecContext(ctx, q, barberID, startDate, endDate)
+	s.rwMutex.Unlock()
 	if err != nil {
 		if errors.Is(err, sqlite3.CONSTRAINT) {
 			err = st.ErrAppointmentsExists
@@ -86,10 +87,10 @@ func (s *Storage) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64,
 // FindAllBarberIDs return a slice of IDs of all barbers.
 func (s *Storage) FindAllBarberIDs(ctx context.Context) (barberIDs []int64, err error) {
 	defer func() { err = e.WrapIfErr("can't get barber IDs", err) }()
-	s.rwMutex.RLock()
-	defer s.rwMutex.RUnlock()
 	q := `SELECT id FROM barbers`
+	s.rwMutex.RLock()
 	rows, err := s.db.QueryContext(ctx, q)
+	s.rwMutex.RUnlock()
 	if err != nil {
 		return nil, err
 	}
@@ -110,11 +111,11 @@ func (s *Storage) FindAllBarberIDs(ctx context.Context) (barberIDs []int64, err 
 
 // GetBarberByID returns barber with barberID.
 func (s *Storage) GetBarberByID(ctx context.Context, barberID int64) (st.Barber, error) {
-	s.rwMutex.RLock()
-	defer s.rwMutex.RUnlock()
 	q := `SELECT name, phone, last_workdate, state, state_expiration FROM barbers WHERE id = ?`
 	var barber st.Barber
+	s.rwMutex.RLock()
 	err := s.db.QueryRowContext(ctx, q, barberID).Scan(&barber.Name, &barber.Phone, &barber.LastWorkDate, &barber.State, &barber.Expiration)
+	s.rwMutex.RUnlock()
 	if errors.Is(err, sql.ErrNoRows) {
 		return st.Barber{}, st.ErrNoSavedBarber
 	}
@@ -130,7 +131,7 @@ func (s *Storage) GetBarberByID(ctx context.Context, barberID int64) (st.Barber,
 func (s *Storage) GetLatestWorkDate(ctx context.Context, barberID int64) (string, error) {
 	s.rwMutex.RLock()
 	defer s.rwMutex.RUnlock()
-	q := `SELECT COUNT(*) FROM schedule WHERE barber_id = ?`
+	q := `SELECT COUNT(*) FROM workdays WHERE barber_id = ?`
 	var count int
 	if err := s.db.QueryRowContext(ctx, q, barberID).Scan(&count); err != nil {
 		return "", e.Wrap("can't check if any work date exists", err)
@@ -138,13 +139,41 @@ func (s *Storage) GetLatestWorkDate(ctx context.Context, barberID int64) (string
 	if count == 0 {
 		return "2000-01-01", st.ErrNoSavedWorkdates
 	} else {
-		q = `SELECT MAX(date) FROM schedule WHERE barber_id = ?`
+		q = `SELECT MAX(date) FROM workdays WHERE barber_id = ?`
 		var date string
 		if err := s.db.QueryRowContext(ctx, q, barberID).Scan(&date); err != nil {
 			return "", e.Wrap("can't get latest workdate", err)
 		}
 		return date, nil
 	}
+}
+
+// GetWorkdaysByDateRange returns working days that fall within the date range.
+// It only returns working days for barber with specified barberID.
+// Returned working days are sorted by date in ascending order.
+func (s *Storage) GetWorkdaysByDateRange(ctx context.Context, barberID int64, startDate, endDate string) (workdays []st.Workday, err error) {
+	defer func() { err = e.WrapIfErr("can't get workdays", err) }()
+	q := `SELECT date, start_time, end_time FROM workdays WHERE barber_id = ? AND date BETWEEN ? AND ? ORDER BY date ASC`
+	s.rwMutex.RLock()
+	rows, err := s.db.QueryContext(ctx, q, barberID, startDate, endDate)
+	s.rwMutex.RUnlock()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var workday st.Workday
+		if err := rows.Scan(&workday.Date, &workday.StartTime, &workday.EndTime); err != nil {
+			return nil, err
+		}
+		workday.BarberID = sql.NullInt64{Int64: barberID, Valid: true}
+		workdays = append(workdays, workday)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return workdays, nil
 }
 
 // Init prepares the storage for use. It creates the necessary tables if not exists.
@@ -199,14 +228,14 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 		cteated_at TEXT NOT NULL,
 		UNIQUE (barber_id, date, time),
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-		FOREIGN KEY (workday_id) REFERENCES schedule(id) ON DELETE RESTRICT,
+		FOREIGN KEY (workday_id) REFERENCES workdays(id) ON DELETE RESTRICT,
 		FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
 		)`
 	_, err = s.db.ExecContext(ctx, q)
 	if err != nil {
 		return err
 	}
-	q = `CREATE TABLE IF NOT EXISTS schedule (
+	q = `CREATE TABLE IF NOT EXISTS workdays (
 		id INTEGER PRIMARY KEY, 
 		barber_id INTEGER NOT NULL, 
 		date TEXT NOT NULL, 
@@ -245,8 +274,8 @@ func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) error {
 	args = append(args, barber.ID)
 	q := fmt.Sprintf(`UPDATE barbers SET %s WHERE id = ?`, strings.Join(query, ", "))
 	s.rwMutex.Lock()
-	defer s.rwMutex.Unlock()
 	_, err := s.db.ExecContext(ctx, q, args...)
+	s.rwMutex.Unlock()
 	if err != nil {
 		if errors.Is(err, sqlite3.CONSTRAINT) {
 			err = st.ErrNonUniqueData

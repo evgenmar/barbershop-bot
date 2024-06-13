@@ -22,7 +22,7 @@ type Storage interface {
 	CreateWorkdays(ctx context.Context, workdays ...Workday) error
 
 	//DeleteWorkdaysByDateRange removes working days that fall within the date range.
-	//It only removes working days for barber with barberID.
+	//It only removes working days for barber with specified barberID.
 	DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, startDate, endDate string) error
 
 	//FindAllBarberIDs return a slice of IDs of all barbers.
@@ -34,6 +34,11 @@ type Storage interface {
 	//GetLatestWorkDate returns the latest work date saved for barber with barberID.
 	//If there is no saved work dates it returns ("2000-01-01", ErrNoSavedWorkdates).
 	GetLatestWorkDate(ctx context.Context, barberID int64) (string, error)
+
+	// GetWorkdaysByDateRange returns working days that fall within the date range.
+	// It only returns working days for barber with specified barberID.
+	// Returned working days are sorted by date in ascending order.
+	GetWorkdaysByDateRange(ctx context.Context, barberID int64, startDate, endDate string) ([]Workday, error)
 
 	// Init prepares the storage for use. It creates the necessary tables if not exists.
 	Init(ctx context.Context) error
