@@ -14,13 +14,14 @@ type Repository struct {
 }
 
 var (
-	ErrNoSavedBarber  = st.ErrNoSavedBarber
-	ErrNonUniqueData  = st.ErrNonUniqueData
-	ErrAlreadyExists  = st.ErrAlreadyExists
-	ErrInvalidID      = errors.New("invalid ID")
-	ErrInvalidWorkday = errors.New("invalid workday")
-	ErrInvalidName    = errors.New("invalid name")
-	ErrInvalidPhone   = errors.New("invalid phone")
+	ErrNoSavedBarber      = st.ErrNoSavedBarber
+	ErrNonUniqueData      = st.ErrNonUniqueData
+	ErrAlreadyExists      = st.ErrAlreadyExists
+	ErrAppointmentsExists = st.ErrAppointmentsExists
+	ErrInvalidID          = errors.New("invalid ID")
+	ErrInvalidWorkday     = errors.New("invalid workday")
+	ErrInvalidName        = errors.New("invalid name")
+	ErrInvalidPhone       = errors.New("invalid phone")
 )
 
 var Rep *Repository
@@ -59,6 +60,15 @@ func (r *Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (er
 		workdays = append(workdays, wd)
 	}
 	return r.storage.CreateWorkdays(ctx, workdays...)
+}
+
+func (r *Repository) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, startDate, endDate time.Time) (err error) {
+	defer func() {
+		if errors.Is(err, st.ErrAppointmentsExists) {
+			err = ErrAppointmentsExists
+		}
+	}()
+	return r.storage.DeleteWorkdaysByDateRange(ctx, barberID, mapToStorage.date(startDate), mapToStorage.date(endDate))
 }
 
 func (r *Repository) FindAllBarberIDs(ctx context.Context) ([]int64, error) {

@@ -67,6 +67,22 @@ func (s *Storage) CreateWorkdays(ctx context.Context, workdays ...st.Workday) er
 	return nil
 }
 
+// DeleteWorkdaysByDateRange removes working days that fall within the date range.
+// It only removes working days for barber with barberID.
+func (s *Storage) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, startDate, endDate string) error {
+	s.rwMutex.Lock()
+	defer s.rwMutex.Unlock()
+	q := `DELETE FROM schedule WHERE barber_id = ? AND date BETWEEN ? AND ?`
+	_, err := s.db.ExecContext(ctx, q, barberID, startDate, endDate)
+	if err != nil {
+		if errors.Is(err, sqlite3.CONSTRAINT) {
+			err = st.ErrAppointmentsExists
+		}
+		return e.Wrap("can't delete workdays", err)
+	}
+	return nil
+}
+
 // FindAllBarberIDs return a slice of IDs of all barbers.
 func (s *Storage) FindAllBarberIDs(ctx context.Context) (barberIDs []int64, err error) {
 	defer func() { err = e.WrapIfErr("can't get barber IDs", err) }()
@@ -92,13 +108,13 @@ func (s *Storage) FindAllBarberIDs(ctx context.Context) (barberIDs []int64, err 
 	return barberIDs, nil
 }
 
-// GetBarberByID returns status of dialog for barber with barberID.
+// GetBarberByID returns barber with barberID.
 func (s *Storage) GetBarberByID(ctx context.Context, barberID int64) (st.Barber, error) {
 	s.rwMutex.RLock()
 	defer s.rwMutex.RUnlock()
-	q := `SELECT name, phone, state, state_expiration FROM barbers WHERE id = ?`
+	q := `SELECT name, phone, last_workdate, state, state_expiration FROM barbers WHERE id = ?`
 	var barber st.Barber
-	err := s.db.QueryRowContext(ctx, q, barberID).Scan(&barber.Name, &barber.Phone, &barber.State, &barber.Expiration)
+	err := s.db.QueryRowContext(ctx, q, barberID).Scan(&barber.Name, &barber.Phone, &barber.LastWorkDate, &barber.State, &barber.Expiration)
 	if errors.Is(err, sql.ErrNoRows) {
 		return st.Barber{}, st.ErrNoSavedBarber
 	}
@@ -151,6 +167,7 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 		id INTEGER PRIMARY KEY, 
 		name TEXT UNIQUE, 
 		phone TEXT UNIQUE, 
+		last_workdate TEXT DEFAULT '3000-01-01',
 		state INTEGER,
 		state_expiration TEXT
 		)`
@@ -175,15 +192,14 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 	q = `CREATE TABLE IF NOT EXISTS appointments (
 		id INTEGER PRIMARY KEY, 
 		user_id INTEGER NOT NULL, 
-		barber_id INTEGER NOT NULL, 
+		workday_id INTEGER NOT NULL, 
 		service_id INTEGER, 
-		date TEXT NOT NULL, 
 		time TEXT NOT NULL,
 		duration TEXT NOT NULL,
 		cteated_at TEXT NOT NULL,
 		UNIQUE (barber_id, date, time),
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-		FOREIGN KEY (barber_id) REFERENCES barbers(id) ON DELETE RESTRICT,
+		FOREIGN KEY (workday_id) REFERENCES schedule(id) ON DELETE RESTRICT,
 		FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
 		)`
 	_, err = s.db.ExecContext(ctx, q)
@@ -217,6 +233,10 @@ func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) error {
 	if barber.Phone.Valid {
 		query = append(query, "phone = ? ")
 		args = append(args, barber.Phone)
+	}
+	if barber.LastWorkDate.Valid {
+		query = append(query, "last_workdate = ? ")
+		args = append(args, barber.LastWorkDate)
 	}
 	if barber.State.Valid && barber.Expiration.Valid {
 		query = append(query, "state = ? , state_expiration = ?")

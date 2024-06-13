@@ -61,7 +61,22 @@ func MakeSchedule(barberID int64) (err error) {
 	if err != nil {
 		return err
 	}
-	workdays := calculateSchedule(latestWorkDate, barberID)
+	ctx, cancel = context.WithTimeout(context.Background(), cfg.TimoutRead)
+	barber, err := rep.Rep.GetBarberByID(ctx, barberID)
+	cancel()
+	if err != nil {
+		return err
+	}
+	if latestWorkDate.After(barber.LastWorkdate) {
+		ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutWrite)
+		defer cancel()
+		err := rep.Rep.DeleteWorkdaysByDateRange(ctx, barber.ID, barber.LastWorkdate.Add(24*time.Hour), latestWorkDate)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	workdays := calculateSchedule(latestWorkDate, barber)
 	if len(workdays) > 0 {
 		ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutWrite)
 		defer cancel()
@@ -72,15 +87,19 @@ func MakeSchedule(barberID int64) (err error) {
 	return nil
 }
 
-func calculateSchedule(latestWorkDate time.Time, barberID int64) (workdays []ent.Workday) {
+func calculateSchedule(latestWorkDate time.Time, barber ent.Barber) (workdays []ent.Workday) {
 	dayDuration := 24 * time.Hour
 	today := tm.Today()
 	if latestWorkDate.Before(today) {
 		latestWorkDate = today.Add(-dayDuration)
 	}
-	for date := today.Add(time.Duration(cfg.ScheduledWeeks) * dayDuration * 7); date.After(latestWorkDate); date = date.Add(-dayDuration) {
+	lastWorkDate := today.Add(time.Duration(cfg.ScheduledWeeks) * dayDuration * 7)
+	if lastWorkDate.After(barber.LastWorkdate) {
+		lastWorkDate = barber.LastWorkdate
+	}
+	for date := lastWorkDate; date.After(latestWorkDate); date = date.Add(-dayDuration) {
 		if date.Weekday() != cfg.NonWorkingDay {
-			workdays = append(workdays, ent.NewWorkday(barberID, date, ent.DefaultStart, ent.DefaultEnd))
+			workdays = append(workdays, ent.NewWorkday(barber.ID, date, ent.DefaultStart, ent.DefaultEnd))
 		}
 	}
 	return workdays
