@@ -46,6 +46,6 @@ func NewStatus(state State) Status {
 	}
 }
 
-func (s *Status) IsValid() bool {
+func (s Status) IsValid() bool {
 	return s.Expiration.After(time.Now().In(time.FixedZone("UTC", 0)))
 }

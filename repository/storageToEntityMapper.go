@@ -6,6 +6,7 @@ import (
 	"barbershop-bot/lib/e"
 	tm "barbershop-bot/lib/time"
 	st "barbershop-bot/repository/storage"
+	"database/sql"
 	"time"
 )
 
@@ -13,21 +14,11 @@ type storageToEntityMapper struct{}
 
 var mapToEntity storageToEntityMapper
 
-func (s *storageToEntityMapper) barber(barber *st.Barber) (ent.Barber, error) {
+func (s storageToEntityMapper) barber(barber st.Barber) (ent.Barber, error) {
 	var br ent.Barber
 	br.ID = barber.ID
-
-	if !barber.Name.Valid {
-		br.Name = ent.NoNameBarber
-	} else {
-		br.Name = barber.Name.String
-	}
-
-	if !barber.Phone.Valid {
-		br.Phone = ent.NoPhoneBarber
-	} else {
-		br.Phone = barber.Phone.String
-	}
+	br.Name = mapBarberNameToEntity(barber.Name)
+	br.Phone = mapBarberPhoneToEntity(barber.Phone)
 
 	//st.Barber.LastWorkDate is always valid because default is not null.
 	lastWorkDate, err := s.date(barber.LastWorkDate)
@@ -36,27 +27,19 @@ func (s *storageToEntityMapper) barber(barber *st.Barber) (ent.Barber, error) {
 	}
 	br.LastWorkdate = lastWorkDate
 
-	if !barber.State.Valid || !barber.Expiration.Valid {
-		br.Status = ent.StatusStart
-		return br, nil
-	}
-	expiration, err := time.Parse(time.DateTime, barber.Expiration.String)
+	status, err := mapStatusToEntity(barber.Status)
 	if err != nil {
-		br.Status = ent.StatusStart
 		return ent.Barber{}, e.Wrap("can't map barber's status to entity", err)
 	}
-	br.Status = ent.Status{
-		State:      ent.State(barber.State.Byte),
-		Expiration: expiration,
-	}
+	br.Status = status
 	return br, nil
 }
 
-func (s *storageToEntityMapper) date(date string) (time.Time, error) {
+func (s storageToEntityMapper) date(date string) (time.Time, error) {
 	return time.ParseInLocation(time.DateOnly, date, cfg.Location)
 }
 
-func (s *storageToEntityMapper) workday(workday *st.Workday) (ent.Workday, error) {
+func (s storageToEntityMapper) workday(workday st.Workday) (ent.Workday, error) {
 	date, err := s.date(workday.Date)
 	if err != nil {
 		return ent.Workday{}, e.Wrap("can't map date to entity", err)
@@ -74,5 +57,33 @@ func (s *storageToEntityMapper) workday(workday *st.Workday) (ent.Workday, error
 		Date:      date,
 		StartTime: startTime,
 		EndTime:   endTime,
+	}, nil
+}
+
+func mapBarberNameToEntity(name sql.NullString) string {
+	if !name.Valid {
+		return ent.NoNameBarber
+	}
+	return name.String
+}
+
+func mapBarberPhoneToEntity(phone sql.NullString) string {
+	if !phone.Valid {
+		return ent.NoPhoneBarber
+	}
+	return phone.String
+}
+
+func mapStatusToEntity(stat st.Status) (ent.Status, error) {
+	if !stat.State.Valid || !stat.Expiration.Valid {
+		return ent.StatusStart, nil
+	}
+	expiration, err := time.Parse(time.DateTime, stat.Expiration.String)
+	if err != nil {
+		return ent.StatusStart, e.Wrap("can't map status to entity", err)
+	}
+	return ent.Status{
+		State:      ent.State(stat.State.Byte),
+		Expiration: expiration,
 	}, nil
 }

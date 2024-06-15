@@ -218,23 +218,6 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	q = `CREATE TABLE IF NOT EXISTS appointments (
-		id INTEGER PRIMARY KEY, 
-		user_id INTEGER NOT NULL, 
-		workday_id INTEGER NOT NULL, 
-		service_id INTEGER, 
-		time TEXT NOT NULL,
-		duration TEXT NOT NULL,
-		cteated_at TEXT NOT NULL,
-		UNIQUE (barber_id, date, time),
-		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-		FOREIGN KEY (workday_id) REFERENCES workdays(id) ON DELETE RESTRICT,
-		FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
-		)`
-	_, err = s.db.ExecContext(ctx, q)
-	if err != nil {
-		return err
-	}
 	q = `CREATE TABLE IF NOT EXISTS workdays (
 		id INTEGER PRIMARY KEY, 
 		barber_id INTEGER NOT NULL, 
@@ -243,6 +226,23 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 		end_time TEXT NOT NULL,
 		UNIQUE (barber_id, date),
 		FOREIGN KEY (barber_id) REFERENCES barbers(id) ON DELETE CASCADE
+		)`
+	_, err = s.db.ExecContext(ctx, q)
+	if err != nil {
+		return err
+	}
+	q = `CREATE TABLE IF NOT EXISTS appointments (
+		id INTEGER PRIMARY KEY,
+		user_id INTEGER NOT NULL,
+		workday_id INTEGER NOT NULL,
+		service_id INTEGER,
+		time TEXT NOT NULL,
+		duration TEXT NOT NULL,
+		cteated_at TEXT NOT NULL,
+		UNIQUE (workday_id, time),
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+		FOREIGN KEY (workday_id) REFERENCES workdays(id) ON DELETE RESTRICT,
+		FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
 		)`
 	_, err = s.db.ExecContext(ctx, q)
 	if err != nil {

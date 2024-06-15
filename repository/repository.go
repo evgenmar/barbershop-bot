@@ -24,19 +24,19 @@ var (
 	ErrInvalidPhone       = errors.New("invalid phone")
 )
 
-var Rep *Repository
+var Rep Repository
 
 func InitRepository(storage st.Storage) {
 	Rep = New(storage)
 }
 
-func New(storage st.Storage) *Repository {
-	return &Repository{
+func New(storage st.Storage) Repository {
+	return Repository{
 		storage: storage,
 	}
 }
 
-func (r *Repository) CreateBarber(ctx context.Context, barberID int64) (err error) {
+func (r Repository) CreateBarber(ctx context.Context, barberID int64) (err error) {
 	defer func() {
 		if errors.Is(err, st.ErrAlreadyExists) {
 			err = ErrAlreadyExists
@@ -45,7 +45,7 @@ func (r *Repository) CreateBarber(ctx context.Context, barberID int64) (err erro
 	return r.storage.CreateBarber(ctx, barberID)
 }
 
-func (r *Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (err error) {
+func (r Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (err error) {
 	defer func() {
 		if errors.Is(err, st.ErrAlreadyExists) {
 			err = ErrAlreadyExists
@@ -53,7 +53,7 @@ func (r *Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (er
 	}()
 	var workdays []st.Workday
 	for _, workday := range wds {
-		wd, err := mapToStorage.workday(&workday)
+		wd, err := mapToStorage.workday(workday)
 		if err != nil {
 			return err
 		}
@@ -62,7 +62,7 @@ func (r *Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (er
 	return r.storage.CreateWorkdays(ctx, workdays...)
 }
 
-func (r *Repository) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (err error) {
+func (r Repository) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (err error) {
 	defer func() {
 		if errors.Is(err, st.ErrAppointmentsExists) {
 			err = ErrAppointmentsExists
@@ -71,11 +71,11 @@ func (r *Repository) DeleteWorkdaysByDateRange(ctx context.Context, barberID int
 	return r.storage.DeleteWorkdaysByDateRange(ctx, barberID, mapToStorage.dateRange(dateRange))
 }
 
-func (r *Repository) FindAllBarberIDs(ctx context.Context) ([]int64, error) {
+func (r Repository) FindAllBarberIDs(ctx context.Context) ([]int64, error) {
 	return r.storage.FindAllBarberIDs(ctx)
 }
 
-func (r *Repository) GetBarberByID(ctx context.Context, barberID int64) (barber ent.Barber, err error) {
+func (r Repository) GetBarberByID(ctx context.Context, barberID int64) (barber ent.Barber, err error) {
 	defer func() {
 		if errors.Is(err, st.ErrNoSavedBarber) {
 			err = ErrNoSavedBarber
@@ -85,10 +85,10 @@ func (r *Repository) GetBarberByID(ctx context.Context, barberID int64) (barber 
 	if err != nil {
 		return ent.Barber{}, err
 	}
-	return mapToEntity.barber(&br)
+	return mapToEntity.barber(br)
 }
 
-func (r *Repository) GetLatestWorkDate(ctx context.Context, barberID int64) (date time.Time, err error) {
+func (r Repository) GetLatestWorkDate(ctx context.Context, barberID int64) (date time.Time, err error) {
 	defer func() { err = e.WrapIfErr("can't get latest work date", err) }()
 	latestWD, err := r.storage.GetLatestWorkDate(ctx, barberID)
 	if err != nil && !errors.Is(err, st.ErrNoSavedWorkdates) {
@@ -97,14 +97,14 @@ func (r *Repository) GetLatestWorkDate(ctx context.Context, barberID int64) (dat
 	return mapToEntity.date(latestWD)
 }
 
-func (r *Repository) GetWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (workdays []ent.Workday, err error) {
+func (r Repository) GetWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (workdays []ent.Workday, err error) {
 	defer func() { err = e.WrapIfErr("can't get workdays", err) }()
 	wds, err := r.storage.GetWorkdaysByDateRange(ctx, barberID, mapToStorage.dateRange(dateRange))
 	if err != nil {
 		return nil, err
 	}
 	for _, wd := range wds {
-		workday, err := mapToEntity.workday(&wd)
+		workday, err := mapToEntity.workday(wd)
 		if err != nil {
 			return nil, err
 		}
@@ -114,13 +114,13 @@ func (r *Repository) GetWorkdaysByDateRange(ctx context.Context, barberID int64,
 }
 
 // UpdateBarber updates only non-empty fields of Barber
-func (r *Repository) UpdateBarber(ctx context.Context, barber ent.Barber) (err error) {
+func (r Repository) UpdateBarber(ctx context.Context, barber ent.Barber) (err error) {
 	defer func() {
 		if errors.Is(err, st.ErrNonUniqueData) {
 			err = ErrNonUniqueData
 		}
 	}()
-	br, err := mapToStorage.barber(&barber)
+	br, err := mapToStorage.barber(barber)
 	if err != nil {
 		return err
 	}

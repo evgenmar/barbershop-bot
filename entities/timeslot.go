@@ -7,10 +7,3 @@ type Timeslot struct {
 	StartTime tm.Duration
 	Duration  tm.Duration
 }
-
-func NewTimeslot(start, duration tm.Duration) Timeslot {
-	return Timeslot{
-		StartTime: start,
-		Duration:  duration,
-	}
-}

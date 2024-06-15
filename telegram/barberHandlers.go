@@ -233,17 +233,17 @@ func onContactBarber(ctx tele.Context) error {
 
 func actualizeBarberStatus(barberID int64) (status ent.Status, err error) {
 	defer func() { err = e.WrapIfErr("can't actualize barber status", err) }()
-	status, err = getBarberStatusByID(barberID)
+	barber, err := getBarberByID(barberID)
 	if err != nil {
 		return ent.StatusStart, err
 	}
-	if !status.IsValid() {
+	if !barber.Status.IsValid() {
 		if err := updBarber(ent.Barber{ID: barberID, Status: ent.StatusStart}); err != nil {
 			return ent.StatusStart, err
 		}
 		return ent.StatusStart, nil
 	}
-	return status, nil
+	return barber.Status, nil
 }
 
 func addNewBarber(ctx tele.Context, errMsg string) error {
@@ -251,7 +251,7 @@ func addNewBarber(ctx tele.Context, errMsg string) error {
 		log.Print(e.Wrap(errMsg, err))
 		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
-	if err := saveNewBarberID(ctx.Message().Contact.UserID); err != nil {
+	if err := createBarber(ctx.Message().Contact.UserID); err != nil {
 		if errors.Is(err, rep.ErrAlreadyExists) {
 			return ctx.Send(userIsAlreadyBarber, markupBackToMainBarber)
 		}
@@ -259,11 +259,18 @@ func addNewBarber(ctx tele.Context, errMsg string) error {
 		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
 	cfg.Barbers.SetIDs(append(cfg.Barbers.IDs(), ctx.Message().Contact.UserID))
-	if err := makeBarberSchedule(ctx.Message().Contact.UserID); err != nil {
+	if err := sched.MakeSchedule(ctx.Message().Contact.UserID); err != nil {
 		log.Print(e.Wrap(errMsg, err))
 		return ctx.Send(addedNewBarberWithoutShedule, markupBackToMainBarber)
 	}
 	return ctx.Send(addedNewBarberWithShedule, markupBackToMainBarber)
+}
+
+func createBarber(barberID int64) (err error) {
+	defer func() { err = e.WrapIfErr("can't save new barber ID", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutWrite)
+	defer cancel()
+	return rep.Rep.CreateBarber(ctx, barberID)
 }
 
 func getAllBarberIDs() (barberIDs []int64, err error) {
@@ -273,25 +280,11 @@ func getAllBarberIDs() (barberIDs []int64, err error) {
 	return rep.Rep.FindAllBarberIDs(ctx)
 }
 
-func getBarberNameByID(barberID int64) (name string, err error) {
-	defer func() { err = e.WrapIfErr("can't get barber name", err) }()
+func getBarberByID(barberID int64) (barber ent.Barber, err error) {
+	defer func() { err = e.WrapIfErr("can't get barber", err) }()
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutRead)
-	barber, err := rep.Rep.GetBarberByID(ctx, barberID)
-	cancel()
-	return barber.Name, err
-}
-
-func getBarberStatusByID(barberID int64) (status ent.Status, err error) {
-	defer func() { err = e.WrapIfErr("can't get barber status", err) }()
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutRead)
-	barber, err := rep.Rep.GetBarberByID(ctx, barberID)
-	cancel()
-	return barber.Status, err
-}
-
-func makeBarberSchedule(barberID int64) (err error) {
-	defer func() { err = e.WrapIfErr("can't make barber schedule", err) }()
-	return sched.MakeSchedule(barberID)
+	defer cancel()
+	return rep.Rep.GetBarberByID(ctx, barberID)
 }
 
 func markupSelectBarberToDeletion(ctx tele.Context, barberIDs []int64) (*tele.ReplyMarkup, error) {
@@ -299,25 +292,18 @@ func markupSelectBarberToDeletion(ctx tele.Context, barberIDs []int64) (*tele.Re
 	var rows []tele.Row
 	for _, barberID := range barberIDs {
 		if barberID != ctx.Sender().ID {
-			barberName, err := getBarberNameByID(barberID)
+			barber, err := getBarberByID(barberID)
 			if err != nil {
 				return &tele.ReplyMarkup{}, e.Wrap("can't make reply markup", err)
 			}
 			barberIDStr := strconv.FormatInt(barberID, 10)
-			row := markup.Row(markup.Data(barberName, endpntBarberToDeletion, barberIDStr))
+			row := markup.Row(markup.Data(barber.Name, endpntBarberToDeletion, barberIDStr))
 			rows = append(rows, row)
 		}
 	}
 	rows = append(rows, markup.Row(btnBackToMainBarber))
 	markup.Inline(rows...)
 	return markup, nil
-}
-
-func saveNewBarberID(barberID int64) (err error) {
-	defer func() { err = e.WrapIfErr("can't save new barber ID", err) }()
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutWrite)
-	defer cancel()
-	return rep.Rep.CreateBarber(ctx, barberID)
 }
 
 func updBarber(barber ent.Barber) (err error) {

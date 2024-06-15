@@ -36,7 +36,7 @@ func onStartRestrict() tele.MiddlewareFunc {
 		return mw.Restrict(mw.RestrictConfig{
 			Chats: cfg.Barbers.IDs(),
 			In:    onStartBarber,
-			Out:   onStartUser,
+			Out:   onStartUser, // TODO
 		})(next)
 	}
 }
