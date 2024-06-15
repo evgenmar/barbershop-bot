@@ -15,8 +15,7 @@ var mapToEntity storageToEntityMapper
 
 func (s *storageToEntityMapper) barber(barber *st.Barber) (ent.Barber, error) {
 	var br ent.Barber
-	//st.Barber.ID is always valid
-	br.ID = barber.ID.Int64
+	br.ID = barber.ID
 
 	if !barber.Name.Valid {
 		br.Name = ent.NoNameBarber
@@ -31,7 +30,7 @@ func (s *storageToEntityMapper) barber(barber *st.Barber) (ent.Barber, error) {
 	}
 
 	//st.Barber.LastWorkDate is always valid because default is not null.
-	lastWorkDate, err := s.date(barber.LastWorkDate.String)
+	lastWorkDate, err := s.date(barber.LastWorkDate)
 	if err != nil {
 		return ent.Barber{}, e.Wrap("can't map barber's last workdate to entity", err)
 	}
@@ -58,21 +57,20 @@ func (s *storageToEntityMapper) date(date string) (time.Time, error) {
 }
 
 func (s *storageToEntityMapper) workday(workday *st.Workday) (ent.Workday, error) {
-	//All fields of st.Workday are always valid
-	date, err := s.date(workday.Date.String)
+	date, err := s.date(workday.Date)
 	if err != nil {
 		return ent.Workday{}, e.Wrap("can't map date to entity", err)
 	}
-	startTime, err := tm.ParseDuration(workday.StartTime.String)
+	startTime, err := tm.ParseDuration(workday.StartTime)
 	if err != nil {
 		return ent.Workday{}, e.Wrap("can't map start time to entity", err)
 	}
-	endTime, err := tm.ParseDuration(workday.EndTime.String)
+	endTime, err := tm.ParseDuration(workday.EndTime)
 	if err != nil {
 		return ent.Workday{}, e.Wrap("can't map end time to entity", err)
 	}
 	return ent.Workday{
-		BarberID:  workday.BarberID.Int64,
+		BarberID:  workday.BarberID,
 		Date:      date,
 		StartTime: startTime,
 		EndTime:   endTime,

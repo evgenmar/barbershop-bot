@@ -122,7 +122,7 @@ func (s *Storage) GetBarberByID(ctx context.Context, barberID int64) (st.Barber,
 	if err != nil {
 		return st.Barber{}, e.Wrap("can't get barber", err)
 	}
-	barber.ID = sql.NullInt64{Int64: barberID, Valid: true}
+	barber.ID = barberID
 	return barber, nil
 }
 
@@ -167,7 +167,7 @@ func (s *Storage) GetWorkdaysByDateRange(ctx context.Context, barberID int64, st
 		if err := rows.Scan(&workday.Date, &workday.StartTime, &workday.EndTime); err != nil {
 			return nil, err
 		}
-		workday.BarberID = sql.NullInt64{Int64: barberID, Valid: true}
+		workday.BarberID = barberID
 		workdays = append(workdays, workday)
 	}
 	if err := rows.Err(); err != nil {
@@ -263,7 +263,7 @@ func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) error {
 		query = append(query, "phone = ? ")
 		args = append(args, barber.Phone)
 	}
-	if barber.LastWorkDate.Valid {
+	if barber.LastWorkDate != "" {
 		query = append(query, "last_workdate = ? ")
 		args = append(args, barber.LastWorkDate)
 	}

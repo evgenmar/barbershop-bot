@@ -99,7 +99,12 @@ func calculateSchedule(latestWorkDate time.Time, barber ent.Barber) (workdays []
 	}
 	for date := lastWorkDate; date.After(latestWorkDate); date = date.Add(-dayDuration) {
 		if date.Weekday() != cfg.NonWorkingDay {
-			workdays = append(workdays, ent.NewWorkday(barber.ID, date, ent.DefaultStart, ent.DefaultEnd))
+			workdays = append(workdays, ent.Workday{
+				BarberID:  barber.ID,
+				Date:      date,
+				StartTime: ent.DefaultStart,
+				EndTime:   ent.DefaultEnd,
+			})
 		}
 	}
 	return workdays

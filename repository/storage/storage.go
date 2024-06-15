@@ -48,27 +48,27 @@ type Storage interface {
 }
 
 type Workday struct {
-	BarberID sql.NullInt64 `db:"barber_id"`
+	BarberID int64 `db:"barber_id"`
 
 	//Date in YYYY-MM-DD format in local time zone.
-	Date sql.NullString `db:"date"`
+	Date string `db:"date"`
 
 	//Beginning of the working day in HH:MM in local time zone.
-	StartTime sql.NullString `db:"start_time"`
+	StartTime string `db:"start_time"`
 
 	//End of the working day in HH:MM in local time zone.
-	EndTime sql.NullString `db:"end_time"`
+	EndTime string `db:"end_time"`
 }
 
 type Barber struct {
-	ID   sql.NullInt64  `db:"id"`
+	ID   int64          `db:"id"`
 	Name sql.NullString `db:"name"`
 
 	//Format of phone number is +71234567890.
 	Phone sql.NullString `db:"phone"`
 
 	//LastWorkdate is a date in YYYY-MM-DD format in local time zone. Default is '3000-01-01'.
-	LastWorkDate sql.NullString `db:"last_workdate"`
+	LastWorkDate string `db:"last_workdate"`
 	Status
 }
 

@@ -22,12 +22,3 @@ const (
 	DefaultStart tm.Duration = 10 * tm.Hour
 	DefaultEnd   tm.Duration = 19 * tm.Hour
 )
-
-func NewWorkday(barberID int64, date time.Time, start, end tm.Duration) Workday {
-	return Workday{
-		BarberID:  barberID,
-		Date:      date,
-		StartTime: start,
-		EndTime:   end,
-	}
-}
