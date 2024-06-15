@@ -62,13 +62,13 @@ func (r *Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (er
 	return r.storage.CreateWorkdays(ctx, workdays...)
 }
 
-func (r *Repository) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, startDate, endDate time.Time) (err error) {
+func (r *Repository) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (err error) {
 	defer func() {
 		if errors.Is(err, st.ErrAppointmentsExists) {
 			err = ErrAppointmentsExists
 		}
 	}()
-	return r.storage.DeleteWorkdaysByDateRange(ctx, barberID, mapToStorage.date(startDate), mapToStorage.date(endDate))
+	return r.storage.DeleteWorkdaysByDateRange(ctx, barberID, mapToStorage.dateRange(dateRange))
 }
 
 func (r *Repository) FindAllBarberIDs(ctx context.Context) ([]int64, error) {
@@ -97,9 +97,9 @@ func (r *Repository) GetLatestWorkDate(ctx context.Context, barberID int64) (dat
 	return mapToEntity.date(latestWD)
 }
 
-func (r *Repository) GetWorkdaysByDateRange(ctx context.Context, barberID int64, startDate, endDate time.Time) (workdays []ent.Workday, err error) {
+func (r *Repository) GetWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (workdays []ent.Workday, err error) {
 	defer func() { err = e.WrapIfErr("can't get workdays", err) }()
-	wds, err := r.storage.GetWorkdaysByDateRange(ctx, barberID, mapToStorage.date(startDate), mapToStorage.date(endDate))
+	wds, err := r.storage.GetWorkdaysByDateRange(ctx, barberID, mapToStorage.dateRange(dateRange))
 	if err != nil {
 		return nil, err
 	}

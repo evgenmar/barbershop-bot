@@ -68,9 +68,10 @@ func MakeSchedule(barberID int64) (err error) {
 		return err
 	}
 	if latestWorkDate.After(barber.LastWorkdate) {
+		dateRangeToDelete := ent.DateRange{StartDate: barber.LastWorkdate.Add(24 * time.Hour), EndDate: latestWorkDate}
 		ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutWrite)
 		defer cancel()
-		err := rep.Rep.DeleteWorkdaysByDateRange(ctx, barber.ID, barber.LastWorkdate.Add(24*time.Hour), latestWorkDate)
+		err := rep.Rep.DeleteWorkdaysByDateRange(ctx, barber.ID, dateRangeToDelete)
 		if err != nil {
 			return err
 		}

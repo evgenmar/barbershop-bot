@@ -37,8 +37,15 @@ func (e *entityToStorageMapper) date(date time.Time) string {
 	return date.Format(time.DateOnly)
 }
 
+func (e *entityToStorageMapper) dateRange(dateRange ent.DateRange) st.DateRange {
+	return st.DateRange{
+		StartDate: e.date(dateRange.StartDate),
+		EndDate:   e.date(dateRange.EndDate),
+	}
+}
+
 func (e *entityToStorageMapper) workday(workday *ent.Workday) (st.Workday, error) {
-	if workday.BarberID == 0 || workday.Date.Equal(time.Time{}) || workday.StartTime < 0 || workday.EndTime < 0 {
+	if workday.BarberID == 0 || workday.Date.Equal(time.Time{}) || workday.StartTime < 0 || workday.EndTime <= workday.StartTime {
 		return st.Workday{}, ErrInvalidWorkday
 	}
 	return st.Workday{

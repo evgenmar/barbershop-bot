@@ -70,10 +70,10 @@ func (s *Storage) CreateWorkdays(ctx context.Context, workdays ...st.Workday) er
 
 // DeleteWorkdaysByDateRange removes working days that fall within the date range.
 // It only removes working days for barber with specified barberID.
-func (s *Storage) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, startDate, endDate string) error {
+func (s *Storage) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange st.DateRange) error {
 	q := `DELETE FROM workdays WHERE barber_id = ? AND date BETWEEN ? AND ?`
 	s.rwMutex.Lock()
-	_, err := s.db.ExecContext(ctx, q, barberID, startDate, endDate)
+	_, err := s.db.ExecContext(ctx, q, barberID, dateRange.StartDate, dateRange.EndDate)
 	s.rwMutex.Unlock()
 	if err != nil {
 		if errors.Is(err, sqlite3.CONSTRAINT) {
@@ -151,11 +151,11 @@ func (s *Storage) GetLatestWorkDate(ctx context.Context, barberID int64) (string
 // GetWorkdaysByDateRange returns working days that fall within the date range.
 // It only returns working days for barber with specified barberID.
 // Returned working days are sorted by date in ascending order.
-func (s *Storage) GetWorkdaysByDateRange(ctx context.Context, barberID int64, startDate, endDate string) (workdays []st.Workday, err error) {
+func (s *Storage) GetWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange st.DateRange) (workdays []st.Workday, err error) {
 	defer func() { err = e.WrapIfErr("can't get workdays", err) }()
 	q := `SELECT date, start_time, end_time FROM workdays WHERE barber_id = ? AND date BETWEEN ? AND ? ORDER BY date ASC`
 	s.rwMutex.RLock()
-	rows, err := s.db.QueryContext(ctx, q, barberID, startDate, endDate)
+	rows, err := s.db.QueryContext(ctx, q, barberID, dateRange.StartDate, dateRange.EndDate)
 	s.rwMutex.RUnlock()
 	if err != nil {
 		return nil, err
