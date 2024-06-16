@@ -11,9 +11,9 @@ type ProtectedIDs struct {
 }
 
 // scheduledWeeks is the number of weeks for which the barbershop schedule is compiled.
-const ScheduledWeeks uint8 = 26
-
+const ScheduledWeeks byte = 26
 const NonWorkingDay time.Weekday = time.Monday
+const MaxAppointmentBookingMonths int = 1
 
 const (
 	TimoutWrite time.Duration = 2 * time.Second

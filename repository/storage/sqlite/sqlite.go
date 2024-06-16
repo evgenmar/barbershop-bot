@@ -126,8 +126,26 @@ func (s *Storage) GetBarberByID(ctx context.Context, barberID int64) (st.Barber,
 	return barber, nil
 }
 
-// GetLatestWorkDate returns the latest work date saved for barber with barberID.
-// If there is no saved work dates it returns ("2000-01-01", ErrNoSavedWorkdates).
+// GetLatestAppointmentDate returns the latest work date saved for barber with specified ID for which at least one appointment exists.
+// If there is no saved appointments it returns "2000-01-01".
+func (s *Storage) GetLatestAppointmentDate(ctx context.Context, barberID int64) (string, error) {
+	q := `SELECT workdays.date FROM workdays INNER JOIN appointments ON workdays.id = appointments.workday_id
+WHERE workdays.barber_id = ? ORDER BY workdays.date DESC LIMIT 1`
+	var date string
+	s.rwMutex.RLock()
+	err := s.db.QueryRowContext(ctx, q, barberID).Scan(&date)
+	s.rwMutex.RUnlock()
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "2000-01-01", nil
+		}
+		return "", e.Wrap("can't get latest appointment date", err)
+	}
+	return date, nil
+}
+
+// GetLatestWorkDate returns the latest work date saved for barber with specified ID.
+// If there is no saved work dates it returns "2000-01-01".
 func (s *Storage) GetLatestWorkDate(ctx context.Context, barberID int64) (string, error) {
 	s.rwMutex.RLock()
 	defer s.rwMutex.RUnlock()
@@ -137,7 +155,7 @@ func (s *Storage) GetLatestWorkDate(ctx context.Context, barberID int64) (string
 		return "", e.Wrap("can't check if any work date exists", err)
 	}
 	if count == 0 {
-		return "2000-01-01", st.ErrNoSavedWorkdates
+		return "2000-01-01", nil
 	} else {
 		q = `SELECT MAX(date) FROM workdays WHERE barber_id = ?`
 		var date string
@@ -149,7 +167,7 @@ func (s *Storage) GetLatestWorkDate(ctx context.Context, barberID int64) (string
 }
 
 // GetWorkdaysByDateRange returns working days that fall within the date range.
-// It only returns working days for barber with specified barberID.
+// It only returns working days for barber with specified ID.
 // Returned working days are sorted by date in ascending order.
 func (s *Storage) GetWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange st.DateRange) (workdays []st.Workday, err error) {
 	defer func() { err = e.WrapIfErr("can't get workdays", err) }()

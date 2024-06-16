@@ -31,10 +31,7 @@ func ParseDuration(str string) (Duration, error) {
 }
 
 func Today() time.Time {
-	return time.Date(
-		time.Now().In(cfg.Location).Year(),
-		time.Now().In(cfg.Location).Month(),
-		time.Now().In(cfg.Location).Day(),
-		0, 0, 0, 0, cfg.Location,
-	)
+	now := time.Now().In(cfg.Location)
+	year, month, day := now.Date()
+	return time.Date(year, month, day, 0, 0, 0, 0, cfg.Location)
 }

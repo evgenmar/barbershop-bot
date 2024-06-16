@@ -7,7 +7,6 @@ import (
 )
 
 var (
-	ErrNoSavedWorkdates   = errors.New("no saved workdates")
 	ErrNoSavedBarber      = errors.New("no saved barber with specified ID")
 	ErrNonUniqueData      = errors.New("data to save must be unique")
 	ErrAlreadyExists      = errors.New("the object being saved already exists")
@@ -31,12 +30,16 @@ type Storage interface {
 	//GetBarberByID returns barber with barberID.
 	GetBarberByID(ctx context.Context, barberID int64) (Barber, error)
 
-	//GetLatestWorkDate returns the latest work date saved for barber with barberID.
-	//If there is no saved work dates it returns ("2000-01-01", ErrNoSavedWorkdates).
+	//GetLatestAppointmentDate returns the latest work date saved for barber with specified ID for which at least one appointment exists.
+	//If there is no saved appointments it returns "2000-01-01".
+	GetLatestAppointmentDate(ctx context.Context, barberID int64) (string, error)
+
+	//GetLatestWorkDate returns the latest work date saved for barber with specified ID.
+	//If there is no saved work dates it returns "2000-01-01".
 	GetLatestWorkDate(ctx context.Context, barberID int64) (string, error)
 
 	// GetWorkdaysByDateRange returns working days that fall within the date range.
-	// It only returns working days for barber with specified barberID.
+	// It only returns working days for barber with specified ID.
 	// Returned working days are sorted by date in ascending order.
 	GetWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange DateRange) ([]Workday, error)
 

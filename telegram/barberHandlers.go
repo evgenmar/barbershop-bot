@@ -10,6 +10,7 @@ import (
 	"errors"
 	"log"
 	"strconv"
+	"time"
 
 	tele "gopkg.in/telebot.v3"
 )
@@ -41,6 +42,17 @@ const (
 	notUniqueBarberPhone = `Номер телефона не сохранен. Другой барбер с таким номером уже зарегистрирован в приложении. Введите другой номер.
 При необходимости вернуться в главное меню воспользуйтесь командой /start`
 
+	manageAccountBarber             = "В этом меню собраны функции для управления Вашим аккаунтом. Выберите действие."
+	endpntSelectMonthOfLastWorkDate = "select_month_of_last_work_date"
+	endpntSelectLastWorkDate        = "select_last_work_date"
+	selectLastWorkDate              = `Выберите дату последнего рабочего дня.
+	Для выбора доступны только даты позже последней записи клиента на стрижку.
+	Если Вы хотите выбрать более раннюю дату, сначала отмените последние записи клиентов на стрижку.
+	
+	ВНИМАНИЕ!!! После установки даты последнего рабочего дня клиенты не смогут записаться на стрижку на более позднюю дату.
+	По умолчанию установлена бессрочная дата последнего рабочего дня.
+	Если Вы ранее меняли эту дату и хотите снова установить бессрочную дату, нажмите кнопку в нижней части меню.`
+
 	manageBarbers = "В этом меню Вы можете добавить нового барбера или удалить существующего. Выберите действие."
 	addBarber     = `Для добавления нового барбера пришлите в этот чат контакт профиля пользователя телеграм, которого вы хотите сделать барбером.
 Подробная инструкция:
@@ -69,13 +81,18 @@ var (
 	markupMainBarber  = &tele.ReplyMarkup{}
 	btnSettingsBarber = markupMainBarber.Data("Настройки", "settings_barber")
 
-	markupSettingsBarber = &tele.ReplyMarkup{}
-	btnUpdPersonalBarber = markupSettingsBarber.Data("Обновить персональные данные", "upd_personal_data_barber")
-	btnManageBarbers     = markupSettingsBarber.Data("Управление барберами", "manage_barbers")
+	markupSettingsBarber   = &tele.ReplyMarkup{}
+	btnUpdPersonalBarber   = markupSettingsBarber.Data("Обновить персональные данные", "upd_personal_data_barber")
+	btnManageAccountBarber = markupSettingsBarber.Data("Управление аккаунтом", "manage_account_barber")
+	btnManageBarbers       = markupSettingsBarber.Data("Управление барберами", "manage_barbers")
 
 	markupPersonalBarber = &tele.ReplyMarkup{}
 	btnUpdNameBarber     = markupPersonalBarber.Data("Обновить имя", "upd_name_barber")
 	btnUpdPhoneBarber    = markupPersonalBarber.Data("Обновить номер телефона", "upd_phone_barber")
+
+	markupManageAccountBarber = &tele.ReplyMarkup{}
+	btnSetLastWorkDate        = markupManageAccountBarber.Data("Установить последний рабочий день", endpntSelectMonthOfLastWorkDate, "0")
+	btnSelectLastWorkDate     = markupManageAccountBarber.Data("", endpntSelectLastWorkDate)
 
 	markupManageBarbers = &tele.ReplyMarkup{}
 	btnAddBarber        = markupManageBarbers.Data("Добавить барбера", "add_barber")
@@ -93,6 +110,7 @@ func init() {
 
 	markupSettingsBarber.Inline(
 		markupSettingsBarber.Row(btnUpdPersonalBarber),
+		markupSettingsBarber.Row(btnManageAccountBarber),
 		markupSettingsBarber.Row(btnManageBarbers),
 		markupSettingsBarber.Row(btnBackToMainBarber),
 	)
@@ -101,6 +119,11 @@ func init() {
 		markupPersonalBarber.Row(btnUpdNameBarber),
 		markupPersonalBarber.Row(btnUpdPhoneBarber),
 		markupPersonalBarber.Row(btnBackToMainBarber),
+	)
+
+	markupManageAccountBarber.Inline(
+		markupManageAccountBarber.Row(btnSetLastWorkDate),
+		markupManageAccountBarber.Row(btnBackToMainBarber),
 	)
 
 	markupManageBarbers.Inline(
@@ -152,6 +175,51 @@ func onUpdPhoneBarber(ctx tele.Context) error {
 		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
 	return ctx.Edit(updPhoneBarber)
+}
+
+func onManageAccountBarber(ctx tele.Context) error {
+	if err := updBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+		log.Print(e.Wrap("can't open the barber's manage account menu", err))
+		return ctx.Send(errorBarber, markupBackToMainBarber)
+	}
+	return ctx.Edit(manageAccountBarber, markupManageAccountBarber)
+}
+
+func onSetLastWorkDate(ctx tele.Context) error {
+	errMsg := "can't open select last work date menu"
+	if err := updBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+		log.Print(e.Wrap(errMsg, err))
+		return ctx.Send(errorBarber, markupBackToMainBarber)
+	}
+	latestAppointmentDate, err := getLatestAppointmentDate(ctx.Sender().ID)
+	if err != nil {
+		log.Print(e.Wrap(errMsg, err))
+		return ctx.Send(errorBarber, markupBackToMainBarber)
+	}
+	var firstDisplayedDateRange ent.DateRange
+	relativeFirstDisplayedMonth := 0
+	for relativeFirstDisplayedMonth <= cfg.MaxAppointmentBookingMonths {
+		firstDisplayedDateRange = ent.Month(byte(relativeFirstDisplayedMonth))
+		if latestAppointmentDate.Compare(firstDisplayedDateRange.EndDate) <= 0 {
+			if latestAppointmentDate.After(firstDisplayedDateRange.StartDate) {
+				firstDisplayedDateRange.StartDate = latestAppointmentDate
+			}
+			break
+		}
+		relativeFirstDisplayedMonth++
+	}
+	deltaDisplayedMonth, err := strconv.Atoi(ctx.Callback().Data)
+	if err != nil {
+		log.Print(e.Wrap(errMsg, err))
+		return ctx.Send(errorBarber, markupBackToMainBarber)
+	}
+	markupSelectDate := markupSelectLastWorkDate(firstDisplayedDateRange, relativeFirstDisplayedMonth, deltaDisplayedMonth)
+	return ctx.Edit(selectLastWorkDate, markupSelectDate)
+}
+
+func onSelectLastWorkDate(ctx tele.Context) error {
+	_ = ctx
+	return nil //TODO
 }
 
 func onManageBarbers(ctx tele.Context) error {
@@ -287,6 +355,13 @@ func getBarberByID(barberID int64) (barber ent.Barber, err error) {
 	return rep.Rep.GetBarberByID(ctx, barberID)
 }
 
+func getLatestAppointmentDate(barberID int64) (date time.Time, err error) {
+	defer func() { err = e.WrapIfErr("can't get latest appointment date", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutRead)
+	defer cancel()
+	return rep.Rep.GetLatestAppointmentDate(ctx, barberID)
+}
+
 func markupSelectBarberToDeletion(ctx tele.Context, barberIDs []int64) (*tele.ReplyMarkup, error) {
 	markup := &tele.ReplyMarkup{}
 	var rows []tele.Row
@@ -304,6 +379,47 @@ func markupSelectBarberToDeletion(ctx tele.Context, barberIDs []int64) (*tele.Re
 	rows = append(rows, markup.Row(btnBackToMainBarber))
 	markup.Inline(rows...)
 	return markup, nil
+}
+
+func markupSelectLastWorkDate(firstDisplayedDateRange ent.DateRange, relativeFirstDisplayedMonth, deltaDisplayedMonth int) *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{}
+	var btnPrevMonth, btnNextMonth tele.Btn
+	var displayedDateRange ent.DateRange
+	if deltaDisplayedMonth == 0 {
+		displayedDateRange = firstDisplayedDateRange
+		btnPrevMonth = btnEmpty
+		btnNextMonth = markup.Data(next, endpntSelectMonthOfLastWorkDate, strconv.Itoa(1))
+	} else {
+		displayedDateRange = ent.Month(byte(relativeFirstDisplayedMonth + deltaDisplayedMonth))
+		btnPrevMonth = markup.Data(prev, endpntSelectMonthOfLastWorkDate, strconv.Itoa(deltaDisplayedMonth-1))
+		relativeMaxDisplayedMonth := int(cfg.ScheduledWeeks) * 7 / 30
+		if relativeFirstDisplayedMonth+deltaDisplayedMonth == relativeMaxDisplayedMonth {
+			btnNextMonth = btnEmpty
+		} else {
+			btnNextMonth = markup.Data(next, endpntSelectMonthOfLastWorkDate, strconv.Itoa(deltaDisplayedMonth+1))
+		}
+	}
+	rowSelectMonth := markup.Row(btnPrevMonth, btnMonth(displayedDateRange.Month()), btnNextMonth)
+	var btnsDatesToSelect []tele.Btn
+	for i := 1; i < displayedDateRange.StartWeekday(); i++ {
+		btnsDatesToSelect = append(btnsDatesToSelect, btnEmpty)
+	}
+	for date := displayedDateRange.StartDate; date.Compare(displayedDateRange.EndDate) <= 0; date = date.Add(24 * time.Hour) {
+		btnDateToSelect := markup.Data(strconv.Itoa(date.Day()), endpntSelectLastWorkDate, date.Format(time.DateOnly))
+		btnsDatesToSelect = append(btnsDatesToSelect, btnDateToSelect)
+	}
+	for i := 7; i > displayedDateRange.EndWeekday(); i-- {
+		btnsDatesToSelect = append(btnsDatesToSelect, btnEmpty)
+	}
+	rowsSelectDate := markup.Split(7, btnsDatesToSelect)
+	rowRestoreDefaultDate := markup.Row(markup.Data("Установить бессрочную дату окончания работы", endpntSelectLastWorkDate, "3000-01-01"))
+	rowBackToMainBarber := markup.Row(btnBackToMainBarber)
+	var rows []tele.Row
+	rows = append(rows, rowSelectMonth, rowWeekdays)
+	rows = append(rows, rowsSelectDate...)
+	rows = append(rows, rowRestoreDefaultDate, rowBackToMainBarber)
+	markup.Inline(rows...)
+	return markup
 }
 
 func updBarber(barber ent.Barber) (err error) {

@@ -41,6 +41,8 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	users := bot.Group()
 	users.Use(notInWhitelist())
 
+	bot.Handle(&btnEmpty, noAction)
+
 	bot.Handle("/start", noAction, onStartRestrict())
 	bot.Handle(tele.OnText, noAction, onTextRestrict())
 	// TODO sameCommandHandlers
@@ -50,6 +52,10 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	barbers.Handle(&btnUpdPersonalBarber, onUpdPersonalBarber)
 	barbers.Handle(&btnUpdNameBarber, onUpdNameBarber)
 	barbers.Handle(&btnUpdPhoneBarber, onUpdPhoneBarber)
+
+	barbers.Handle(&btnManageAccountBarber, onManageAccountBarber)
+	barbers.Handle(&btnSetLastWorkDate, onSetLastWorkDate)
+	barbers.Handle(&btnSelectLastWorkDate, onSelectLastWorkDate)
 
 	barbers.Handle(&btnManageBarbers, onManageBarbers)
 	barbers.Handle(&btnAddBarber, onAddBarber)
@@ -65,5 +71,3 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 
 	return bot
 }
-
-func noAction(tele.Context) error { return nil }

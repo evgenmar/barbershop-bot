@@ -88,10 +88,19 @@ func (r Repository) GetBarberByID(ctx context.Context, barberID int64) (barber e
 	return mapToEntity.barber(br)
 }
 
+func (r Repository) GetLatestAppointmentDate(ctx context.Context, barberID int64) (date time.Time, err error) {
+	defer func() { err = e.WrapIfErr("can't get latest appointment date", err) }()
+	latestAD, err := r.storage.GetLatestAppointmentDate(ctx, barberID)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return mapToEntity.date(latestAD)
+}
+
 func (r Repository) GetLatestWorkDate(ctx context.Context, barberID int64) (date time.Time, err error) {
 	defer func() { err = e.WrapIfErr("can't get latest work date", err) }()
 	latestWD, err := r.storage.GetLatestWorkDate(ctx, barberID)
-	if err != nil && !errors.Is(err, st.ErrNoSavedWorkdates) {
+	if err != nil {
 		return time.Time{}, err
 	}
 	return mapToEntity.date(latestWD)
