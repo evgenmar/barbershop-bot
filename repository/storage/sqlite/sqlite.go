@@ -147,23 +147,18 @@ WHERE workdays.barber_id = ? ORDER BY workdays.date DESC LIMIT 1`
 // GetLatestWorkDate returns the latest work date saved for barber with specified ID.
 // If there is no saved work dates it returns "2000-01-01".
 func (s *Storage) GetLatestWorkDate(ctx context.Context, barberID int64) (string, error) {
+	q := `SELECT date FROM workdays WHERE barber_id = ? ORDER BY date DESC LIMIT 1`
+	var date string
 	s.rwMutex.RLock()
-	defer s.rwMutex.RUnlock()
-	q := `SELECT COUNT(*) FROM workdays WHERE barber_id = ?`
-	var count int
-	if err := s.db.QueryRowContext(ctx, q, barberID).Scan(&count); err != nil {
-		return "", e.Wrap("can't check if any work date exists", err)
-	}
-	if count == 0 {
-		return "2000-01-01", nil
-	} else {
-		q = `SELECT MAX(date) FROM workdays WHERE barber_id = ?`
-		var date string
-		if err := s.db.QueryRowContext(ctx, q, barberID).Scan(&date); err != nil {
-			return "", e.Wrap("can't get latest workdate", err)
+	err := s.db.QueryRowContext(ctx, q, barberID).Scan(&date)
+	s.rwMutex.RUnlock()
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "2000-01-01", nil
 		}
-		return date, nil
+		return "", e.Wrap("can't get latest workdate", err)
 	}
+	return date, nil
 }
 
 // GetWorkdaysByDateRange returns working days that fall within the date range.
