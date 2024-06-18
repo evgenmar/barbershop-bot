@@ -55,24 +55,17 @@ func MakeSchedules() (err error) {
 // Mondays are accepted as non-working days. On other days the working time is from 10:00 to 19:00.
 func MakeSchedule(barberID int64) (err error) {
 	defer func() { err = e.WrapIfErr("can't make schedule", err) }()
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutRead)
-	latestWorkDate, err := rep.Rep.GetLatestWorkDate(ctx, barberID)
-	cancel()
+	latestWorkDate, err := getLatestWorkDate(barberID)
 	if err != nil {
 		return err
 	}
-	ctx, cancel = context.WithTimeout(context.Background(), cfg.TimoutRead)
-	barber, err := rep.Rep.GetBarberByID(ctx, barberID)
-	cancel()
+	barber, err := getBarberByID(barberID)
 	if err != nil {
 		return err
 	}
 	if latestWorkDate.After(barber.LastWorkdate) {
 		dateRangeToDelete := ent.DateRange{StartDate: barber.LastWorkdate.Add(24 * time.Hour), EndDate: latestWorkDate}
-		ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutWrite)
-		defer cancel()
-		err := rep.Rep.DeleteWorkdaysByDateRange(ctx, barber.ID, dateRangeToDelete)
-		if err != nil {
+		if err := deleteWorkdaysByDateRange(barber.ID, dateRangeToDelete); err != nil {
 			return err
 		}
 		return nil
@@ -109,4 +102,25 @@ func calculateSchedule(latestWorkDate time.Time, barber ent.Barber) (workdays []
 		}
 	}
 	return workdays
+}
+
+func deleteWorkdaysByDateRange(barberID int64, dateRangeToDelete ent.DateRange) (err error) {
+	defer func() { err = e.WrapIfErr("can't delete workdays", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutWrite)
+	defer cancel()
+	return rep.Rep.DeleteWorkdaysByDateRange(ctx, barberID, dateRangeToDelete)
+}
+
+func getBarberByID(barberID int64) (barber ent.Barber, err error) {
+	defer func() { err = e.WrapIfErr("can't get barber", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutRead)
+	defer cancel()
+	return rep.Rep.GetBarberByID(ctx, barberID)
+}
+
+func getLatestWorkDate(barberID int64) (date time.Time, err error) {
+	defer func() { err = e.WrapIfErr("can't get latest work date", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutRead)
+	defer cancel()
+	return rep.Rep.GetLatestWorkDate(ctx, barberID)
 }
