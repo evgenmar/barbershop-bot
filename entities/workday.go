@@ -6,6 +6,7 @@ import (
 )
 
 type Workday struct {
+	ID       int
 	BarberID int64
 
 	//Date in local time zone with HH:MM:SS set to 00:00:00.

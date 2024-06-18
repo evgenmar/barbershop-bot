@@ -166,7 +166,7 @@ func (s *Storage) GetLatestWorkDate(ctx context.Context, barberID int64) (string
 // Returned working days are sorted by date in ascending order.
 func (s *Storage) GetWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange st.DateRange) (workdays []st.Workday, err error) {
 	defer func() { err = e.WrapIfErr("can't get workdays", err) }()
-	q := `SELECT date, start_time, end_time FROM workdays WHERE barber_id = ? AND date BETWEEN ? AND ? ORDER BY date ASC`
+	q := `SELECT id, date, start_time, end_time FROM workdays WHERE barber_id = ? AND date BETWEEN ? AND ? ORDER BY date ASC`
 	s.rwMutex.RLock()
 	rows, err := s.db.QueryContext(ctx, q, barberID, dateRange.StartDate, dateRange.EndDate)
 	s.rwMutex.RUnlock()
@@ -177,7 +177,7 @@ func (s *Storage) GetWorkdaysByDateRange(ctx context.Context, barberID int64, da
 
 	for rows.Next() {
 		var workday st.Workday
-		if err := rows.Scan(&workday.Date, &workday.StartTime, &workday.EndTime); err != nil {
+		if err := rows.Scan(&workday.ID, &workday.Date, &workday.StartTime, &workday.EndTime); err != nil {
 			return nil, err
 		}
 		workday.BarberID = barberID

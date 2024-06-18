@@ -53,6 +53,7 @@ func (s storageToEntityMapper) workday(workday st.Workday) (ent.Workday, error) 
 		return ent.Workday{}, e.Wrap("can't map end time to entity", err)
 	}
 	return ent.Workday{
+		ID:        workday.ID,
 		BarberID:  workday.BarberID,
 		Date:      date,
 		StartTime: startTime,

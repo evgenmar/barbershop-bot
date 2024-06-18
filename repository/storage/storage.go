@@ -75,6 +75,8 @@ type Status struct {
 }
 
 type Workday struct {
+	//ID field autofills when new workday saved. No need to pass this field to Storage: passed value will be ignored. It intended for read purposes only.
+	ID       int   `db:"id"`
 	BarberID int64 `db:"barber_id"`
 
 	//Date in YYYY-MM-DD format in local time zone.
