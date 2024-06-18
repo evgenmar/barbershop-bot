@@ -54,6 +54,9 @@ const (
 	ВНИМАНИЕ!!! После установки даты последнего рабочего дня клиенты не смогут записаться на стрижку на более позднюю дату.
 	По умолчанию установлена бессрочная дата последнего рабочего дня.
 	Если Вы ранее меняли эту дату и хотите снова установить бессрочную дату, нажмите кнопку в нижней части меню.`
+	haveAppointmentAfterDataToSave = `Невозможно сохранить дату, поскольку пока Вы выбирали дату, клиент успел записаться к Вам на стрижку на дату позже выбранной Вами даты.
+	Пожалуйста проверьте записи клиентов и при необходимости отмените самую позднюю запись. Или выберите более позднюю дату последнего рабочего дня.`
+	lastWorkDateSaved = "Новая дата последнего рабочего дня успешно сохранена."
 
 	manageBarbers = "В этом меню Вы можете добавить нового барбера или удалить существующего. Выберите действие."
 	addBarber     = `Для добавления нового барбера пришлите в этот чат контакт профиля пользователя телеграм, которого вы хотите сделать барбером.
@@ -220,8 +223,20 @@ func onSetLastWorkDate(ctx tele.Context) error {
 }
 
 func onSelectLastWorkDate(ctx tele.Context) error {
-	_ = ctx
-	return nil //TODO
+	errMsg := "can't save last work date"
+	dateToSave, err := time.ParseInLocation(time.DateOnly, ctx.Callback().Data, cfg.Location)
+	if err != nil {
+		log.Print(e.Wrap(errMsg, err))
+		return ctx.Send(errorBarber, markupBackToMainBarber)
+	}
+	if err := updBarber(ent.Barber{ID: ctx.Sender().ID, LastWorkdate: dateToSave, Status: ent.StatusStart}); err != nil {
+		if errors.Is(err, rep.ErrInvalidLastWorkdate) {
+			return ctx.Edit(haveAppointmentAfterDataToSave, markupBackToMainBarber)
+		}
+		log.Print(e.Wrap(errMsg, err))
+		return ctx.Send(errorBarber, markupBackToMainBarber)
+	}
+	return ctx.Edit(lastWorkDateSaved, markupBackToMainBarber)
 }
 
 func onManageBarbers(ctx tele.Context) error {
@@ -425,7 +440,7 @@ func markupSelectLastWorkDate(firstDisplayedDateRange ent.DateRange, relativeFir
 }
 
 func updBarber(barber ent.Barber) (err error) {
-	defer func() { err = e.WrapIfErr("can't update barber status", err) }()
+	defer func() { err = e.WrapIfErr("can't update barber", err) }()
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutWrite)
 	defer cancel()
 	return rep.Rep.UpdateBarber(ctx, barber)
