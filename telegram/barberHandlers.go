@@ -56,7 +56,11 @@ const (
 	Если Вы ранее меняли эту дату и хотите снова установить бессрочную дату, нажмите кнопку в нижней части меню.`
 	haveAppointmentAfterDataToSave = `Невозможно сохранить дату, поскольку пока Вы выбирали дату, клиент успел записаться к Вам на стрижку на дату позже выбранной Вами даты.
 	Пожалуйста проверьте записи клиентов и при необходимости отмените самую позднюю запись. Или выберите более позднюю дату последнего рабочего дня.`
-	lastWorkDateSaved = "Новая дата последнего рабочего дня успешно сохранена."
+	lastWorkDateSaved               = "Новая дата последнего рабочего дня успешно сохранена."
+	lastWorkDateUnchanged           = "Указанная дата совпадает с той, которую вы уже установили ранее"
+	lastWorkDateSavedWithoutShedule = `Новая дата последнего рабочего дня сохранена.
+ВНИМАНИЕ!!! При попытке составить расписание работы вплоть до сохраненной даты произошла ошибка. Расписание не составлено!
+Для доступа к записи клиентов на стрижку необходимо составить расписание работы.`
 
 	manageBarbers = "В этом меню Вы можете добавить нового барбера или удалить существующего. Выберите действие."
 	addBarber     = `Для добавления нового барбера пришлите в этот чат контакт профиля пользователя телеграм, которого вы хотите сделать барбером.
@@ -229,14 +233,51 @@ func onSelectLastWorkDate(ctx tele.Context) error {
 		log.Print(e.Wrap(errMsg, err))
 		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
-	if err := updBarber(ent.Barber{ID: ctx.Sender().ID, LastWorkdate: dateToSave, Status: ent.StatusStart}); err != nil {
-		if errors.Is(err, rep.ErrInvalidLastWorkdate) {
-			return ctx.Edit(haveAppointmentAfterDataToSave, markupBackToMainBarber)
-		}
+	barber, err := getBarberByID(ctx.Sender().ID)
+	if err != nil {
 		log.Print(e.Wrap(errMsg, err))
 		return ctx.Send(errorBarber, markupBackToMainBarber)
 	}
-	return ctx.Edit(lastWorkDateSaved, markupBackToMainBarber)
+	switch dateToSave.Compare(barber.LastWorkdate) {
+	case 0:
+		if err := updBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+			log.Print(e.Wrap(errMsg, err))
+			return ctx.Send(errorBarber, markupBackToMainBarber)
+		}
+		return ctx.Edit(lastWorkDateUnchanged, markupBackToMainBarber)
+	case 1:
+		if err := updBarber(ent.Barber{ID: ctx.Sender().ID, LastWorkdate: dateToSave, Status: ent.StatusStart}); err != nil {
+			log.Print(e.Wrap(errMsg, err))
+			return ctx.Send(errorBarber, markupBackToMainBarber)
+		}
+		if err := sched.MakeSchedule(ctx.Sender().ID); err != nil {
+			log.Print(e.Wrap(errMsg, err))
+			return ctx.Send(lastWorkDateSavedWithoutShedule, markupBackToMainBarber)
+		}
+		return ctx.Edit(lastWorkDateSaved, markupBackToMainBarber)
+	case -1:
+		latestWorkDate, err := getLatestWorkDate(ctx.Sender().ID)
+		if err != nil {
+			log.Print(e.Wrap(errMsg, err))
+			return ctx.Send(errorBarber, markupBackToMainBarber)
+		}
+		dateRangeToDelete := ent.DateRange{StartDate: dateToSave.Add(24 * time.Hour), EndDate: latestWorkDate}
+		err = deleteWorkdaysByDateRange(ctx.Sender().ID, dateRangeToDelete)
+		if err != nil {
+			if errors.Is(err, rep.ErrAppointmentsExists) {
+				return ctx.Edit(haveAppointmentAfterDataToSave, markupBackToMainBarber)
+			}
+			log.Print(e.Wrap(errMsg, err))
+			return ctx.Send(errorBarber, markupBackToMainBarber)
+		}
+		if err := updBarber(ent.Barber{ID: ctx.Sender().ID, LastWorkdate: dateToSave, Status: ent.StatusStart}); err != nil {
+			log.Print(e.Wrap(errMsg, err))
+			return ctx.Send(errorBarber, markupBackToMainBarber)
+		}
+		return ctx.Edit(lastWorkDateSaved, markupBackToMainBarber)
+	default:
+		return nil
+	}
 }
 
 func onManageBarbers(ctx tele.Context) error {
@@ -358,6 +399,13 @@ func createBarber(barberID int64) (err error) {
 	return rep.Rep.CreateBarber(ctx, barberID)
 }
 
+func deleteWorkdaysByDateRange(barberID int64, dateRangeToDelete ent.DateRange) (err error) {
+	defer func() { err = e.WrapIfErr("can't delete workdays", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutWrite)
+	defer cancel()
+	return rep.Rep.DeleteWorkdaysByDateRange(ctx, barberID, dateRangeToDelete)
+}
+
 func getAllBarberIDs() (barberIDs []int64, err error) {
 	defer func() { err = e.WrapIfErr("can't get barber IDs", err) }()
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutRead)
@@ -377,6 +425,13 @@ func getLatestAppointmentDate(barberID int64) (date time.Time, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutRead)
 	defer cancel()
 	return rep.Rep.GetLatestAppointmentDate(ctx, barberID)
+}
+
+func getLatestWorkDate(barberID int64) (date time.Time, err error) {
+	defer func() { err = e.WrapIfErr("can't get latest work date", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutRead)
+	defer cancel()
+	return rep.Rep.GetLatestWorkDate(ctx, barberID)
 }
 
 func markupSelectBarberToDeletion(ctx tele.Context, barberIDs []int64) (*tele.ReplyMarkup, error) {

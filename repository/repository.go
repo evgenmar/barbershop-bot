@@ -14,15 +14,14 @@ type Repository struct {
 }
 
 var (
-	ErrNoSavedBarber       = st.ErrNoSavedBarber
-	ErrNonUniqueData       = st.ErrNonUniqueData
-	ErrAlreadyExists       = st.ErrAlreadyExists
-	ErrAppointmentsExists  = st.ErrAppointmentsExists
-	ErrInvalidLastWorkdate = st.ErrInvalidLastWorkdate
-	ErrInvalidID           = errors.New("invalid ID")
-	ErrInvalidWorkday      = errors.New("invalid workday")
-	ErrInvalidName         = errors.New("invalid name")
-	ErrInvalidPhone        = errors.New("invalid phone")
+	ErrNoSavedBarber      = st.ErrNoSavedBarber
+	ErrNonUniqueData      = st.ErrNonUniqueData
+	ErrAlreadyExists      = st.ErrAlreadyExists
+	ErrAppointmentsExists = st.ErrAppointmentsExists
+	ErrInvalidID          = errors.New("invalid ID")
+	ErrInvalidWorkday     = errors.New("invalid workday")
+	ErrInvalidName        = errors.New("invalid name")
+	ErrInvalidPhone       = errors.New("invalid phone")
 )
 
 var Rep Repository
@@ -128,9 +127,6 @@ func (r Repository) UpdateBarber(ctx context.Context, barber ent.Barber) (err er
 	defer func() {
 		if errors.Is(err, st.ErrNonUniqueData) {
 			err = ErrNonUniqueData
-		}
-		if errors.Is(err, st.ErrInvalidLastWorkdate) {
-			err = ErrInvalidLastWorkdate
 		}
 	}()
 	br, err := mapToStorage.barber(barber)

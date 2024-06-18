@@ -261,27 +261,6 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	q = `CREATE TRIGGER IF NOT EXISTS update_last_workdate
-		BEFORE UPDATE OF last_workdate ON barbers
-		FOR EACH ROW
-		BEGIN
-    		SELECT
-        		CASE WHEN (
-            		SELECT workdays.date FROM workdays INNER JOIN appointments ON workdays.id = appointments.workday_id
-            		WHERE workdays.barber_id = NEW.id ORDER BY workdays.date DESC LIMIT 1
-            		) NOTNULL 
-            		THEN CASE WHEN (
-                		SELECT workdays.date FROM workdays INNER JOIN appointments ON workdays.id = appointments.workday_id
-                		WHERE workdays.barber_id = NEW.id ORDER BY workdays.date DESC LIMIT 1
-                		) > NEW.last_workdate 
-                		THEN RAISE (ROLLBACK , 'Cannot set last workdate before the latest appointment date') 
-                		END
-        		END;
-		END`
-	_, err = s.db.ExecContext(ctx, q)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -312,12 +291,7 @@ func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) error {
 	s.rwMutex.Unlock()
 	if err != nil {
 		if errors.Is(err, sqlite3.CONSTRAINT) {
-			if barber.Name.Valid || barber.Phone.Valid {
-				err = st.ErrNonUniqueData
-			}
-			if barber.LastWorkDate != "" {
-				err = st.ErrInvalidLastWorkdate
-			}
+			err = st.ErrNonUniqueData
 		}
 		return e.Wrap("can't save barber", err)
 	}

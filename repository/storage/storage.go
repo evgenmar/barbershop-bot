@@ -7,11 +7,10 @@ import (
 )
 
 var (
-	ErrNoSavedBarber       = errors.New("no saved barber with specified ID")
-	ErrNonUniqueData       = errors.New("data to save must be unique")
-	ErrAlreadyExists       = errors.New("the object being saved already exists")
-	ErrAppointmentsExists  = errors.New("there are active appointments for the period being deleted")
-	ErrInvalidLastWorkdate = errors.New("Can't set last workdate before the latest appointment date")
+	ErrNoSavedBarber      = errors.New("no saved barber with specified ID")
+	ErrNonUniqueData      = errors.New("data to save must be unique")
+	ErrAlreadyExists      = errors.New("the object being saved already exists")
+	ErrAppointmentsExists = errors.New("there are active appointments for the period being deleted")
 )
 
 type Storage interface {
