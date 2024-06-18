@@ -22,6 +22,7 @@ var (
 	ErrInvalidWorkday     = errors.New("invalid workday")
 	ErrInvalidName        = errors.New("invalid name")
 	ErrInvalidPhone       = errors.New("invalid phone")
+	ErrInvalidDateRange   = errors.New("invalid date range")
 )
 
 var Rep Repository
@@ -68,7 +69,11 @@ func (r Repository) DeleteWorkdaysByDateRange(ctx context.Context, barberID int6
 			err = ErrAppointmentsExists
 		}
 	}()
-	return r.storage.DeleteWorkdaysByDateRange(ctx, barberID, mapToStorage.dateRange(dateRange))
+	dr, err := mapToStorage.dateRange(dateRange)
+	if err != nil {
+		return err
+	}
+	return r.storage.DeleteWorkdaysByDateRange(ctx, barberID, dr)
 }
 
 func (r Repository) FindAllBarberIDs(ctx context.Context) ([]int64, error) {
@@ -108,7 +113,11 @@ func (r Repository) GetLatestWorkDate(ctx context.Context, barberID int64) (date
 
 func (r Repository) GetWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (workdays []ent.Workday, err error) {
 	defer func() { err = e.WrapIfErr("can't get workdays", err) }()
-	wds, err := r.storage.GetWorkdaysByDateRange(ctx, barberID, mapToStorage.dateRange(dateRange))
+	dr, err := mapToStorage.dateRange(dateRange)
+	if err != nil {
+		return nil, err
+	}
+	wds, err := r.storage.GetWorkdaysByDateRange(ctx, barberID, dr)
 	if err != nil {
 		return nil, err
 	}

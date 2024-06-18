@@ -249,7 +249,7 @@ func onSelectLastWorkDate(ctx tele.Context) error {
 		}
 		dateRangeToDelete := ent.DateRange{StartDate: dateToSave.Add(24 * time.Hour), EndDate: latestWorkDate}
 		err = deleteWorkdaysByDateRange(ctx.Sender().ID, dateRangeToDelete)
-		if err != nil {
+		if err != nil && !errors.Is(err, rep.ErrInvalidDateRange) {
 			if errors.Is(err, rep.ErrAppointmentsExists) {
 				return ctx.Edit(haveAppointmentAfterDataToSave, markupBackToMainBarber)
 			}

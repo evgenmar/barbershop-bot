@@ -26,6 +26,13 @@ func (v validatedEntityToStorageMapper) barber(barber ent.Barber) (st.Barber, er
 	return v.entityToStorageMapper.barber(barber)
 }
 
+func (v validatedEntityToStorageMapper) dateRange(dateRange ent.DateRange) (st.DateRange, error) {
+	if dateRange.StartDate.After(dateRange.EndDate) {
+		return st.DateRange{}, ErrInvalidDateRange
+	}
+	return v.entityToStorageMapper.dateRange(dateRange), nil
+}
+
 func isValidName(text string) bool {
 	namePattern := `^[a-zA-Zа-яА-Я0-9\s]{2,20}$`
 	regex := regexp.MustCompile(namePattern)
