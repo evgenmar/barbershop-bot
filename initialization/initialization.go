@@ -23,8 +23,8 @@ func InitGlobals() {
 	once.Do(func() {
 		initStorageContextProvider(createSQLite("data/sqlite/storage.db"))
 		initStorage()
-		initBarbers()
-		initRepository()
+		cfg.InitBarberIDs(getBarberIDsFromStorage()...)
+		rep.InitRepository(storageContextProvider.Storage)
 		initBarbersSchedules()
 		tg.InitBot()
 		sched.InitCron()
@@ -47,20 +47,14 @@ func initStorage() {
 	if err := storageContextProvider.Init(); err != nil {
 		log.Fatal(e.Wrap("can't initialize storage", err))
 	}
+	actualizeBarberIDs()
 }
 
-func initBarbers() {
-	cfg.InitBarberIDs(actualizeBarberIDs()...)
-}
-
-func actualizeBarberIDs() []int64 {
+func actualizeBarberIDs() {
 	barberIDs := getBarberIDsFromStorage()
 	if len(barberIDs) == 0 {
-		barberID := getBarberIDFromEnv()
-		createBarber(barberID)
-		barberIDs = append(barberIDs, barberID)
+		createBarber(getBarberIDFromEnv())
 	}
-	return barberIDs
 }
 
 func getBarberIDsFromStorage() []int64 {
@@ -83,10 +77,6 @@ func createBarber(barberID int64) {
 	if err := storageContextProvider.CreateBarber(barberID); err != nil {
 		log.Fatal(e.Wrap("can't create barber", err))
 	}
-}
-
-func initRepository() {
-	rep.InitRepository(storageContextProvider.Storage)
 }
 
 func initBarbersSchedules() {
