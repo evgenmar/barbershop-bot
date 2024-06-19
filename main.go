@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	initialization.Globals()
+	initialization.InitGlobals()
 	sched.Cron.Start()
 	tg.Bot.Start()
 }

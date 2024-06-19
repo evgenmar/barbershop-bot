@@ -15,11 +15,6 @@ const ScheduledWeeks byte = 26
 const NonWorkingDay time.Weekday = time.Monday
 const MaxAppointmentBookingMonths int = 1
 
-const (
-	TimoutWrite time.Duration = 2 * time.Second
-	TimoutRead                = 1 * time.Second
-)
-
 // location is the time zone where the barbershop is located.
 var Location *time.Location
 

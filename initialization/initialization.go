@@ -1,6 +1,7 @@
 package initialization
 
 import (
+	cp "barbershop-bot/contextprovider"
 	cfg "barbershop-bot/lib/config"
 	"barbershop-bot/lib/e"
 	rep "barbershop-bot/repository"
@@ -8,7 +9,6 @@ import (
 	"barbershop-bot/repository/storage/sqlite"
 	sched "barbershop-bot/scheduler"
 	tg "barbershop-bot/telegram"
-	"context"
 	"log"
 	"os"
 	"strconv"
@@ -17,11 +17,14 @@ import (
 
 var once sync.Once
 
-func Globals() {
+var storageContextProvider cp.StorageContextProvider
+
+func InitGlobals() {
 	once.Do(func() {
-		storage := initStorage(createSQLite("data/sqlite/storage.db"))
-		initBarbers(storage)
-		initRepository(storage)
+		initStorageContextProvider(createSQLite("data/sqlite/storage.db"))
+		initStorage()
+		initBarbers()
+		initRepository()
 		initBarbersSchedules()
 		tg.InitBot()
 		sched.InitCron()
@@ -36,36 +39,34 @@ func createSQLite(path string) *sqlite.Storage {
 	return db
 }
 
-func initStorage(storage st.Storage) st.Storage {
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutWrite)
-	err := storage.Init(ctx)
-	cancel()
-	if err != nil {
-		log.Fatal(err)
+func initStorageContextProvider(storage st.Storage) {
+	storageContextProvider = cp.NewStorageContextProvider(storage)
+}
+
+func initStorage() {
+	if err := storageContextProvider.Init(); err != nil {
+		log.Fatal(e.Wrap("can't initialize storage", err))
 	}
-	return storage
 }
 
-func initBarbers(storage st.Storage) {
-	cfg.InitBarberIDs(actualizeBarberIDs(storage)...)
+func initBarbers() {
+	cfg.InitBarberIDs(actualizeBarberIDs()...)
 }
 
-func actualizeBarberIDs(storage st.Storage) []int64 {
-	barberIDs := getBarberIDsFromStorage(storage)
+func actualizeBarberIDs() []int64 {
+	barberIDs := getBarberIDsFromStorage()
 	if len(barberIDs) == 0 {
 		barberID := getBarberIDFromEnv()
-		createBarber(storage, barberID)
+		createBarber(barberID)
 		barberIDs = append(barberIDs, barberID)
 	}
 	return barberIDs
 }
 
-func getBarberIDsFromStorage(storage st.Storage) []int64 {
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutRead)
-	barberIDs, err := storage.FindAllBarberIDs(ctx)
-	cancel()
+func getBarberIDsFromStorage() []int64 {
+	barberIDs, err := storageContextProvider.FindAllBarberIDs()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(e.Wrap("can't get barberIDs from storage", err))
 	}
 	return barberIDs
 }
@@ -78,21 +79,18 @@ func getBarberIDFromEnv() int64 {
 	return barberID
 }
 
-func createBarber(storage st.Storage, barberID int64) {
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.TimoutWrite)
-	err := storage.CreateBarber(ctx, barberID)
-	cancel()
-	if err != nil {
-		log.Fatal(err)
+func createBarber(barberID int64) {
+	if err := storageContextProvider.CreateBarber(barberID); err != nil {
+		log.Fatal(e.Wrap("can't create barber", err))
 	}
 }
 
-func initRepository(storage st.Storage) {
-	rep.InitRepository(storage)
+func initRepository() {
+	rep.InitRepository(storageContextProvider.Storage)
 }
 
 func initBarbersSchedules() {
 	if err := sched.MakeSchedules(); err != nil {
-		log.Fatal(err)
+		log.Fatal(e.Wrap("can't make schedules", err))
 	}
 }
