@@ -1,6 +1,11 @@
 package entities
 
-import "time"
+import (
+	cfg "barbershop-bot/lib/config"
+	"fmt"
+	"log"
+	"time"
+)
 
 type Barber struct {
 	ID   int64
@@ -18,3 +23,29 @@ const (
 	NoNameBarber  = "Барбер без имени"
 	NoPhoneBarber = "Номер не указан"
 )
+
+var endlessWorkdate time.Time
+
+func init() {
+	year3000, err := time.ParseInLocation(time.DateOnly, "3000-01-01", cfg.Location)
+	if err != nil {
+		log.Fatal(err)
+	}
+	endlessWorkdate = year3000
+}
+
+func (b Barber) Info() string {
+	var lastWorkDate string
+	if b.LastWorkdate.Equal(endlessWorkdate) {
+		lastWorkDate = "бессрочно"
+	} else {
+		lastWorkDate = "до " + b.LastWorkdate.Format("02.01.2006")
+	}
+	return fmt.Sprintf(`Имя: %s
+Tел.: %s
+Работает %s`, b.Name, b.Phone, lastWorkDate)
+}
+
+func (b Barber) Settings() string {
+	return b.Info()
+}

@@ -21,6 +21,9 @@ const (
 
 	settingsBarber = "Вы находитесь меню настроек. Выберите действие."
 
+	manageAccountBarber = "В этом меню собраны функции для управления Вашим аккаунтом. Выберите действие."
+	currentSettings     = `Ваши текущие настройки:
+`
 	personalBarber       = "Выберите данные, которые вы хотите обновить."
 	updNameBarber        = "Введите Ваше имя"
 	updNameSuccessBarber = "Имя успешно обновлено. Хотите обновить другие данные?"
@@ -43,7 +46,6 @@ const (
 	notUniqueBarberPhone = `Номер телефона не сохранен. Другой барбер с таким номером уже зарегистрирован в приложении. Введите другой номер.
 При необходимости вернуться в главное меню воспользуйтесь командой /start`
 
-	manageAccountBarber             = "В этом меню собраны функции для управления Вашим аккаунтом. Выберите действие."
 	endpntSelectMonthOfLastWorkDate = "select_month_of_last_work_date"
 	endpntSelectLastWorkDate        = "select_last_work_date"
 	selectLastWorkDate              = `Данную функцию следует использовать, если Вы планируете прекратить использовать этот бот в своей работе и хотите, чтобы клиенты перестали использовать бот для записи к Вам на стрижку.
@@ -70,6 +72,7 @@ const (
 	goodbuyBarber = "Ваш статус изменен. Спасибо, что работали с нами!"
 
 	manageBarbers = "В этом меню Вы можете добавить нового барбера или удалить существующего. Выберите действие."
+	listOfBarbers = "Список всех барберов, зарегистрированных в приложении:"
 	addBarber     = `Для добавления нового барбера пришлите в этот чат контакт профиля пользователя телеграм, которого вы хотите сделать барбером.
 Подробная инструкция:
 1. Зайдите в личный чат с пользователем.
@@ -110,23 +113,25 @@ var (
 	btnSettingsBarber = markupMainBarber.Data("Настройки", "settings_barber")
 
 	markupSettingsBarber   = &tele.ReplyMarkup{}
-	btnUpdPersonalBarber   = markupSettingsBarber.Data("Обновить персональные данные", "upd_personal_data_barber")
 	btnManageAccountBarber = markupSettingsBarber.Data("Управление аккаунтом", "manage_account_barber")
 	btnManageBarbers       = markupSettingsBarber.Data("Управление барберами", "manage_barbers")
+
+	markupManageAccountBarber    = &tele.ReplyMarkup{}
+	btnShowCurrentSettingsBarber = markupManageAccountBarber.Data("Посмотреть мои текущие настройки", "show_current_settings_barber")
+	btnUpdPersonalBarber         = markupManageAccountBarber.Data("Обновить персональные данные", "upd_personal_data_barber")
+	btnSetLastWorkDate           = markupManageAccountBarber.Data("Установить последний рабочий день", endpntSelectMonthOfLastWorkDate, "0")
+	btnSelectLastWorkDate        = markupManageAccountBarber.Data("", endpntSelectLastWorkDate)
+	btnSelfDeleteBarber          = markupManageAccountBarber.Data(`Отказаться от статуса "барбер"`, "self_delete_barber")
 
 	markupPersonalBarber = &tele.ReplyMarkup{}
 	btnUpdNameBarber     = markupPersonalBarber.Data("Обновить имя", "upd_name_barber")
 	btnUpdPhoneBarber    = markupPersonalBarber.Data("Обновить номер телефона", "upd_phone_barber")
 
-	markupManageAccountBarber = &tele.ReplyMarkup{}
-	btnSetLastWorkDate        = markupManageAccountBarber.Data("Установить последний рабочий день", endpntSelectMonthOfLastWorkDate, "0")
-	btnSelectLastWorkDate     = markupManageAccountBarber.Data("", endpntSelectLastWorkDate)
-	btnSelfDeleteBarber       = markupManageAccountBarber.Data(`Отказаться от статуса "барбер"`, "self_delete_barber")
-
 	markupConfirmSelfDeletion = &tele.ReplyMarkup{}
 	btnSureToDelete           = markupConfirmSelfDeletion.Data("Уверен, удалить!", "sure_to_delete")
 
 	markupManageBarbers    = &tele.ReplyMarkup{}
+	btnShowAllBurbers      = markupManageBarbers.Data("Посмотреть список барберов", "show_all_barbers")
 	btnAddBarber           = markupManageBarbers.Data("Добавить барбера", "add_barber")
 	btnDeleteBarber        = markupManageBarbers.Data("Удалить барбера", "delete_barber")
 	btnDeleteCertainBarber = markupManageBarbers.Data("", endpntBarberToDeletion)
@@ -141,10 +146,17 @@ func init() {
 	)
 
 	markupSettingsBarber.Inline(
-		markupSettingsBarber.Row(btnUpdPersonalBarber),
 		markupSettingsBarber.Row(btnManageAccountBarber),
 		markupSettingsBarber.Row(btnManageBarbers),
 		markupSettingsBarber.Row(btnBackToMainBarber),
+	)
+
+	markupManageAccountBarber.Inline(
+		markupManageAccountBarber.Row(btnShowCurrentSettingsBarber),
+		markupManageAccountBarber.Row(btnUpdPersonalBarber),
+		markupManageAccountBarber.Row(btnSetLastWorkDate),
+		markupManageAccountBarber.Row(btnSelfDeleteBarber),
+		markupManageAccountBarber.Row(btnBackToMainBarber),
 	)
 
 	markupPersonalBarber.Inline(
@@ -153,18 +165,13 @@ func init() {
 		markupPersonalBarber.Row(btnBackToMainBarber),
 	)
 
-	markupManageAccountBarber.Inline(
-		markupManageAccountBarber.Row(btnSetLastWorkDate),
-		markupManageAccountBarber.Row(btnSelfDeleteBarber),
-		markupManageAccountBarber.Row(btnBackToMainBarber),
-	)
-
 	markupConfirmSelfDeletion.Inline(
 		markupConfirmSelfDeletion.Row(btnSureToDelete),
 		markupConfirmSelfDeletion.Row(btnBackToMainBarber),
 	)
 
 	markupManageBarbers.Inline(
+		markupManageBarbers.Row(btnShowAllBurbers),
 		markupManageBarbers.Row(btnAddBarber),
 		markupManageBarbers.Row(btnDeleteBarber),
 		markupManageBarbers.Row(btnBackToMainBarber),
@@ -189,6 +196,25 @@ func onSettingsBarber(ctx tele.Context) error {
 	return ctx.Edit(settingsBarber, markupSettingsBarber)
 }
 
+func onManageAccountBarber(ctx tele.Context) error {
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+		return logAndMsgErrBarber(ctx, "can't open the barber's manage account menu", err)
+	}
+	return ctx.Edit(manageAccountBarber, markupManageAccountBarber)
+}
+
+func onShowCurrentSettingsBarber(ctx tele.Context) error {
+	errMsg := "can't show current barber settings"
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	barber, err := cp.RepoWithContext.GetBarberByID(ctx.Sender().ID)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	return ctx.Edit(currentSettings+barber.Settings(), markupBackToMainBarber)
+}
+
 func onUpdPersonalBarber(ctx tele.Context) error {
 	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
 		return logAndMsgErrBarber(ctx, "can't open the barber's personal data menu", err)
@@ -208,13 +234,6 @@ func onUpdPhoneBarber(ctx tele.Context) error {
 		return logAndMsgErrBarber(ctx, "can't ask barber to enter phone", err)
 	}
 	return ctx.Edit(updPhoneBarber)
-}
-
-func onManageAccountBarber(ctx tele.Context) error {
-	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
-		return logAndMsgErrBarber(ctx, "can't open the barber's manage account menu", err)
-	}
-	return ctx.Edit(manageAccountBarber, markupManageAccountBarber)
 }
 
 func onSetLastWorkDate(ctx tele.Context) error {
@@ -328,6 +347,23 @@ func onManageBarbers(ctx tele.Context) error {
 	return ctx.Edit(manageBarbers, markupManageBarbers)
 }
 
+func onShowAllBarbers(ctx tele.Context) error {
+	errMsg := "can't show all barbers"
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	barberIDs := cfg.Barbers.IDs()
+	barbersInfo := ""
+	for _, barberID := range barberIDs {
+		barber, err := cp.RepoWithContext.GetBarberByID(barberID)
+		if err != nil {
+			return logAndMsgErrBarber(ctx, errMsg, err)
+		}
+		barbersInfo = barbersInfo + "\n\n" + barber.Info()
+	}
+	return ctx.Edit(listOfBarbers+barbersInfo, markupBackToMainBarber)
+}
+
 func onAddBarber(ctx tele.Context) error {
 	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.NewStatus(ent.StateAddBarber)}); err != nil {
 		return logAndMsgErrBarber(ctx, "can't ask barber to point on user to add", err)
@@ -340,10 +376,7 @@ func onDeleteBarber(ctx tele.Context) error {
 	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	barberIDs, err := cp.RepoWithContext.FindAllBarberIDs()
-	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
-	}
+	barberIDs := cfg.Barbers.IDs()
 	if len(barberIDs) == 1 {
 		return ctx.Edit(onlyOneBarberExists, markupBackToMainBarber)
 	}

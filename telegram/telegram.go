@@ -49,17 +49,18 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 
 	barbers.Handle(&btnSettingsBarber, onSettingsBarber)
 
+	barbers.Handle(&btnManageAccountBarber, onManageAccountBarber)
+	barbers.Handle(&btnShowCurrentSettingsBarber, onShowCurrentSettingsBarber)
 	barbers.Handle(&btnUpdPersonalBarber, onUpdPersonalBarber)
 	barbers.Handle(&btnUpdNameBarber, onUpdNameBarber)
 	barbers.Handle(&btnUpdPhoneBarber, onUpdPhoneBarber)
-
-	barbers.Handle(&btnManageAccountBarber, onManageAccountBarber)
 	barbers.Handle(&btnSetLastWorkDate, onSetLastWorkDate)
 	barbers.Handle(&btnSelectLastWorkDate, onSelectLastWorkDate)
 	barbers.Handle(&btnSelfDeleteBarber, onSelfDeleteBarber)
 	barbers.Handle(&btnSureToDelete, onSureToDelete)
 
 	barbers.Handle(&btnManageBarbers, onManageBarbers)
+	barbers.Handle(&btnShowAllBurbers, onShowAllBarbers)
 	barbers.Handle(&btnAddBarber, onAddBarber)
 	barbers.Handle(&btnDeleteBarber, onDeleteBarber)
 	barbers.Handle(&btnDeleteCertainBarber, onDeleteCertainBarber)
