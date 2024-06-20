@@ -5,6 +5,7 @@ import (
 	ent "barbershop-bot/entities"
 	cfg "barbershop-bot/lib/config"
 	"barbershop-bot/lib/e"
+	tm "barbershop-bot/lib/time"
 	rep "barbershop-bot/repository"
 	sched "barbershop-bot/scheduler"
 	"errors"
@@ -47,13 +48,13 @@ const (
 	endpntSelectLastWorkDate        = "select_last_work_date"
 	selectLastWorkDate              = `Данную функцию следует использовать, если Вы планируете прекратить использовать этот бот в своей работе и хотите, чтобы клиенты перестали использовать бот для записи к Вам на стрижку.
 	
-	Выберите дату последнего рабочего дня.
-	Для выбора доступны только даты позже последней существующей записи клиента на стрижку.
-	Если Вы хотите выбрать более раннюю дату, сначала отмените последние записи клиентов на стрижку.
+Выберите дату последнего рабочего дня.
+Для выбора доступны только даты позже последней существующей записи клиента на стрижку.
+Если Вы хотите выбрать более раннюю дату, сначала отмените последние записи клиентов на стрижку.
 	
-	ВНИМАНИЕ!!! После установки даты последнего рабочего дня клиенты не смогут записаться на стрижку на более позднюю дату.
-	По умолчанию установлена бессрочная дата последнего рабочего дня.
-	Если Вы ранее меняли эту дату и хотите снова установить бессрочную дату, нажмите кнопку в нижней части меню.`
+ВНИМАНИЕ!!! После установки даты последнего рабочего дня клиенты не смогут записаться на стрижку на более позднюю дату.
+По умолчанию установлена бессрочная дата последнего рабочего дня.
+Если Вы ранее меняли эту дату и хотите снова установить бессрочную дату, нажмите кнопку в нижней части меню.`
 	haveAppointmentAfterDataToSave = `Невозможно сохранить дату, поскольку пока Вы выбирали дату, клиент успел записаться к Вам на стрижку на дату позже выбранной Вами даты.
 	Пожалуйста проверьте записи клиентов и при необходимости отмените самую позднюю запись. Или выберите более позднюю дату последнего рабочего дня.`
 	lastWorkDateSaved               = "Новая дата последнего рабочего дня успешно сохранена."
@@ -77,9 +78,18 @@ const (
 	addedNewBarberWithoutShedule = `Статус пользователя изменен на "барбер".
 ВНИМАНИЕ!!! При попытке составить расписание работы для нового барбера произошла ошибка. Расписание не составлено!
 Для доступа к записи клиентов на стрижку новый барбер должен заполнить персональные данные, а также составить расписание работы.`
-	noBarbersToDelete      = "Вы единственный зарегистрированный барбер в приложении. Некого удалять."
+	onlyOneBarberExists = "Вы единственный зарегистрированный барбер в приложении. Некого удалять."
+	noBarbersToDelete   = `Нет ни одного барбера, которого можно было бы удалить. 
+Для того, чтобы барбера можно было удалить, он предварительно должен выполнить следующие действия:
+`
+	selectBarberToDeletion = `Выберите барбера, которого Вы хотите удалить. 
+Если нужного барбера нет в этом списке, значит он еще не выполнил необходимые действия перед удалением:
+`
+	preDeletionBarberInstruction = `1. Установить не бессрочную дату последнего рабочего дня. По умолчанию установлена бессрочная дата последнего рабочего дня.
+2. Дождаться наступления следующего дня после даты установленной в прошлом пункте.
+	
+Эти действия необходимы, чтобы гарантировать, что ни один клиент, записавшийся на стрижку, не останется необслуженным в процессе удаления барбера из приложения.`
 	endpntBarberToDeletion = "barber_to_deletion"
-	selectBarberToDeletion = "Выберите барбера, которого Вы хотите удалить"
 
 	unknownCmdBarber = "Неизвестная команда. Пожалуйста, выберите команду из меню. Для вызова главного меню воспользуйтесь командой /start"
 	errorBarber      = `Произошла ошибка обработки команды. Команда не была выполнена. Если ошибка будет повторяться, возможно, потребуется перезапуск сервиса.
@@ -288,13 +298,16 @@ func onDeleteBarber(ctx tele.Context) error {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
 	if len(barberIDs) == 1 {
-		return ctx.Edit(noBarbersToDelete, markupBackToMainBarber)
+		return ctx.Edit(onlyOneBarberExists, markupBackToMainBarber)
 	}
-	markupSelectBarber, err := markupSelectBarberToDeletion(ctx, barberIDs)
+	markupSelectBarber, notEmpty, err := markupSelectBarberToDeletion(ctx, barberIDs)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	return ctx.Edit(selectBarberToDeletion, markupSelectBarber)
+	if !notEmpty {
+		return ctx.Edit(noBarbersToDelete+preDeletionBarberInstruction, markupSelectBarber)
+	}
+	return ctx.Edit(selectBarberToDeletion+preDeletionBarberInstruction, markupSelectBarber)
 }
 
 func onBackToMainBarber(ctx tele.Context) error {
@@ -371,23 +384,27 @@ func logAndMsgErrBarber(ctx tele.Context, msg string, err error) error {
 	return ctx.Send(errorBarber, markupBackToMainBarber)
 }
 
-func markupSelectBarberToDeletion(ctx tele.Context, barberIDs []int64) (*tele.ReplyMarkup, error) {
+func markupSelectBarberToDeletion(ctx tele.Context, barberIDs []int64) (*tele.ReplyMarkup, bool, error) {
+	today := tm.Today()
 	markup := &tele.ReplyMarkup{}
 	var rows []tele.Row
 	for _, barberID := range barberIDs {
 		if barberID != ctx.Sender().ID {
 			barber, err := cp.CP.GetBarberByID(barberID)
 			if err != nil {
-				return &tele.ReplyMarkup{}, e.Wrap("can't make reply markup", err)
+				return &tele.ReplyMarkup{}, false, e.Wrap("can't make reply markup", err)
 			}
-			barberIDStr := strconv.FormatInt(barberID, 10)
-			row := markup.Row(markup.Data(barber.Name, endpntBarberToDeletion, barberIDStr))
-			rows = append(rows, row)
+			if barber.LastWorkdate.Before(today) {
+				barberIDString := strconv.FormatInt(barberID, 10)
+				row := markup.Row(markup.Data(barber.Name, endpntBarberToDeletion, barberIDString))
+				rows = append(rows, row)
+			}
 		}
 	}
+	notEmpty := len(rows) > 0
 	rows = append(rows, markup.Row(btnBackToMainBarber))
 	markup.Inline(rows...)
-	return markup, nil
+	return markup, notEmpty, nil
 }
 
 func markupSelectLastWorkDate(firstDisplayedDateRange ent.DateRange, relativeFirstDisplayedMonth, deltaDisplayedMonth int) *tele.ReplyMarkup {
