@@ -16,14 +16,11 @@ import (
 
 var once sync.Once
 
-var storageWithContext cp.StorageContextProvider
-
 func InitGlobals() {
 	once.Do(func() {
-		initStorageWithContext(createSQLite("data/sqlite/storage.db"))
-		initStorage()
-		cfg.InitBarberIDs(getBarberIDsFromStorage()...)
-		cp.InitRepoWithContext(storageWithContext.Storage)
+		cp.InitRepoWithContext(initStorage(createSQLite("data/sqlite/storage.db")))
+		actualizeBarberIDs()
+		cfg.InitBarberIDs(getBarberIDsFromRepo()...)
 		initBarbersSchedules()
 		tg.InitBot()
 		sched.InitCron()
@@ -38,26 +35,23 @@ func createSQLite(path string) *sqlite.Storage {
 	return db
 }
 
-func initStorageWithContext(storage st.Storage) {
-	storageWithContext = cp.NewStorageContextProvider(storage)
-}
-
-func initStorage() {
+func initStorage(storage st.Storage) st.Storage {
+	storageWithContext := cp.NewStorageContextProvider(storage)
 	if err := storageWithContext.Init(); err != nil {
 		log.Fatal(e.Wrap("can't initialize storage", err))
 	}
-	actualizeBarberIDs()
+	return storage
 }
 
 func actualizeBarberIDs() {
-	barberIDs := getBarberIDsFromStorage()
+	barberIDs := getBarberIDsFromRepo()
 	if len(barberIDs) == 0 {
 		createBarber(getBarberIDFromEnv())
 	}
 }
 
-func getBarberIDsFromStorage() []int64 {
-	barberIDs, err := storageWithContext.FindAllBarberIDs()
+func getBarberIDsFromRepo() []int64 {
+	barberIDs, err := cp.RepoWithContext.FindAllBarberIDs()
 	if err != nil {
 		log.Fatal(e.Wrap("can't get barberIDs from storage", err))
 	}
@@ -73,7 +67,7 @@ func getBarberIDFromEnv() int64 {
 }
 
 func createBarber(barberID int64) {
-	if err := storageWithContext.CreateBarber(barberID); err != nil {
+	if err := cp.RepoWithContext.CreateBarber(barberID); err != nil {
 		log.Fatal(e.Wrap("can't create barber", err))
 	}
 }

@@ -18,15 +18,3 @@ func (s StorageContextProvider) Init() error {
 	defer cancel()
 	return s.Storage.Init(ctx)
 }
-
-func (s StorageContextProvider) FindAllBarberIDs() ([]int64, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
-	defer cancel()
-	return s.Storage.FindAllBarberIDs(ctx)
-}
-
-func (s StorageContextProvider) CreateBarber(barberID int64) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
-	defer cancel()
-	return s.Storage.CreateBarber(ctx, barberID)
-}
