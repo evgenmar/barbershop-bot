@@ -2,9 +2,22 @@ package telegram
 
 import tele "gopkg.in/telebot.v3"
 
-//example
-func onUser(c tele.Context) error {
-	return c.Send("hello user")
+var (
+	markupMainUser  = &tele.ReplyMarkup{}
+	btnSettingsUser = markupMainBarber.Data("Настройки пользователь", "settings_user")
+
+	markupBackToMainUser = &tele.ReplyMarkup{}
+	btnBackToMainUser    = markupBackToMainUser.Data("Вернуться в главное меню", "back_to_main_user")
+)
+
+func init() {
+	markupMainUser.Inline(
+		markupMainUser.Row(btnSettingsUser),
+	)
+
+	markupBackToMainUser.Inline(
+		markupBackToMainUser.Row(btnBackToMainUser),
+	)
 }
 
 func onStartUser(c tele.Context) error { //TODO

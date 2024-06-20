@@ -62,6 +62,12 @@ const (
 	lastWorkDateSavedWithoutShedule = `Новая дата последнего рабочего дня сохранена.
 ВНИМАНИЕ!!! При попытке составить расписание работы вплоть до сохраненной даты произошла ошибка. Расписание не составлено!
 Для доступа к записи клиентов на стрижку необходимо составить расписание работы.`
+	confirmSelfDeletion = `Вы собираетесь отказаться от статуса "барбер".
+ВНИМАНИЕ!!! Помимо изменения Вашего статуса также будет удален весь перечень оказываемых Вами услуг и вся история прошедших записей Ваших клиентов. Клиенты больше не смогут записаться к Вам на стрижку через этот бот.
+Если Вы уверены, нажмите "Уверен, удалить!". Если передумали, просто вернитесь в главное меню.`
+	youHaveActiveSchedule = `Невозможно отказаться от статуса "барбер" прямо сейчас. Предварительно вы должны выполнить следующие действия:
+`
+	goodbuyBarber = "Ваш статус изменен. Спасибо, что работали с нами!"
 
 	manageBarbers = "В этом меню Вы можете добавить нового барбера или удалить существующего. Выберите действие."
 	addBarber     = `Для добавления нового барбера пришлите в этот чат контакт профиля пользователя телеграм, которого вы хотите сделать барбером.
@@ -82,7 +88,8 @@ const (
 	noBarbersToDelete   = `Нет ни одного барбера, которого можно было бы удалить. 
 Для того, чтобы барбера можно было удалить, он предварительно должен выполнить следующие действия:
 `
-	selectBarberToDeletion = `Выберите барбера, которого Вы хотите удалить. 
+	selectBarberToDeletion = `Выберите барбера, которого Вы хотите удалить.
+ВНИМАНИЕ!!! При удалении барбера будет также удален весь перечень оказываемых им услуг и вся история прошедших записей клиентов этого барбера. 
 Если нужного барбера нет в этом списке, значит он еще не выполнил необходимые действия перед удалением:
 `
 	preDeletionBarberInstruction = `1. Установить не бессрочную дату последнего рабочего дня. По умолчанию установлена бессрочная дата последнего рабочего дня.
@@ -114,6 +121,10 @@ var (
 	markupManageAccountBarber = &tele.ReplyMarkup{}
 	btnSetLastWorkDate        = markupManageAccountBarber.Data("Установить последний рабочий день", endpntSelectMonthOfLastWorkDate, "0")
 	btnSelectLastWorkDate     = markupManageAccountBarber.Data("", endpntSelectLastWorkDate)
+	btnSelfDeleteBarber       = markupManageAccountBarber.Data(`Отказаться от статуса "барбер"`, "self_delete_barber")
+
+	markupConfirmSelfDeletion = &tele.ReplyMarkup{}
+	btnSureToDelete           = markupConfirmSelfDeletion.Data("Уверен, удалить!", "sure_to_delete")
 
 	markupManageBarbers    = &tele.ReplyMarkup{}
 	btnAddBarber           = markupManageBarbers.Data("Добавить барбера", "add_barber")
@@ -144,7 +155,13 @@ func init() {
 
 	markupManageAccountBarber.Inline(
 		markupManageAccountBarber.Row(btnSetLastWorkDate),
+		markupManageAccountBarber.Row(btnSelfDeleteBarber),
 		markupManageAccountBarber.Row(btnBackToMainBarber),
+	)
+
+	markupConfirmSelfDeletion.Inline(
+		markupConfirmSelfDeletion.Row(btnSureToDelete),
+		markupConfirmSelfDeletion.Row(btnBackToMainBarber),
 	)
 
 	markupManageBarbers.Inline(
@@ -276,6 +293,34 @@ func onSelectLastWorkDate(ctx tele.Context) error {
 	}
 }
 
+func onSelfDeleteBarber(ctx tele.Context) error {
+	errMsg := "can't provide options for barber self deletion"
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	barberToDelete, err := cp.RepoWithContext.GetBarberByID(ctx.Sender().ID)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	if barberToDelete.LastWorkdate.Before(tm.Today()) {
+		return ctx.Edit(confirmSelfDeletion, markupConfirmSelfDeletion)
+	}
+	return ctx.Edit(youHaveActiveSchedule+preDeletionBarberInstruction, markupBackToMainBarber)
+}
+
+func onSureToDelete(ctx tele.Context) error {
+	errMsg := "can't self delete barber"
+	barberIDToDelete := ctx.Sender().ID
+	if err := cp.RepoWithContext.DeleteAppointmentsBeforeDate(barberIDToDelete, tm.Today()); err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	if err := cp.RepoWithContext.DeleteBarberByID(barberIDToDelete); err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	cfg.Barbers.RemoveID(barberIDToDelete)
+	return ctx.Edit(goodbuyBarber)
+}
+
 func onManageBarbers(ctx tele.Context) error {
 	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
 		return logAndMsgErrBarber(ctx, "can't open the set barbers menu", err)
@@ -314,6 +359,9 @@ func onDeleteBarber(ctx tele.Context) error {
 
 func onDeleteCertainBarber(ctx tele.Context) error {
 	errMsg := "can't delete barber"
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
 	barberIDToDelete, err := strconv.ParseInt(ctx.Callback().Data, 10, 64)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
@@ -331,9 +379,9 @@ func onDeleteCertainBarber(ctx tele.Context) error {
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
 		cfg.Barbers.RemoveID(barberIDToDelete)
-		return ctx.Edit(barberDeleted, markupMainBarber)
+		return ctx.Edit(barberDeleted, markupBackToMainBarber)
 	}
-	return ctx.Edit(barberHaveActiveSchedule, markupMainBarber)
+	return ctx.Edit(barberHaveActiveSchedule, markupBackToMainBarber)
 }
 
 func onBackToMainBarber(ctx tele.Context) error {
