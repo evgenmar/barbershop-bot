@@ -89,7 +89,9 @@ const (
 2. Дождаться наступления следующего дня после даты установленной в прошлом пункте.
 	
 Эти действия необходимы, чтобы гарантировать, что ни один клиент, записавшийся на стрижку, не останется необслуженным в процессе удаления барбера из приложения.`
-	endpntBarberToDeletion = "barber_to_deletion"
+	endpntBarberToDeletion   = "barber_to_deletion"
+	barberDeleted            = `Статус указанного пользователя изменен. Пользователь больше не имеет статуса "барбер".`
+	barberHaveActiveSchedule = `Невозможно изменить статус барбера, поскольку пока Вы выбирали барбера для удаления, выбранный барбер изменил свою дату последнего рабочего дня на более позднюю.`
 
 	unknownCmdBarber = "Неизвестная команда. Пожалуйста, выберите команду из меню. Для вызова главного меню воспользуйтесь командой /start"
 	errorBarber      = `Произошла ошибка обработки команды. Команда не была выполнена. Если ошибка будет повторяться, возможно, потребуется перезапуск сервиса.
@@ -113,10 +115,10 @@ var (
 	btnSetLastWorkDate        = markupManageAccountBarber.Data("Установить последний рабочий день", endpntSelectMonthOfLastWorkDate, "0")
 	btnSelectLastWorkDate     = markupManageAccountBarber.Data("", endpntSelectLastWorkDate)
 
-	markupManageBarbers = &tele.ReplyMarkup{}
-	btnAddBarber        = markupManageBarbers.Data("Добавить барбера", "add_barber")
-	btnDeleteBarber     = markupManageBarbers.Data("Удалить барбера", "delete_barber")
-	//btnDeleteExactBarber = markupManageBarbers.Data("", endpntBarberToDeletion)
+	markupManageBarbers    = &tele.ReplyMarkup{}
+	btnAddBarber           = markupManageBarbers.Data("Добавить барбера", "add_barber")
+	btnDeleteBarber        = markupManageBarbers.Data("Удалить барбера", "delete_barber")
+	btnDeleteCertainBarber = markupManageBarbers.Data("", endpntBarberToDeletion)
 
 	markupBackToMainBarber = &tele.ReplyMarkup{}
 	btnBackToMainBarber    = markupBackToMainBarber.Data("Вернуться в главное меню", "back_to_main_barber")
@@ -310,6 +312,30 @@ func onDeleteBarber(ctx tele.Context) error {
 	return ctx.Edit(selectBarberToDeletion+preDeletionBarberInstruction, markupSelectBarber)
 }
 
+func onDeleteCertainBarber(ctx tele.Context) error {
+	errMsg := "can't delete barber"
+	barberIDToDelete, err := strconv.ParseInt(ctx.Callback().Data, 10, 64)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	barberToDelete, err := cp.CP.GetBarberByID(barberIDToDelete)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	today := tm.Today()
+	if barberToDelete.LastWorkdate.Before(today) {
+		if err := cp.CP.DeleteAppointmentsBeforeDate(barberIDToDelete, today); err != nil {
+			return logAndMsgErrBarber(ctx, errMsg, err)
+		}
+		if err := cp.CP.DeleteBarberByID(barberIDToDelete); err != nil {
+			return logAndMsgErrBarber(ctx, errMsg, err)
+		}
+		cfg.Barbers.RemoveID(barberIDToDelete)
+		return ctx.Edit(barberDeleted, markupMainBarber)
+	}
+	return ctx.Edit(barberHaveActiveSchedule, markupMainBarber)
+}
+
 func onBackToMainBarber(ctx tele.Context) error {
 	if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
 		return logAndMsgErrBarber(ctx, "can't go back to the barber's main menu", err)
@@ -365,14 +391,15 @@ func addNewBarber(ctx tele.Context) error {
 	if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	if err := cp.CP.CreateBarber(ctx.Message().Contact.UserID); err != nil {
+	newBarberID := ctx.Message().Contact.UserID
+	if err := cp.CP.CreateBarber(newBarberID); err != nil {
 		if errors.Is(err, rep.ErrAlreadyExists) {
 			return ctx.Send(userIsAlreadyBarber, markupBackToMainBarber)
 		}
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	cfg.Barbers.SetIDs(append(cfg.Barbers.IDs(), ctx.Message().Contact.UserID))
-	if err := sched.MakeSchedule(ctx.Message().Contact.UserID); err != nil {
+	cfg.Barbers.AddID(newBarberID)
+	if err := sched.MakeSchedule(newBarberID); err != nil {
 		log.Print(e.Wrap(errMsg, err))
 		return ctx.Send(addedNewBarberWithoutShedule, markupBackToMainBarber)
 	}

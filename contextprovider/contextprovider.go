@@ -31,6 +31,20 @@ func (c ContextProvider) CreateWorkdays(wds ...ent.Workday) (err error) {
 	return rep.Rep.CreateWorkdays(ctx, wds...)
 }
 
+func (c ContextProvider) DeleteAppointmentsBeforeDate(barberID int64, date time.Time) (err error) {
+	defer func() { err = e.WrapIfErr("can't delete appointments", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
+	defer cancel()
+	return rep.Rep.DeleteAppointmentsBeforeDate(ctx, barberID, date)
+}
+
+func (c ContextProvider) DeleteBarberByID(barberID int64) (err error) {
+	defer func() { err = e.WrapIfErr("can't delete barber", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
+	defer cancel()
+	return rep.Rep.DeleteBarberByID(ctx, barberID)
+}
+
 func (c ContextProvider) DeleteWorkdaysByDateRange(barberID int64, dateRangeToDelete ent.DateRange) (err error) {
 	defer func() { err = e.WrapIfErr("can't delete workdays", err) }()
 	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)

@@ -20,6 +20,12 @@ type Storage interface {
 	//CreateWorkdays saves new Workdays to storage.
 	CreateWorkdays(ctx context.Context, workdays ...Workday) error
 
+	// DeleteAppointmentsBeforeDate removes all appointments till the specified date for barber with specified ID.
+	DeleteAppointmentsBeforeDate(ctx context.Context, barberID int64, date string) error
+
+	// DeleteBarberByID removes barber with specified ID. It also removes all serviced, workdays and appointments associated with barber.
+	DeleteBarberByID(ctx context.Context, barberID int64) error
+
 	//DeleteWorkdaysByDateRange removes working days that fall within the date range.
 	//It only removes working days for barber with specified barberID.
 	DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange DateRange) error

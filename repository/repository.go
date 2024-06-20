@@ -63,6 +63,14 @@ func (r Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (err
 	return r.storage.CreateWorkdays(ctx, workdays...)
 }
 
+func (r Repository) DeleteAppointmentsBeforeDate(ctx context.Context, barberID int64, date time.Time) error {
+	return r.storage.DeleteAppointmentsBeforeDate(ctx, barberID, mapToStorage.date(date))
+}
+
+func (r Repository) DeleteBarberByID(ctx context.Context, barberID int64) error {
+	return r.storage.DeleteBarberByID(ctx, barberID)
+}
+
 func (r Repository) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (err error) {
 	defer func() {
 		if errors.Is(err, st.ErrAppointmentsExists) {

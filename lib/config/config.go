@@ -28,14 +28,25 @@ func InitBarberIDs(ids ...int64) {
 	Barbers.ids = ids
 }
 
+func (p *ProtectedIDs) AddID(idToAdd int64) {
+	p.rwMutex.Lock()
+	defer p.rwMutex.Unlock()
+	p.ids = append(p.ids, idToAdd)
+}
+
 func (p *ProtectedIDs) IDs() []int64 {
 	p.rwMutex.RLock()
 	defer p.rwMutex.RUnlock()
 	return p.ids
 }
 
-func (p *ProtectedIDs) SetIDs(ids []int64) {
+func (p *ProtectedIDs) RemoveID(idToRemove int64) {
 	p.rwMutex.Lock()
 	defer p.rwMutex.Unlock()
-	p.ids = ids
+	for i, id := range p.ids {
+		if id == idToRemove {
+			p.ids = append(p.ids[:i], p.ids[i+1:]...)
+			return
+		}
+	}
 }

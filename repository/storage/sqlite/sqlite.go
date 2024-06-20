@@ -68,6 +68,32 @@ func (s *Storage) CreateWorkdays(ctx context.Context, workdays ...st.Workday) er
 	return nil
 }
 
+// DeleteAppointmentsBeforeDate removes all appointments till the specified date for barber with specified ID.
+func (s *Storage) DeleteAppointmentsBeforeDate(ctx context.Context, barberID int64, date string) error {
+	q := `DELETE FROM appointments WHERE workday_id IN (
+		SELECT id FROM workdays WHERE barber_id = ? AND date < ?
+		)`
+	s.rwMutex.Lock()
+	_, err := s.db.ExecContext(ctx, q, barberID, date)
+	s.rwMutex.Unlock()
+	if err != nil {
+		return e.Wrap("can't delete appointments", err)
+	}
+	return nil
+}
+
+// DeleteBarberByID removes barber with specified ID. It also removes all serviced, workdays and appointments associated with barber.
+func (s *Storage) DeleteBarberByID(ctx context.Context, barberID int64) error {
+	q := `DELETE FROM barbers WHERE id = ?`
+	s.rwMutex.Lock()
+	_, err := s.db.ExecContext(ctx, q, barberID)
+	s.rwMutex.Unlock()
+	if err != nil {
+		return e.Wrap("can't delete barber", err)
+	}
+	return nil
+}
+
 // DeleteWorkdaysByDateRange removes working days that fall within the date range.
 // It only removes working days for barber with specified barberID.
 func (s *Storage) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange st.DateRange) error {
