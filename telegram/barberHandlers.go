@@ -159,42 +159,42 @@ func init() {
 }
 
 func onStartBarber(ctx tele.Context) error {
-	if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
 		return logAndMsgErrBarber(ctx, "can't open the barber's main menu", err)
 	}
 	return ctx.Send(mainBarber, markupMainBarber)
 }
 
 func onSettingsBarber(ctx tele.Context) error {
-	if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
 		return logAndMsgErrBarber(ctx, "can't open the barber settings menu", err)
 	}
 	return ctx.Edit(settingsBarber, markupSettingsBarber)
 }
 
 func onUpdPersonalBarber(ctx tele.Context) error {
-	if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
 		return logAndMsgErrBarber(ctx, "can't open the barber's personal data menu", err)
 	}
 	return ctx.Edit(personalBarber, markupPersonalBarber)
 }
 
 func onUpdNameBarber(ctx tele.Context) error {
-	if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.NewStatus(ent.StateUpdName)}); err != nil {
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.NewStatus(ent.StateUpdName)}); err != nil {
 		return logAndMsgErrBarber(ctx, "can't ask barber to enter name", err)
 	}
 	return ctx.Edit(updNameBarber)
 }
 
 func onUpdPhoneBarber(ctx tele.Context) error {
-	if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.NewStatus(ent.StateUpdPhone)}); err != nil {
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.NewStatus(ent.StateUpdPhone)}); err != nil {
 		return logAndMsgErrBarber(ctx, "can't ask barber to enter phone", err)
 	}
 	return ctx.Edit(updPhoneBarber)
 }
 
 func onManageAccountBarber(ctx tele.Context) error {
-	if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
 		return logAndMsgErrBarber(ctx, "can't open the barber's manage account menu", err)
 	}
 	return ctx.Edit(manageAccountBarber, markupManageAccountBarber)
@@ -202,10 +202,10 @@ func onManageAccountBarber(ctx tele.Context) error {
 
 func onSetLastWorkDate(ctx tele.Context) error {
 	errMsg := "can't open select last work date menu"
-	if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	latestAppointmentDate, err := cp.CP.GetLatestAppointmentDate(ctx.Sender().ID)
+	latestAppointmentDate, err := cp.RepoWithContext.GetLatestAppointmentDate(ctx.Sender().ID)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
@@ -235,18 +235,18 @@ func onSelectLastWorkDate(ctx tele.Context) error {
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	barber, err := cp.CP.GetBarberByID(ctx.Sender().ID)
+	barber, err := cp.RepoWithContext.GetBarberByID(ctx.Sender().ID)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
 	switch dateToSave.Compare(barber.LastWorkdate) {
 	case 0:
-		if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+		if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
 		return ctx.Edit(lastWorkDateUnchanged, markupBackToMainBarber)
 	case 1:
-		if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, LastWorkdate: dateToSave, Status: ent.StatusStart}); err != nil {
+		if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, LastWorkdate: dateToSave, Status: ent.StatusStart}); err != nil {
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
 		if err := sched.MakeSchedule(ctx.Sender().ID); err != nil {
@@ -255,19 +255,19 @@ func onSelectLastWorkDate(ctx tele.Context) error {
 		}
 		return ctx.Edit(lastWorkDateSaved, markupBackToMainBarber)
 	case -1:
-		latestWorkDate, err := cp.CP.GetLatestWorkDate(ctx.Sender().ID)
+		latestWorkDate, err := cp.RepoWithContext.GetLatestWorkDate(ctx.Sender().ID)
 		if err != nil {
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
 		dateRangeToDelete := ent.DateRange{StartDate: dateToSave.Add(24 * time.Hour), EndDate: latestWorkDate}
-		err = cp.CP.DeleteWorkdaysByDateRange(ctx.Sender().ID, dateRangeToDelete)
+		err = cp.RepoWithContext.DeleteWorkdaysByDateRange(ctx.Sender().ID, dateRangeToDelete)
 		if err != nil && !errors.Is(err, rep.ErrInvalidDateRange) {
 			if errors.Is(err, rep.ErrAppointmentsExists) {
 				return ctx.Edit(haveAppointmentAfterDataToSave, markupBackToMainBarber)
 			}
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
-		if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, LastWorkdate: dateToSave, Status: ent.StatusStart}); err != nil {
+		if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, LastWorkdate: dateToSave, Status: ent.StatusStart}); err != nil {
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
 		return ctx.Edit(lastWorkDateSaved, markupBackToMainBarber)
@@ -277,14 +277,14 @@ func onSelectLastWorkDate(ctx tele.Context) error {
 }
 
 func onManageBarbers(ctx tele.Context) error {
-	if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
 		return logAndMsgErrBarber(ctx, "can't open the set barbers menu", err)
 	}
 	return ctx.Edit(manageBarbers, markupManageBarbers)
 }
 
 func onAddBarber(ctx tele.Context) error {
-	if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.NewStatus(ent.StateAddBarber)}); err != nil {
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.NewStatus(ent.StateAddBarber)}); err != nil {
 		return logAndMsgErrBarber(ctx, "can't ask barber to point on user to add", err)
 	}
 	return ctx.Edit(addBarber)
@@ -292,10 +292,10 @@ func onAddBarber(ctx tele.Context) error {
 
 func onDeleteBarber(ctx tele.Context) error {
 	errMsg := "can't suggest actions to delete barber"
-	if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	barberIDs, err := cp.CP.FindAllBarberIDs()
+	barberIDs, err := cp.RepoWithContext.FindAllBarberIDs()
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
@@ -318,16 +318,16 @@ func onDeleteCertainBarber(ctx tele.Context) error {
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	barberToDelete, err := cp.CP.GetBarberByID(barberIDToDelete)
+	barberToDelete, err := cp.RepoWithContext.GetBarberByID(barberIDToDelete)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
 	today := tm.Today()
 	if barberToDelete.LastWorkdate.Before(today) {
-		if err := cp.CP.DeleteAppointmentsBeforeDate(barberIDToDelete, today); err != nil {
+		if err := cp.RepoWithContext.DeleteAppointmentsBeforeDate(barberIDToDelete, today); err != nil {
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
-		if err := cp.CP.DeleteBarberByID(barberIDToDelete); err != nil {
+		if err := cp.RepoWithContext.DeleteBarberByID(barberIDToDelete); err != nil {
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
 		cfg.Barbers.RemoveID(barberIDToDelete)
@@ -337,7 +337,7 @@ func onDeleteCertainBarber(ctx tele.Context) error {
 }
 
 func onBackToMainBarber(ctx tele.Context) error {
-	if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
 		return logAndMsgErrBarber(ctx, "can't go back to the barber's main menu", err)
 	}
 	return ctx.Edit(mainBarber, markupMainBarber)
@@ -373,12 +373,12 @@ func onContactBarber(ctx tele.Context) error {
 
 func actualizeBarberStatus(barberID int64) (status ent.Status, err error) {
 	defer func() { err = e.WrapIfErr("can't actualize barber status", err) }()
-	barber, err := cp.CP.GetBarberByID(barberID)
+	barber, err := cp.RepoWithContext.GetBarberByID(barberID)
 	if err != nil {
 		return ent.StatusStart, err
 	}
 	if !barber.Status.IsValid() {
-		if err := cp.CP.UpdateBarber(ent.Barber{ID: barberID, Status: ent.StatusStart}); err != nil {
+		if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, Status: ent.StatusStart}); err != nil {
 			return ent.StatusStart, err
 		}
 		return ent.StatusStart, nil
@@ -388,11 +388,11 @@ func actualizeBarberStatus(barberID int64) (status ent.Status, err error) {
 
 func addNewBarber(ctx tele.Context) error {
 	errMsg := "can't add new barber"
-	if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
 	newBarberID := ctx.Message().Contact.UserID
-	if err := cp.CP.CreateBarber(newBarberID); err != nil {
+	if err := cp.RepoWithContext.CreateBarber(newBarberID); err != nil {
 		if errors.Is(err, rep.ErrAlreadyExists) {
 			return ctx.Send(userIsAlreadyBarber, markupBackToMainBarber)
 		}
@@ -417,7 +417,7 @@ func markupSelectBarberToDeletion(ctx tele.Context, barberIDs []int64) (*tele.Re
 	var rows []tele.Row
 	for _, barberID := range barberIDs {
 		if barberID != ctx.Sender().ID {
-			barber, err := cp.CP.GetBarberByID(barberID)
+			barber, err := cp.RepoWithContext.GetBarberByID(barberID)
 			if err != nil {
 				return &tele.ReplyMarkup{}, false, e.Wrap("can't make reply markup", err)
 			}
@@ -476,7 +476,7 @@ func markupSelectLastWorkDate(firstDisplayedDateRange ent.DateRange, relativeFir
 }
 
 func updateBarberName(ctx tele.Context) error {
-	if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Name: ctx.Message().Text, Status: ent.StatusStart}); err != nil {
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Name: ctx.Message().Text, Status: ent.StatusStart}); err != nil {
 		if errors.Is(err, rep.ErrInvalidName) {
 			log.Print(e.Wrap("invalid barber name", err))
 			return ctx.Send(invalidBarberName)
@@ -491,7 +491,7 @@ func updateBarberName(ctx tele.Context) error {
 }
 
 func updateBarberPhone(ctx tele.Context) error {
-	if err := cp.CP.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Phone: ctx.Message().Text, Status: ent.StatusStart}); err != nil {
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Phone: ctx.Message().Text, Status: ent.StatusStart}); err != nil {
 		if errors.Is(err, rep.ErrInvalidPhone) {
 			log.Print(e.Wrap("invalid barber phone", err))
 			return ctx.Send(invalidBarberPhone)

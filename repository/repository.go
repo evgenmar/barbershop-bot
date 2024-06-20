@@ -10,7 +10,7 @@ import (
 )
 
 type Repository struct {
-	storage st.Storage
+	st.Storage
 }
 
 var (
@@ -25,15 +25,9 @@ var (
 	ErrInvalidDateRange   = errors.New("invalid date range")
 )
 
-var Rep Repository
-
-func InitRepository(storage st.Storage) {
-	Rep = New(storage)
-}
-
 func New(storage st.Storage) Repository {
 	return Repository{
-		storage: storage,
+		Storage: storage,
 	}
 }
 
@@ -43,7 +37,7 @@ func (r Repository) CreateBarber(ctx context.Context, barberID int64) (err error
 			err = ErrAlreadyExists
 		}
 	}()
-	return r.storage.CreateBarber(ctx, barberID)
+	return r.Storage.CreateBarber(ctx, barberID)
 }
 
 func (r Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (err error) {
@@ -60,15 +54,15 @@ func (r Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (err
 		}
 		workdays = append(workdays, wd)
 	}
-	return r.storage.CreateWorkdays(ctx, workdays...)
+	return r.Storage.CreateWorkdays(ctx, workdays...)
 }
 
 func (r Repository) DeleteAppointmentsBeforeDate(ctx context.Context, barberID int64, date time.Time) error {
-	return r.storage.DeleteAppointmentsBeforeDate(ctx, barberID, mapToStorage.date(date))
+	return r.Storage.DeleteAppointmentsBeforeDate(ctx, barberID, mapToStorage.date(date))
 }
 
 func (r Repository) DeleteBarberByID(ctx context.Context, barberID int64) error {
-	return r.storage.DeleteBarberByID(ctx, barberID)
+	return r.Storage.DeleteBarberByID(ctx, barberID)
 }
 
 func (r Repository) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (err error) {
@@ -81,11 +75,11 @@ func (r Repository) DeleteWorkdaysByDateRange(ctx context.Context, barberID int6
 	if err != nil {
 		return err
 	}
-	return r.storage.DeleteWorkdaysByDateRange(ctx, barberID, dr)
+	return r.Storage.DeleteWorkdaysByDateRange(ctx, barberID, dr)
 }
 
 func (r Repository) FindAllBarberIDs(ctx context.Context) ([]int64, error) {
-	return r.storage.FindAllBarberIDs(ctx)
+	return r.Storage.FindAllBarberIDs(ctx)
 }
 
 func (r Repository) GetBarberByID(ctx context.Context, barberID int64) (barber ent.Barber, err error) {
@@ -94,7 +88,7 @@ func (r Repository) GetBarberByID(ctx context.Context, barberID int64) (barber e
 			err = ErrNoSavedBarber
 		}
 	}()
-	br, err := r.storage.GetBarberByID(ctx, barberID)
+	br, err := r.Storage.GetBarberByID(ctx, barberID)
 	if err != nil {
 		return ent.Barber{}, err
 	}
@@ -103,7 +97,7 @@ func (r Repository) GetBarberByID(ctx context.Context, barberID int64) (barber e
 
 func (r Repository) GetLatestAppointmentDate(ctx context.Context, barberID int64) (date time.Time, err error) {
 	defer func() { err = e.WrapIfErr("can't get latest appointment date", err) }()
-	latestAD, err := r.storage.GetLatestAppointmentDate(ctx, barberID)
+	latestAD, err := r.Storage.GetLatestAppointmentDate(ctx, barberID)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -112,7 +106,7 @@ func (r Repository) GetLatestAppointmentDate(ctx context.Context, barberID int64
 
 func (r Repository) GetLatestWorkDate(ctx context.Context, barberID int64) (date time.Time, err error) {
 	defer func() { err = e.WrapIfErr("can't get latest work date", err) }()
-	latestWD, err := r.storage.GetLatestWorkDate(ctx, barberID)
+	latestWD, err := r.Storage.GetLatestWorkDate(ctx, barberID)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -125,7 +119,7 @@ func (r Repository) GetWorkdaysByDateRange(ctx context.Context, barberID int64, 
 	if err != nil {
 		return nil, err
 	}
-	wds, err := r.storage.GetWorkdaysByDateRange(ctx, barberID, dr)
+	wds, err := r.Storage.GetWorkdaysByDateRange(ctx, barberID, dr)
 	if err != nil {
 		return nil, err
 	}
@@ -150,5 +144,5 @@ func (r Repository) UpdateBarber(ctx context.Context, barber ent.Barber) (err er
 	if err != nil {
 		return err
 	}
-	return r.storage.UpdateBarber(ctx, br)
+	return r.Storage.UpdateBarber(ctx, br)
 }

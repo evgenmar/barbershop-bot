@@ -6,7 +6,7 @@ import (
 )
 
 type StorageContextProvider struct {
-	Storage st.Storage
+	st.Storage
 }
 
 func NewStorageContextProvider(storage st.Storage) StorageContextProvider {

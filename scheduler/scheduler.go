@@ -54,24 +54,24 @@ func MakeSchedules() (err error) {
 // Mondays are accepted as non-working days. On other days the working time is from 10:00 to 19:00.
 func MakeSchedule(barberID int64) (err error) {
 	defer func() { err = e.WrapIfErr("can't make schedule", err) }()
-	latestWorkDate, err := cp.CP.GetLatestWorkDate(barberID)
+	latestWorkDate, err := cp.RepoWithContext.GetLatestWorkDate(barberID)
 	if err != nil {
 		return err
 	}
-	barber, err := cp.CP.GetBarberByID(barberID)
+	barber, err := cp.RepoWithContext.GetBarberByID(barberID)
 	if err != nil {
 		return err
 	}
 	if latestWorkDate.After(barber.LastWorkdate) {
 		dateRangeToDelete := ent.DateRange{StartDate: barber.LastWorkdate.Add(24 * time.Hour), EndDate: latestWorkDate}
-		if err := cp.CP.DeleteWorkdaysByDateRange(barber.ID, dateRangeToDelete); err != nil {
+		if err := cp.RepoWithContext.DeleteWorkdaysByDateRange(barber.ID, dateRangeToDelete); err != nil {
 			return err
 		}
 		return nil
 	}
 	workdays := calculateSchedule(latestWorkDate, barber)
 	if len(workdays) > 0 {
-		if err = cp.CP.CreateWorkdays(workdays...); err != nil {
+		if err = cp.RepoWithContext.CreateWorkdays(workdays...); err != nil {
 			return err
 		}
 	}
