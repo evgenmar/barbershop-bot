@@ -16,6 +16,9 @@ const (
 )
 
 func (d Duration) String() string {
+	if d == 0 {
+		return ""
+	}
 	hours := int(d / 60)
 	minutes := int(d) - hours*60
 	return fmt.Sprintf("%02d:%02d", hours, minutes)

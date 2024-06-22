@@ -50,7 +50,7 @@ func (s *Storage) CreateBarber(ctx context.Context, barberID int64) error {
 // CreateService saves new service to storage.
 func (s *Storage) CreateService(ctx context.Context, service st.Service) (err error) {
 	defer func() { err = e.WrapIfErr("can't save service", err) }()
-	if service.BarberID < 1 || service.Name == "" || service.Desciption == "" || service.Price < 1 || service.Duration == "00:00" {
+	if service.BarberID < 1 || service.Name == "" || service.Desciption == "" || service.Price < 1 || service.Duration == "" {
 		return st.ErrInvalidService
 	}
 	q := `INSERT INTO services (barber_id, name, description, price, duration) VALUES (?, ?, ?, ?, ?)`
@@ -402,7 +402,7 @@ func (s *Storage) UpdateService(ctx context.Context, service st.Service) (err er
 		query = append(query, "price = ?")
 		args = append(args, service.Price)
 	}
-	if service.Duration != "00:00" {
+	if service.Duration != "" {
 		query = append(query, "duration = ?")
 		args = append(args, service.Duration)
 	}
