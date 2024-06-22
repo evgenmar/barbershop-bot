@@ -51,7 +51,7 @@ func actualizeBarberIDs() {
 }
 
 func getBarberIDsFromRepo() []int64 {
-	barberIDs, err := cp.RepoWithContext.FindAllBarberIDs()
+	barberIDs, err := cp.RepoWithContext.GetAllBarberIDs()
 	if err != nil {
 		log.Fatal(e.Wrap("can't get barberIDs from storage", err))
 	}

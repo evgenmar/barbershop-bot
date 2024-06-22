@@ -7,15 +7,20 @@ import (
 )
 
 var (
-	ErrNoSavedBarber      = errors.New("no saved barber with specified ID")
-	ErrNonUniqueData      = errors.New("data to save must be unique")
-	ErrAlreadyExists      = errors.New("the object being saved already exists")
-	ErrAppointmentsExists = errors.New("there are active appointments for the period being deleted")
+	ErrAlreadyExists        = errors.New("the object being saved already exists")
+	ErrAppointmentsExists   = errors.New("there are active appointments for the period being deleted")
+	ErrInvalidService       = errors.New("invalid service")
+	ErrNonUniqueData        = errors.New("data to save must be unique")
+	ErrNoSavedBarber        = errors.New("no saved barber with specified ID")
+	ErrUnspecifiedServiceID = errors.New("unspecified serviceID")
 )
 
 type Storage interface {
 	//CreateBarber saves new BarberID to storage.
 	CreateBarber(ctx context.Context, barberID int64) error
+
+	//CreateService saves new service to storage.
+	CreateService(ctx context.Context, service Service) error
 
 	//CreateWorkdays saves new Workdays to storage.
 	CreateWorkdays(ctx context.Context, workdays ...Workday) error
@@ -26,12 +31,15 @@ type Storage interface {
 	// DeleteBarberByID removes barber with specified ID. It also removes all serviced, workdays and appointments associated with barber.
 	DeleteBarberByID(ctx context.Context, barberID int64) error
 
+	// DeleteServiceByID removes service with specified ID.
+	DeleteServiceByID(ctx context.Context, serviceID int) error
+
 	//DeleteWorkdaysByDateRange removes working days that fall within the date range.
 	//It only removes working days for barber with specified barberID.
 	DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange DateRange) error
 
 	//FindAllBarberIDs return a slice of IDs of all barbers.
-	FindAllBarberIDs(ctx context.Context) ([]int64, error)
+	GetAllBarberIDs(ctx context.Context) ([]int64, error)
 
 	//GetBarberByID returns barber with barberID.
 	GetBarberByID(ctx context.Context, barberID int64) (Barber, error)
@@ -44,6 +52,9 @@ type Storage interface {
 	//If there is no saved work dates it returns "2000-01-01".
 	GetLatestWorkDate(ctx context.Context, barberID int64) (string, error)
 
+	// GetServicesByBarberID returns all services provided by barber with specified ID.
+	GetServicesByBarberID(ctx context.Context, barberID int64) ([]Service, error)
+
 	// GetWorkdaysByDateRange returns working days that fall within the date range.
 	// It only returns working days for barber with specified ID.
 	// Returned working days are sorted by date in ascending order.
@@ -52,8 +63,12 @@ type Storage interface {
 	// Init prepares the storage for use. It creates the necessary tables if not exists.
 	Init(ctx context.Context) error
 
-	//UpdateBarber updates valid fields of Barber. ID field must be valid.
+	// UpdateBarber updates valid fields of Barber. ID field must be valid and remains not updated.
 	UpdateBarber(ctx context.Context, barber Barber) error
+
+	// UpdateService updates valid fields of Service. ID field must be valid and remains not updated.
+	// UpdateService also doesn't updates barber_id field even if it's valid.
+	UpdateService(ctx context.Context, service Service) error
 }
 
 type Barber struct {
@@ -71,6 +86,16 @@ type Barber struct {
 type DateRange struct {
 	StartDate string
 	EndDate   string
+}
+
+type Service struct {
+	//ID field autofills when new service saved. No need to pass this field to Storage: passed value will be ignored. It intended for read purposes only.
+	ID         int    `db:"id"`
+	BarberID   int64  `db:"barber_id"`
+	Name       string `db:"name"`
+	Desciption string `db:"description"`
+	Price      int    `db:"price"`
+	Duration   string `db:"duration"`
 }
 
 type Status struct {

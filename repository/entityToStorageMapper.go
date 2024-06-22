@@ -9,11 +9,8 @@ import (
 
 type entityToStorageMapper struct{}
 
-func (e entityToStorageMapper) barber(barber ent.Barber) (st.Barber, error) {
+func (e entityToStorageMapper) barber(barber ent.Barber) st.Barber {
 	var br st.Barber
-	if barber.ID == 0 {
-		return br, ErrInvalidID
-	}
 	br.ID = barber.ID
 	br.Name = nullString(barber.Name)
 	br.Phone = nullString(barber.Phone)
@@ -21,7 +18,7 @@ func (e entityToStorageMapper) barber(barber ent.Barber) (st.Barber, error) {
 		br.LastWorkDate = e.date(barber.LastWorkdate)
 	}
 	br.Status = mapStatusToStorage(barber.Status)
-	return br, nil
+	return br
 }
 
 func (e entityToStorageMapper) date(date time.Time) string {
@@ -35,16 +32,24 @@ func (e entityToStorageMapper) dateRange(dateRange ent.DateRange) st.DateRange {
 	}
 }
 
-func (e entityToStorageMapper) workday(workday ent.Workday) (st.Workday, error) {
-	if workday.BarberID == 0 || workday.Date.Equal(time.Time{}) || workday.StartTime < 0 || workday.EndTime <= workday.StartTime {
-		return st.Workday{}, ErrInvalidWorkday
+func (e entityToStorageMapper) service(service ent.Service) st.Service {
+	return st.Service{
+		ID:         service.ID,
+		BarberID:   service.BarberID,
+		Name:       service.Name,
+		Desciption: service.Desciption,
+		Price:      service.Price,
+		Duration:   service.Duration.String(),
 	}
+}
+
+func (e entityToStorageMapper) workday(workday ent.Workday) st.Workday {
 	return st.Workday{
 		BarberID:  workday.BarberID,
 		Date:      e.date(workday.Date),
 		StartTime: workday.StartTime.String(),
 		EndTime:   workday.EndTime.String(),
-	}, nil
+	}
 }
 
 func mapStatusToStorage(stat ent.Status) (status st.Status) {

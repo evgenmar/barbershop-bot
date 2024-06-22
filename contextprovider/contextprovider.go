@@ -35,6 +35,13 @@ func (c ContextProvider) CreateBarber(barberID int64) (err error) {
 	return c.repo.CreateBarber(ctx, barberID)
 }
 
+func (c ContextProvider) CreateService(service ent.Service) (err error) {
+	defer func() { err = e.WrapIfErr("can't save new service", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
+	defer cancel()
+	return c.repo.CreateService(ctx, service)
+}
+
 func (c ContextProvider) CreateWorkdays(wds ...ent.Workday) (err error) {
 	defer func() { err = e.WrapIfErr("can't create workdays", err) }()
 	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
@@ -56,6 +63,13 @@ func (c ContextProvider) DeleteBarberByID(barberID int64) (err error) {
 	return c.repo.DeleteBarberByID(ctx, barberID)
 }
 
+func (c ContextProvider) DeleteServiceByID(serviceID int) (err error) {
+	defer func() { err = e.WrapIfErr("can't delete service", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
+	defer cancel()
+	return c.repo.DeleteServiceByID(ctx, serviceID)
+}
+
 func (c ContextProvider) DeleteWorkdaysByDateRange(barberID int64, dateRangeToDelete ent.DateRange) (err error) {
 	defer func() { err = e.WrapIfErr("can't delete workdays", err) }()
 	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
@@ -63,11 +77,11 @@ func (c ContextProvider) DeleteWorkdaysByDateRange(barberID int64, dateRangeToDe
 	return c.repo.DeleteWorkdaysByDateRange(ctx, barberID, dateRangeToDelete)
 }
 
-func (c ContextProvider) FindAllBarberIDs() (barberIDs []int64, err error) {
+func (c ContextProvider) GetAllBarberIDs() (barberIDs []int64, err error) {
 	defer func() { err = e.WrapIfErr("can't get barber IDs", err) }()
 	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
 	defer cancel()
-	return c.repo.FindAllBarberIDs(ctx)
+	return c.repo.GetAllBarberIDs(ctx)
 }
 
 func (c ContextProvider) GetBarberByID(barberID int64) (barber ent.Barber, err error) {
@@ -91,6 +105,13 @@ func (c ContextProvider) GetLatestWorkDate(barberID int64) (date time.Time, err 
 	return c.repo.GetLatestWorkDate(ctx, barberID)
 }
 
+func (c ContextProvider) GetServicesByBarberID(barberID int64) (services []ent.Service, err error) {
+	defer func() { err = e.WrapIfErr("can't get services", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
+	defer cancel()
+	return c.repo.GetServicesByBarberID(ctx, barberID)
+}
+
 func (c ContextProvider) GetWorkdaysByDateRange(barberID int64, dateRange ent.DateRange) (workdays []ent.Workday, err error) {
 	defer func() { err = e.WrapIfErr("can't get workdays", err) }()
 	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
@@ -103,4 +124,11 @@ func (c ContextProvider) UpdateBarber(barber ent.Barber) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
 	defer cancel()
 	return c.repo.UpdateBarber(ctx, barber)
+}
+
+func (c ContextProvider) UpdateService(service ent.Service) (err error) {
+	defer func() { err = e.WrapIfErr("can't update service", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
+	defer cancel()
+	return c.repo.UpdateService(ctx, service)
 }

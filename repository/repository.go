@@ -14,15 +14,17 @@ type Repository struct {
 }
 
 var (
-	ErrNoSavedBarber      = st.ErrNoSavedBarber
-	ErrNonUniqueData      = st.ErrNonUniqueData
 	ErrAlreadyExists      = st.ErrAlreadyExists
 	ErrAppointmentsExists = st.ErrAppointmentsExists
+	ErrNonUniqueData      = st.ErrNonUniqueData
+	ErrNoSavedBarber      = st.ErrNoSavedBarber
+	ErrInvalidDate        = errors.New("invalid date")
+	ErrInvalidDateRange   = errors.New("invalid date range")
 	ErrInvalidID          = errors.New("invalid ID")
-	ErrInvalidWorkday     = errors.New("invalid workday")
 	ErrInvalidName        = errors.New("invalid name")
 	ErrInvalidPhone       = errors.New("invalid phone")
-	ErrInvalidDateRange   = errors.New("invalid date range")
+	ErrInvalidService     = st.ErrInvalidService
+	ErrInvalidWorkday     = errors.New("invalid workday")
 )
 
 func New(storage st.Storage) Repository {
@@ -38,6 +40,22 @@ func (r Repository) CreateBarber(ctx context.Context, barberID int64) (err error
 		}
 	}()
 	return r.Storage.CreateBarber(ctx, barberID)
+}
+
+func (r Repository) CreateService(ctx context.Context, service ent.Service) (err error) {
+	defer func() {
+		if errors.Is(err, st.ErrAlreadyExists) {
+			err = ErrAlreadyExists
+		}
+		if errors.Is(err, st.ErrInvalidService) {
+			err = ErrInvalidService
+		}
+	}()
+	serv, err := mapToStorage.service(service)
+	if err != nil {
+		return err
+	}
+	return r.Storage.CreateService(ctx, serv)
 }
 
 func (r Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (err error) {
@@ -58,11 +76,19 @@ func (r Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (err
 }
 
 func (r Repository) DeleteAppointmentsBeforeDate(ctx context.Context, barberID int64, date time.Time) error {
-	return r.Storage.DeleteAppointmentsBeforeDate(ctx, barberID, mapToStorage.date(date))
+	d, err := mapToStorage.date(date)
+	if err != nil {
+		return err
+	}
+	return r.Storage.DeleteAppointmentsBeforeDate(ctx, barberID, d)
 }
 
 func (r Repository) DeleteBarberByID(ctx context.Context, barberID int64) error {
 	return r.Storage.DeleteBarberByID(ctx, barberID)
+}
+
+func (r Repository) DeleteServiceByID(ctx context.Context, serviceID int) error {
+	return r.Storage.DeleteServiceByID(ctx, serviceID)
 }
 
 func (r Repository) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (err error) {
@@ -78,8 +104,8 @@ func (r Repository) DeleteWorkdaysByDateRange(ctx context.Context, barberID int6
 	return r.Storage.DeleteWorkdaysByDateRange(ctx, barberID, dr)
 }
 
-func (r Repository) FindAllBarberIDs(ctx context.Context) ([]int64, error) {
-	return r.Storage.FindAllBarberIDs(ctx)
+func (r Repository) GetAllBarberIDs(ctx context.Context) ([]int64, error) {
+	return r.Storage.GetAllBarberIDs(ctx)
 }
 
 func (r Repository) GetBarberByID(ctx context.Context, barberID int64) (barber ent.Barber, err error) {
@@ -111,6 +137,22 @@ func (r Repository) GetLatestWorkDate(ctx context.Context, barberID int64) (date
 		return time.Time{}, err
 	}
 	return mapToEntity.date(latestWD)
+}
+
+func (r Repository) GetServicesByBarberID(ctx context.Context, barberID int64) (services []ent.Service, err error) {
+	defer func() { err = e.WrapIfErr("can't get services", err) }()
+	servs, err := r.Storage.GetServicesByBarberID(ctx, barberID)
+	if err != nil {
+		return nil, err
+	}
+	for _, serv := range servs {
+		service, err := mapToEntity.service(serv)
+		if err != nil {
+			return nil, err
+		}
+		services = append(services, service)
+	}
+	return services, nil
 }
 
 func (r Repository) GetWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (workdays []ent.Workday, err error) {
@@ -145,4 +187,21 @@ func (r Repository) UpdateBarber(ctx context.Context, barber ent.Barber) (err er
 		return err
 	}
 	return r.Storage.UpdateBarber(ctx, br)
+}
+
+// UpdateService updates only non-empty fields of Service. BarberID field never updates.
+func (r Repository) UpdateService(ctx context.Context, service ent.Service) (err error) {
+	defer func() {
+		if errors.Is(err, st.ErrNonUniqueData) {
+			err = ErrNonUniqueData
+		}
+		if errors.Is(err, st.ErrUnspecifiedServiceID) {
+			err = ErrInvalidID
+		}
+	}()
+	serv, err := mapToStorage.service(service)
+	if err != nil {
+		return err
+	}
+	return r.Storage.UpdateService(ctx, serv)
 }

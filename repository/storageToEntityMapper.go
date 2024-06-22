@@ -39,6 +39,21 @@ func (s storageToEntityMapper) date(date string) (time.Time, error) {
 	return time.ParseInLocation(time.DateOnly, date, cfg.Location)
 }
 
+func (s storageToEntityMapper) service(service st.Service) (ent.Service, error) {
+	duration, err := tm.ParseDuration(service.Duration)
+	if err != nil {
+		return ent.Service{}, e.Wrap("can't map duration to entity", err)
+	}
+	return ent.Service{
+		ID:         service.ID,
+		BarberID:   service.BarberID,
+		Name:       service.Name,
+		Desciption: service.Desciption,
+		Price:      service.Price,
+		Duration:   duration,
+	}, nil
+}
+
 func (s storageToEntityMapper) workday(workday st.Workday) (ent.Workday, error) {
 	date, err := s.date(workday.Date)
 	if err != nil {

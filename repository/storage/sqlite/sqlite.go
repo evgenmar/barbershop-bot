@@ -47,6 +47,25 @@ func (s *Storage) CreateBarber(ctx context.Context, barberID int64) error {
 	return nil
 }
 
+// CreateService saves new service to storage.
+func (s *Storage) CreateService(ctx context.Context, service st.Service) (err error) {
+	defer func() { err = e.WrapIfErr("can't save service", err) }()
+	if service.BarberID < 1 || service.Name == "" || service.Desciption == "" || service.Price < 1 || service.Duration == "00:00" {
+		return st.ErrInvalidService
+	}
+	q := `INSERT INTO services (barber_id, name, description, price, duration) VALUES (?, ?, ?, ?, ?)`
+	s.rwMutex.Lock()
+	_, err = s.db.ExecContext(ctx, q, service.BarberID, service.Name, service.Desciption, service.Price, service.Duration)
+	s.rwMutex.Unlock()
+	if err != nil {
+		if errors.Is(err, sqlite3.CONSTRAINT) {
+			err = st.ErrAlreadyExists
+		}
+		return err
+	}
+	return nil
+}
+
 // CreateWorkdays saves new Workdays to storage.
 func (s *Storage) CreateWorkdays(ctx context.Context, workdays ...st.Workday) error {
 	placeholders := make([]string, 0, len(workdays))
@@ -94,6 +113,18 @@ func (s *Storage) DeleteBarberByID(ctx context.Context, barberID int64) error {
 	return nil
 }
 
+// DeleteServiceByID removes service with specified ID.
+func (s *Storage) DeleteServiceByID(ctx context.Context, serviceID int) error {
+	q := `DELETE FROM services WHERE id = ?`
+	s.rwMutex.Lock()
+	_, err := s.db.ExecContext(ctx, q, serviceID)
+	s.rwMutex.Unlock()
+	if err != nil {
+		return e.Wrap("can't delete service", err)
+	}
+	return nil
+}
+
 // DeleteWorkdaysByDateRange removes working days that fall within the date range.
 // It only removes working days for barber with specified barberID.
 func (s *Storage) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange st.DateRange) error {
@@ -111,7 +142,7 @@ func (s *Storage) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64,
 }
 
 // FindAllBarberIDs return a slice of IDs of all barbers.
-func (s *Storage) FindAllBarberIDs(ctx context.Context) (barberIDs []int64, err error) {
+func (s *Storage) GetAllBarberIDs(ctx context.Context) (barberIDs []int64, err error) {
 	defer func() { err = e.WrapIfErr("can't get barber IDs", err) }()
 	q := `SELECT id FROM barbers`
 	s.rwMutex.RLock()
@@ -185,6 +216,32 @@ func (s *Storage) GetLatestWorkDate(ctx context.Context, barberID int64) (string
 		return "", e.Wrap("can't get latest workdate", err)
 	}
 	return date, nil
+}
+
+// GetServicesByBarberID returns all services provided by barber with specified ID.
+func (s *Storage) GetServicesByBarberID(ctx context.Context, barberID int64) (services []st.Service, err error) {
+	defer func() { err = e.WrapIfErr("can't get services", err) }()
+	q := `SELECT id, name, description, price, duration FROM services WHERE barber_id = ?`
+	s.rwMutex.RLock()
+	rows, err := s.db.QueryContext(ctx, q, barberID)
+	s.rwMutex.RUnlock()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var service st.Service
+		if err := rows.Scan(&service.ID, &service.Name, &service.Desciption, &service.Price, &service.Duration); err != nil {
+			return nil, err
+		}
+		service.BarberID = barberID
+		services = append(services, service)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return services, nil
 }
 
 // GetWorkdaysByDateRange returns working days that fall within the date range.
@@ -290,20 +347,20 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 	return nil
 }
 
-// UpdateBarber updates valid fields of Barber. ID field must be valid.
+// UpdateBarber updates valid fields of Barber. ID field must be valid and remains not updated.
 func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) error {
 	query := make([]string, 0, 4)
-	args := make([]interface{}, 0, 4)
+	args := make([]interface{}, 0, 5)
 	if barber.Name.Valid {
-		query = append(query, "name = ? ")
+		query = append(query, "name = ?")
 		args = append(args, barber.Name)
 	}
 	if barber.Phone.Valid {
-		query = append(query, "phone = ? ")
+		query = append(query, "phone = ?")
 		args = append(args, barber.Phone)
 	}
 	if barber.LastWorkDate != "" {
-		query = append(query, "last_workdate = ? ")
+		query = append(query, "last_workdate = ?")
 		args = append(args, barber.LastWorkDate)
 	}
 	if barber.State.Valid && barber.Expiration.Valid {
@@ -311,7 +368,7 @@ func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) error {
 		args = append(args, barber.State, barber.Expiration)
 	}
 	args = append(args, barber.ID)
-	q := fmt.Sprintf(`UPDATE barbers SET %s WHERE id = ?`, strings.Join(query, ", "))
+	q := fmt.Sprintf(`UPDATE barbers SET %s WHERE id = ?`, strings.Join(query, " , "))
 	s.rwMutex.Lock()
 	_, err := s.db.ExecContext(ctx, q, args...)
 	s.rwMutex.Unlock()
@@ -319,7 +376,46 @@ func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) error {
 		if errors.Is(err, sqlite3.CONSTRAINT) {
 			err = st.ErrNonUniqueData
 		}
-		return e.Wrap("can't save barber", err)
+		return e.Wrap("can't update barber", err)
+	}
+	return nil
+}
+
+// UpdateService updates valid fields of Service. ID field must be valid and remains not updated.
+// UpdateService also doesn't updates barber_id field even if it's valid.
+func (s *Storage) UpdateService(ctx context.Context, service st.Service) (err error) {
+	defer func() { err = e.WrapIfErr("can't update service", err) }()
+	if service.ID < 1 {
+		return st.ErrUnspecifiedServiceID
+	}
+	query := make([]string, 0, 4)
+	args := make([]interface{}, 0, 4)
+	if service.Name != "" {
+		query = append(query, "name = ?")
+		args = append(args, service.Name)
+	}
+	if service.Desciption != "" {
+		query = append(query, "description = ?")
+		args = append(args, service.Desciption)
+	}
+	if service.Price != 0 {
+		query = append(query, "price = ?")
+		args = append(args, service.Price)
+	}
+	if service.Duration != "00:00" {
+		query = append(query, "duration = ?")
+		args = append(args, service.Duration)
+	}
+	args = append(args, service.ID)
+	q := fmt.Sprintf(`UPDATE services SET %s WHERE id = ?`, strings.Join(query, " , "))
+	s.rwMutex.Lock()
+	_, err = s.db.ExecContext(ctx, q, args...)
+	s.rwMutex.Unlock()
+	if err != nil {
+		if errors.Is(err, sqlite3.CONSTRAINT) {
+			err = st.ErrNonUniqueData
+		}
+		return err
 	}
 	return nil
 }
