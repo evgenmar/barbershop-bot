@@ -94,7 +94,7 @@ type Service struct {
 	BarberID   int64  `db:"barber_id"`
 	Name       string `db:"name"`
 	Desciption string `db:"description"`
-	Price      int    `db:"price"`
+	Price      uint   `db:"price"`
 	Duration   string `db:"duration"`
 }
 

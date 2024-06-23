@@ -39,7 +39,7 @@ func (e EntityToStorageMapper) Service(service ent.Service) st.Service {
 		BarberID:   service.BarberID,
 		Name:       service.Name,
 		Desciption: service.Desciption,
-		Price:      service.Price,
+		Price:      uint(service.Price),
 		Duration:   service.Duration.ShortString(),
 	}
 }

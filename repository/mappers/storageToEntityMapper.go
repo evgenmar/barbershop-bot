@@ -49,7 +49,7 @@ func (s StorageToEntityMapper) Service(service st.Service) (ent.Service, error) 
 		BarberID:   service.BarberID,
 		Name:       service.Name,
 		Desciption: service.Desciption,
-		Price:      service.Price,
+		Price:      ent.Price(service.Price),
 		Duration:   duration,
 	}, nil
 }

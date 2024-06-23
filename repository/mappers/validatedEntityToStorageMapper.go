@@ -53,7 +53,7 @@ func (v ValidatedEntityToStorageMapper) DateRange(dateRange ent.DateRange) (st.D
 }
 
 func (v ValidatedEntityToStorageMapper) Service(service ent.Service) (st.Service, error) {
-	if service.ID < 0 || service.BarberID < 0 || service.Price < 0 || service.Duration < 0 {
+	if service.ID < 0 || service.BarberID < 0 || service.Duration < 0 {
 		return st.Service{}, ErrInvalidService
 	}
 	if service.Name != "" && !isValidName(service.Name) {
