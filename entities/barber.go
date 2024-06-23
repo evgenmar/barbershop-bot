@@ -24,19 +24,19 @@ const (
 	NoPhoneBarber = "Номер не указан"
 )
 
-var endlessWorkdate time.Time
+var infiniteWorkDate time.Time
 
 func init() {
-	year3000, err := time.ParseInLocation(time.DateOnly, "3000-01-01", cfg.Location)
+	infWorkDate, err := time.ParseInLocation(time.DateOnly, cfg.InfiniteWorkDate, cfg.Location)
 	if err != nil {
 		log.Fatal(err)
 	}
-	endlessWorkdate = year3000
+	infiniteWorkDate = infWorkDate
 }
 
 func (b Barber) Info() string {
 	var lastWorkDate string
-	if b.LastWorkdate.Equal(endlessWorkdate) {
+	if b.LastWorkdate.Equal(infiniteWorkDate) {
 		lastWorkDate = "бессрочно"
 	} else {
 		lastWorkDate = "до " + b.LastWorkdate.Format("02.01.2006")

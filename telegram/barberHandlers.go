@@ -550,7 +550,7 @@ func markupSelectLastWorkDate(firstDisplayedDateRange ent.DateRange, relativeFir
 		btnsDatesToSelect = append(btnsDatesToSelect, btnEmpty)
 	}
 	rowsSelectDate := markup.Split(7, btnsDatesToSelect)
-	rowRestoreDefaultDate := markup.Row(markup.Data("Установить бессрочную дату окончания работы", endpntSelectLastWorkDate, "3000-01-01"))
+	rowRestoreDefaultDate := markup.Row(markup.Data("Установить бессрочную дату окончания работы", endpntSelectLastWorkDate, cfg.InfiniteWorkDate))
 	rowBackToMainBarber := markup.Row(btnBackToMainBarber)
 	var rows []tele.Row
 	rows = append(rows, rowSelectMonth, rowWeekdays)

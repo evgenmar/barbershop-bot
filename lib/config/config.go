@@ -14,6 +14,7 @@ type ProtectedIDs struct {
 const ScheduledWeeks byte = 26
 const NonWorkingDay time.Weekday = time.Monday
 const MaxAppointmentBookingMonths int = 1
+const InfiniteWorkDate = "3000-01-01"
 
 // location is the time zone where the barbershop is located.
 var Location *time.Location

@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	cfg "barbershop-bot/lib/config"
 	"barbershop-bot/lib/e"
 	st "barbershop-bot/repository/storage"
 	"context"
@@ -292,7 +293,7 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 		id INTEGER PRIMARY KEY, 
 		name TEXT UNIQUE, 
 		phone TEXT UNIQUE, 
-		last_workdate TEXT DEFAULT '3000-01-01',
+		last_workdate TEXT DEFAULT '` + cfg.InfiniteWorkDate + `',
 		state INTEGER,
 		state_expiration TEXT
 		)`
