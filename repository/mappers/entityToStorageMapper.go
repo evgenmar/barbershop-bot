@@ -64,6 +64,9 @@ func mapStatusToStorage(stat ent.Status) (status st.Status) {
 }
 
 func normalizePhone(phone string) (normalized string) {
+	if phone == "" {
+		return ""
+	}
 	for _, r := range phone {
 		if unicode.IsDigit(r) {
 			normalized = normalized + string(r)

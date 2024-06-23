@@ -47,6 +47,7 @@ const (
 	notUniqueBarberPhone = `Номер телефона не сохранен. Другой барбер с таким номером уже зарегистрирован в приложении. Введите другой номер.
 При необходимости вернуться в главное меню воспользуйтесь командой /start`
 
+	deleteAccount                   = "В этом меню собраны функции, необходимые для корректного прекращения работы в качестве барбера в этом боте."
 	endpntSelectMonthOfLastWorkDate = "select_month_of_last_work_date"
 	endpntSelectLastWorkDate        = "select_last_work_date"
 	selectLastWorkDate              = `Данную функцию следует использовать, если Вы планируете прекратить использовать этот бот в своей работе и хотите, чтобы клиенты перестали использовать бот для записи к Вам на стрижку.
@@ -120,13 +121,16 @@ var (
 	markupManageAccountBarber    = &tele.ReplyMarkup{}
 	btnShowCurrentSettingsBarber = markupManageAccountBarber.Data("Посмотреть мои текущие настройки", "show_current_settings_barber")
 	btnUpdPersonalBarber         = markupManageAccountBarber.Data("Обновить персональные данные", "upd_personal_data_barber")
-	btnSetLastWorkDate           = markupManageAccountBarber.Data("Установить последний рабочий день", endpntSelectMonthOfLastWorkDate, "0")
-	btnSelectLastWorkDate        = markupManageAccountBarber.Data("", endpntSelectLastWorkDate)
-	btnSelfDeleteBarber          = markupManageAccountBarber.Data(`Отказаться от статуса "барбер"`, "self_delete_barber")
+	btnDeleteAccount             = markupManageAccountBarber.Data("Удаление аккаунта барбера", "delete_account")
 
 	markupPersonalBarber = &tele.ReplyMarkup{}
 	btnUpdNameBarber     = markupPersonalBarber.Data("Обновить имя", "upd_name_barber")
 	btnUpdPhoneBarber    = markupPersonalBarber.Data("Обновить номер телефона", "upd_phone_barber")
+
+	markupDeleteAccount   = &tele.ReplyMarkup{}
+	btnSetLastWorkDate    = markupDeleteAccount.Data("Установить последний рабочий день", endpntSelectMonthOfLastWorkDate, "0")
+	btnSelectLastWorkDate = markupDeleteAccount.Data("", endpntSelectLastWorkDate)
+	btnSelfDeleteBarber   = markupDeleteAccount.Data(`Отказаться от статуса "барбер"`, "self_delete_barber")
 
 	markupConfirmSelfDeletion = &tele.ReplyMarkup{}
 	btnSureToDelete           = markupConfirmSelfDeletion.Data("Уверен, удалить!", "sure_to_delete")
@@ -155,8 +159,7 @@ func init() {
 	markupManageAccountBarber.Inline(
 		markupManageAccountBarber.Row(btnShowCurrentSettingsBarber),
 		markupManageAccountBarber.Row(btnUpdPersonalBarber),
-		markupManageAccountBarber.Row(btnSetLastWorkDate),
-		markupManageAccountBarber.Row(btnSelfDeleteBarber),
+		markupManageAccountBarber.Row(btnDeleteAccount),
 		markupManageAccountBarber.Row(btnBackToMainBarber),
 	)
 
@@ -164,6 +167,12 @@ func init() {
 		markupPersonalBarber.Row(btnUpdNameBarber),
 		markupPersonalBarber.Row(btnUpdPhoneBarber),
 		markupPersonalBarber.Row(btnBackToMainBarber),
+	)
+
+	markupDeleteAccount.Inline(
+		markupDeleteAccount.Row(btnSetLastWorkDate),
+		markupDeleteAccount.Row(btnSelfDeleteBarber),
+		markupDeleteAccount.Row(btnBackToMainBarber),
 	)
 
 	markupConfirmSelfDeletion.Inline(
@@ -236,6 +245,13 @@ func onUpdPhoneBarber(ctx tele.Context) error {
 		return logAndMsgErrBarber(ctx, "can't ask barber to enter phone", err)
 	}
 	return ctx.Edit(updPhoneBarber)
+}
+
+func onDeleteAccount(ctx tele.Context) error {
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+		return logAndMsgErrBarber(ctx, "can't open the barber's delete account menu", err)
+	}
+	return ctx.Edit(deleteAccount, markupDeleteAccount)
 }
 
 func onSetLastWorkDate(ctx tele.Context) error {
