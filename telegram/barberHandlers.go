@@ -562,7 +562,7 @@ func markupSelectLastWorkDate(firstDisplayedDateRange ent.DateRange, relativeFir
 
 func updateBarberName(ctx tele.Context) error {
 	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Name: ctx.Message().Text, Status: ent.StatusStart}); err != nil {
-		if errors.Is(err, rep.ErrInvalidName) {
+		if errors.Is(err, rep.ErrInvalidBarber) {
 			log.Print(e.Wrap("invalid barber name", err))
 			return ctx.Send(invalidBarberName)
 		}
@@ -577,7 +577,7 @@ func updateBarberName(ctx tele.Context) error {
 
 func updateBarberPhone(ctx tele.Context) error {
 	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Phone: ctx.Message().Text, Status: ent.StatusStart}); err != nil {
-		if errors.Is(err, rep.ErrInvalidPhone) {
+		if errors.Is(err, rep.ErrInvalidBarber) {
 			log.Print(e.Wrap("invalid barber phone", err))
 			return ctx.Send(invalidBarberPhone)
 		}

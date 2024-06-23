@@ -1,38 +1,39 @@
-package repository
+package mappers
 
 import (
 	ent "barbershop-bot/entities"
 	st "barbershop-bot/repository/storage"
 	"database/sql"
 	"time"
+	"unicode"
 )
 
-type entityToStorageMapper struct{}
+type EntityToStorageMapper struct{}
 
-func (e entityToStorageMapper) barber(barber ent.Barber) st.Barber {
+func (e EntityToStorageMapper) Barber(barber ent.Barber) st.Barber {
 	var br st.Barber
 	br.ID = barber.ID
 	br.Name = nullString(barber.Name)
-	br.Phone = nullString(barber.Phone)
+	br.Phone = nullString(normalizePhone(barber.Phone))
 	if !barber.LastWorkdate.Equal(time.Time{}) {
-		br.LastWorkDate = e.date(barber.LastWorkdate)
+		br.LastWorkDate = e.Date(barber.LastWorkdate)
 	}
 	br.Status = mapStatusToStorage(barber.Status)
 	return br
 }
 
-func (e entityToStorageMapper) date(date time.Time) string {
+func (e EntityToStorageMapper) Date(date time.Time) string {
 	return date.Format(time.DateOnly)
 }
 
-func (e entityToStorageMapper) dateRange(dateRange ent.DateRange) st.DateRange {
+func (e EntityToStorageMapper) DateRange(dateRange ent.DateRange) st.DateRange {
 	return st.DateRange{
-		StartDate: e.date(dateRange.StartDate),
-		EndDate:   e.date(dateRange.EndDate),
+		StartDate: e.Date(dateRange.StartDate),
+		EndDate:   e.Date(dateRange.EndDate),
 	}
 }
 
-func (e entityToStorageMapper) service(service ent.Service) st.Service {
+func (e EntityToStorageMapper) Service(service ent.Service) st.Service {
 	return st.Service{
 		ID:         service.ID,
 		BarberID:   service.BarberID,
@@ -43,10 +44,10 @@ func (e entityToStorageMapper) service(service ent.Service) st.Service {
 	}
 }
 
-func (e entityToStorageMapper) workday(workday ent.Workday) st.Workday {
+func (e EntityToStorageMapper) Workday(workday ent.Workday) st.Workday {
 	return st.Workday{
 		BarberID:  workday.BarberID,
-		Date:      e.date(workday.Date),
+		Date:      e.Date(workday.Date),
 		StartTime: workday.StartTime.String(),
 		EndTime:   workday.EndTime.String(),
 	}
@@ -57,9 +58,18 @@ func mapStatusToStorage(stat ent.Status) (status st.Status) {
 		status.State = sql.NullByte{Byte: byte(stat.State), Valid: true}
 	}
 	if !stat.Expiration.Equal(time.Time{}) {
-		status.Expiration = sql.NullString{String: stat.Expiration.Format(time.DateTime), Valid: true}
+		status.Expiration = nullString(stat.Expiration.Format(time.DateTime))
 	}
 	return
+}
+
+func normalizePhone(phone string) (normalized string) {
+	for _, r := range phone {
+		if unicode.IsDigit(r) {
+			normalized = normalized + string(r)
+		}
+	}
+	return "+7" + normalized[1:]
 }
 
 func nullString(str string) (nullStr sql.NullString) {

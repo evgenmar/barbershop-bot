@@ -3,6 +3,7 @@ package repository
 import (
 	ent "barbershop-bot/entities"
 	"barbershop-bot/lib/e"
+	m "barbershop-bot/repository/mappers"
 	st "barbershop-bot/repository/storage"
 	"context"
 	"errors"
@@ -16,15 +17,13 @@ type Repository struct {
 var (
 	ErrAlreadyExists      = st.ErrAlreadyExists
 	ErrAppointmentsExists = st.ErrAppointmentsExists
+	ErrInvalidBarber      = m.ErrInvalidBarber
+	ErrInvalidDate        = m.ErrInvalidDate
+	ErrInvalidDateRange   = m.ErrInvalidDateRange
+	ErrInvalidService     = m.ErrInvalidService
+	ErrInvalidWorkday     = m.ErrInvalidWorkday
 	ErrNonUniqueData      = st.ErrNonUniqueData
 	ErrNoSavedBarber      = st.ErrNoSavedBarber
-	ErrInvalidDate        = errors.New("invalid date")
-	ErrInvalidDateRange   = errors.New("invalid date range")
-	ErrInvalidID          = errors.New("invalid ID")
-	ErrInvalidName        = errors.New("invalid name")
-	ErrInvalidPhone       = errors.New("invalid phone")
-	ErrInvalidService     = st.ErrInvalidService
-	ErrInvalidWorkday     = errors.New("invalid workday")
 )
 
 func New(storage st.Storage) Repository {
@@ -47,11 +46,11 @@ func (r Repository) CreateService(ctx context.Context, service ent.Service) (err
 		if errors.Is(err, st.ErrAlreadyExists) {
 			err = ErrAlreadyExists
 		}
-		if errors.Is(err, st.ErrInvalidService) {
+		if errors.Is(err, st.ErrInvalidService) || errors.Is(err, m.ErrInvalidService) {
 			err = ErrInvalidService
 		}
 	}()
-	serv, err := mapToStorage.service(service)
+	serv, err := m.MapToStorage.Service(service)
 	if err != nil {
 		return err
 	}
@@ -66,8 +65,11 @@ func (r Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (err
 	}()
 	var workdays []st.Workday
 	for _, workday := range wds {
-		wd, err := mapToStorage.workday(workday)
+		wd, err := m.MapToStorage.Workday(workday)
 		if err != nil {
+			if errors.Is(err, m.ErrInvalidWorkday) {
+				err = ErrInvalidWorkday
+			}
 			return err
 		}
 		workdays = append(workdays, wd)
@@ -76,8 +78,11 @@ func (r Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (err
 }
 
 func (r Repository) DeleteAppointmentsBeforeDate(ctx context.Context, barberID int64, date time.Time) error {
-	d, err := mapToStorage.date(date)
+	d, err := m.MapToStorage.Date(date)
 	if err != nil {
+		if errors.Is(err, m.ErrInvalidDate) {
+			err = ErrInvalidDate
+		}
 		return err
 	}
 	return r.Storage.DeleteAppointmentsBeforeDate(ctx, barberID, d)
@@ -97,8 +102,11 @@ func (r Repository) DeleteWorkdaysByDateRange(ctx context.Context, barberID int6
 			err = ErrAppointmentsExists
 		}
 	}()
-	dr, err := mapToStorage.dateRange(dateRange)
+	dr, err := m.MapToStorage.DateRange(dateRange)
 	if err != nil {
+		if errors.Is(err, m.ErrInvalidDateRange) {
+			err = ErrInvalidDateRange
+		}
 		return err
 	}
 	return r.Storage.DeleteWorkdaysByDateRange(ctx, barberID, dr)
@@ -118,7 +126,7 @@ func (r Repository) GetBarberByID(ctx context.Context, barberID int64) (barber e
 	if err != nil {
 		return ent.Barber{}, err
 	}
-	return mapToEntity.barber(br)
+	return m.MapToEntity.Barber(br)
 }
 
 func (r Repository) GetLatestAppointmentDate(ctx context.Context, barberID int64) (date time.Time, err error) {
@@ -127,7 +135,7 @@ func (r Repository) GetLatestAppointmentDate(ctx context.Context, barberID int64
 	if err != nil {
 		return time.Time{}, err
 	}
-	return mapToEntity.date(latestAD)
+	return m.MapToEntity.Date(latestAD)
 }
 
 func (r Repository) GetLatestWorkDate(ctx context.Context, barberID int64) (date time.Time, err error) {
@@ -136,7 +144,7 @@ func (r Repository) GetLatestWorkDate(ctx context.Context, barberID int64) (date
 	if err != nil {
 		return time.Time{}, err
 	}
-	return mapToEntity.date(latestWD)
+	return m.MapToEntity.Date(latestWD)
 }
 
 func (r Repository) GetServicesByBarberID(ctx context.Context, barberID int64) (services []ent.Service, err error) {
@@ -146,7 +154,7 @@ func (r Repository) GetServicesByBarberID(ctx context.Context, barberID int64) (
 		return nil, err
 	}
 	for _, serv := range servs {
-		service, err := mapToEntity.service(serv)
+		service, err := m.MapToEntity.Service(serv)
 		if err != nil {
 			return nil, err
 		}
@@ -157,8 +165,11 @@ func (r Repository) GetServicesByBarberID(ctx context.Context, barberID int64) (
 
 func (r Repository) GetWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (workdays []ent.Workday, err error) {
 	defer func() { err = e.WrapIfErr("can't get workdays", err) }()
-	dr, err := mapToStorage.dateRange(dateRange)
+	dr, err := m.MapToStorage.DateRange(dateRange)
 	if err != nil {
+		if errors.Is(err, m.ErrInvalidDateRange) {
+			err = ErrInvalidDateRange
+		}
 		return nil, err
 	}
 	wds, err := r.Storage.GetWorkdaysByDateRange(ctx, barberID, dr)
@@ -166,7 +177,7 @@ func (r Repository) GetWorkdaysByDateRange(ctx context.Context, barberID int64, 
 		return nil, err
 	}
 	for _, wd := range wds {
-		workday, err := mapToEntity.workday(wd)
+		workday, err := m.MapToEntity.Workday(wd)
 		if err != nil {
 			return nil, err
 		}
@@ -182,8 +193,11 @@ func (r Repository) UpdateBarber(ctx context.Context, barber ent.Barber) (err er
 			err = ErrNonUniqueData
 		}
 	}()
-	br, err := mapToStorage.barber(barber)
+	br, err := m.MapToStorage.Barber(barber)
 	if err != nil {
+		if errors.Is(err, m.ErrInvalidBarber) {
+			err = ErrInvalidBarber
+		}
 		return err
 	}
 	return r.Storage.UpdateBarber(ctx, br)
@@ -196,11 +210,14 @@ func (r Repository) UpdateService(ctx context.Context, service ent.Service) (err
 			err = ErrNonUniqueData
 		}
 		if errors.Is(err, st.ErrUnspecifiedServiceID) {
-			err = ErrInvalidID
+			err = ErrInvalidService
 		}
 	}()
-	serv, err := mapToStorage.service(service)
+	serv, err := m.MapToStorage.Service(service)
 	if err != nil {
+		if errors.Is(err, m.ErrInvalidService) {
+			err = ErrInvalidService
+		}
 		return err
 	}
 	return r.Storage.UpdateService(ctx, serv)

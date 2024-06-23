@@ -1,50 +1,58 @@
-package repository
+package mappers
 
 import (
 	ent "barbershop-bot/entities"
 	st "barbershop-bot/repository/storage"
+	"errors"
 	"regexp"
 	"time"
 	"unicode"
 )
 
-type validatedEntityToStorageMapper struct {
-	entityToStorageMapper
+type ValidatedEntityToStorageMapper struct {
+	EntityToStorageMapper
 }
 
-var mapToStorage validatedEntityToStorageMapper
+var MapToStorage ValidatedEntityToStorageMapper
 
-func (v validatedEntityToStorageMapper) barber(barber ent.Barber) (st.Barber, error) {
+var (
+	ErrInvalidBarber    = errors.New("invalid barber")
+	ErrInvalidDate      = errors.New("invalid date")
+	ErrInvalidDateRange = errors.New("invalid date range")
+	ErrInvalidService   = errors.New("invalid service")
+	ErrInvalidWorkday   = errors.New("invalid workday")
+)
+
+func (v ValidatedEntityToStorageMapper) Barber(barber ent.Barber) (st.Barber, error) {
 	if barber.ID == 0 {
-		return st.Barber{}, ErrInvalidID
+		return st.Barber{}, ErrInvalidBarber
 	}
 	if barber.Name != "" && !isValidName(barber.Name) {
-		return st.Barber{}, ErrInvalidName
+		return st.Barber{}, ErrInvalidBarber
 	}
 	if barber.Phone != "" {
 		if !isValidPhone(barber.Phone) {
-			return st.Barber{}, ErrInvalidPhone
+			return st.Barber{}, ErrInvalidBarber
 		}
-		barber.Phone = normalizePhone(barber.Phone)
 	}
-	return v.entityToStorageMapper.barber(barber), nil
+	return v.EntityToStorageMapper.Barber(barber), nil
 }
 
-func (v validatedEntityToStorageMapper) date(date time.Time) (string, error) {
+func (v ValidatedEntityToStorageMapper) Date(date time.Time) (string, error) {
 	if date.Year() < 2000 {
 		return "", ErrInvalidDate
 	}
-	return v.entityToStorageMapper.date(date), nil
+	return v.EntityToStorageMapper.Date(date), nil
 }
 
-func (v validatedEntityToStorageMapper) dateRange(dateRange ent.DateRange) (st.DateRange, error) {
+func (v ValidatedEntityToStorageMapper) DateRange(dateRange ent.DateRange) (st.DateRange, error) {
 	if dateRange.StartDate.After(dateRange.EndDate) {
 		return st.DateRange{}, ErrInvalidDateRange
 	}
-	return v.entityToStorageMapper.dateRange(dateRange), nil
+	return v.EntityToStorageMapper.DateRange(dateRange), nil
 }
 
-func (v validatedEntityToStorageMapper) service(service ent.Service) (st.Service, error) {
+func (v ValidatedEntityToStorageMapper) Service(service ent.Service) (st.Service, error) {
 	if service.ID < 0 || service.BarberID < 0 || service.Price < 0 || service.Duration < 0 {
 		return st.Service{}, ErrInvalidService
 	}
@@ -54,14 +62,14 @@ func (v validatedEntityToStorageMapper) service(service ent.Service) (st.Service
 	if service.Desciption != "" && !isValidDescription(service.Desciption) {
 		return st.Service{}, ErrInvalidService
 	}
-	return v.entityToStorageMapper.service(service), nil
+	return v.EntityToStorageMapper.Service(service), nil
 }
 
-func (v validatedEntityToStorageMapper) workday(workday ent.Workday) (st.Workday, error) {
+func (v ValidatedEntityToStorageMapper) Workday(workday ent.Workday) (st.Workday, error) {
 	if workday.BarberID == 0 || workday.Date.Equal(time.Time{}) || workday.StartTime < 0 || workday.EndTime <= workday.StartTime {
 		return st.Workday{}, ErrInvalidWorkday
 	}
-	return v.entityToStorageMapper.workday(workday), nil
+	return v.EntityToStorageMapper.Workday(workday), nil
 }
 
 func isValidDescription(text string) bool {
@@ -98,13 +106,4 @@ func isValidPhone(text string) bool {
 	phonePattern := `^((\+7|8)[\s-]?)\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}$`
 	regex := regexp.MustCompile(phonePattern)
 	return regex.MatchString(text)
-}
-
-func normalizePhone(phone string) (normalized string) {
-	for _, r := range phone {
-		if unicode.IsDigit(r) {
-			normalized = normalized + string(r)
-		}
-	}
-	return "+7" + normalized[1:]
 }

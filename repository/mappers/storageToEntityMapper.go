@@ -1,4 +1,4 @@
-package repository
+package mappers
 
 import (
 	ent "barbershop-bot/entities"
@@ -10,18 +10,18 @@ import (
 	"time"
 )
 
-type storageToEntityMapper struct{}
+type StorageToEntityMapper struct{}
 
-var mapToEntity storageToEntityMapper
+var MapToEntity StorageToEntityMapper
 
-func (s storageToEntityMapper) barber(barber st.Barber) (ent.Barber, error) {
+func (s StorageToEntityMapper) Barber(barber st.Barber) (ent.Barber, error) {
 	var br ent.Barber
 	br.ID = barber.ID
 	br.Name = mapBarberNameToEntity(barber.Name)
 	br.Phone = mapBarberPhoneToEntity(barber.Phone)
 
 	//st.Barber.LastWorkDate is always valid because default is not null.
-	lastWorkDate, err := s.date(barber.LastWorkDate)
+	lastWorkDate, err := s.Date(barber.LastWorkDate)
 	if err != nil {
 		return ent.Barber{}, e.Wrap("can't map barber's last workdate to entity", err)
 	}
@@ -35,11 +35,11 @@ func (s storageToEntityMapper) barber(barber st.Barber) (ent.Barber, error) {
 	return br, nil
 }
 
-func (s storageToEntityMapper) date(date string) (time.Time, error) {
+func (s StorageToEntityMapper) Date(date string) (time.Time, error) {
 	return time.ParseInLocation(time.DateOnly, date, cfg.Location)
 }
 
-func (s storageToEntityMapper) service(service st.Service) (ent.Service, error) {
+func (s StorageToEntityMapper) Service(service st.Service) (ent.Service, error) {
 	duration, err := tm.ParseDuration(service.Duration)
 	if err != nil {
 		return ent.Service{}, e.Wrap("can't map duration to entity", err)
@@ -54,8 +54,8 @@ func (s storageToEntityMapper) service(service st.Service) (ent.Service, error) 
 	}, nil
 }
 
-func (s storageToEntityMapper) workday(workday st.Workday) (ent.Workday, error) {
-	date, err := s.date(workday.Date)
+func (s StorageToEntityMapper) Workday(workday st.Workday) (ent.Workday, error) {
+	date, err := s.Date(workday.Date)
 	if err != nil {
 		return ent.Workday{}, e.Wrap("can't map date to entity", err)
 	}
