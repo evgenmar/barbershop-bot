@@ -61,11 +61,14 @@ const (
 Если Вы ранее меняли эту дату и хотите снова установить бессрочную дату, нажмите кнопку в нижней части меню.`
 	haveAppointmentAfterDataToSave = `Невозможно сохранить дату, поскольку пока Вы выбирали дату, клиент успел записаться к Вам на стрижку на дату позже выбранной Вами даты.
 Пожалуйста проверьте записи клиентов и при необходимости отмените самую позднюю запись. Или выберите более позднюю дату последнего рабочего дня.`
-	lastWorkDateSaved               = "Новая дата последнего рабочего дня успешно сохранена."
-	lastWorkDateUnchanged           = "Указанная дата совпадает с той, которую вы уже установили ранее"
-	lastWorkDateSavedWithoutShedule = `Новая дата последнего рабочего дня сохранена.
+	lastWorkDateSaved                = "Новая дата последнего рабочего дня успешно сохранена."
+	lastWorkDateUnchanged            = "Указанная дата совпадает с той, которую вы уже установили ранее"
+	lastWorkDateSavedWithoutSсhedule = `Новая дата последнего рабочего дня сохранена.
 ВНИМАНИЕ!!! При попытке составить расписание работы вплоть до сохраненной даты произошла ошибка. Расписание не составлено!
 Для доступа к записи клиентов на стрижку необходимо составить расписание работы.`
+	lastWorkDateNotSavedButScheduleDeleted = `При выполнении команды произошла ошибка, в результате которой Ваше расписание работы после желаемой даты окончания работы было удалено.
+Однако сама дата окончания работы не была настроена. Планировшик расписания восстановит удаленную часть расписания во время планового запуска. Однако, дата последнего рабочего дня так и останется не измененной.
+Чтобы исправить это, пожалуйста попробуйте еще раз установить интересующую Вас дату последнего рабочего дня.`
 	confirmSelfDeletion = `Вы собираетесь отказаться от статуса "барбер".
 ВНИМАНИЕ!!! Помимо изменения Вашего статуса также будет удален весь перечень оказываемых Вами услуг и вся история прошедших записей Ваших клиентов. Клиенты больше не смогут записаться к Вам на стрижку через этот бот.
 Если Вы уверены, нажмите "Уверен, удалить!". Если передумали, просто вернитесь в главное меню.`
@@ -87,10 +90,10 @@ const (
 6. В правом нижнем углу нажмите на значек отправки сообщения.
 
 Если вы передумали добавлять нового барбера, воспользуйтесь командой /start для возврата в главное меню.`
-	userIsAlreadyBarber       = "Статус пользователя не изменен, поскольку он уже является барбером."
-	addedNewBarberWithShedule = `Статус пользователя изменен на "барбер". Для нового барбера составлено расписание работы на ближайшие полгода.
+	userIsAlreadyBarber        = "Статус пользователя не изменен, поскольку он уже является барбером."
+	addedNewBarberWithSсhedule = `Статус пользователя изменен на "барбер". Для нового барбера составлено расписание работы на ближайшие полгода.
 Для доступа к записи клиентов на стрижку новый барбер должен заполнить персональные данные.`
-	addedNewBarberWithoutShedule = `Статус пользователя изменен на "барбер".
+	addedNewBarberWithoutSсhedule = `Статус пользователя изменен на "барбер".
 ВНИМАНИЕ!!! При попытке составить расписание работы для нового барбера произошла ошибка. Расписание не составлено!
 Для доступа к записи клиентов на стрижку новый барбер должен заполнить персональные данные, а также составить расписание работы.`
 	onlyOneBarberExists = "Вы единственный зарегистрированный барбер в приложении. Некого удалять."
@@ -327,7 +330,8 @@ func onSelectLastWorkDate(ctx tele.Context) error {
 		}
 		if err := sched.MakeSchedule(barberID); err != nil {
 			log.Print(e.Wrap(errMsg, err))
-			return ctx.Send(lastWorkDateSavedWithoutShedule, markupBackToMainBarber)
+			// TODO: ensure atomicity using outbox pattern
+			return ctx.Send(lastWorkDateSavedWithoutSсhedule, markupBackToMainBarber)
 		}
 		return ctx.Edit(lastWorkDateSaved, markupBackToMainBarber)
 	case -1:
@@ -344,7 +348,8 @@ func onSelectLastWorkDate(ctx tele.Context) error {
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
 		if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, LastWorkdate: dateToSave, Status: ent.StatusStart}); err != nil {
-			return logAndMsgErrBarber(ctx, errMsg, err)
+			// TODO: ensure atomicity using outbox pattern
+			return ctx.Send(lastWorkDateNotSavedButScheduleDeleted, markupBackToMainBarber)
 		}
 		return ctx.Edit(lastWorkDateSaved, markupBackToMainBarber)
 	default:
@@ -530,9 +535,10 @@ func addNewBarber(ctx tele.Context) error {
 	cfg.Barbers.AddID(newBarberID)
 	if err := sched.MakeSchedule(newBarberID); err != nil {
 		log.Print(e.Wrap(errMsg, err))
-		return ctx.Send(addedNewBarberWithoutShedule, markupBackToMainBarber)
+		// TODO: ensure atomicity using outbox pattern
+		return ctx.Send(addedNewBarberWithoutSсhedule, markupBackToMainBarber)
 	}
-	return ctx.Send(addedNewBarberWithShedule, markupBackToMainBarber)
+	return ctx.Send(addedNewBarberWithSсhedule, markupBackToMainBarber)
 }
 
 func logAndMsgErrBarber(ctx tele.Context, msg string, err error) error {
