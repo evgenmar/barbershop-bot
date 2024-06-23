@@ -15,13 +15,16 @@ const (
 	Hour            = 60 * Minute
 )
 
-func (d Duration) String() string {
+func (d Duration) LongString() string {
 	if d == 0 {
 		return ""
 	}
 	hours := int(d / 60)
 	minutes := int(d) - hours*60
-	return fmt.Sprintf("%02d:%02d", hours, minutes)
+	if hours == 0 {
+		return fmt.Sprintf("%02d мин", minutes)
+	}
+	return fmt.Sprintf("%01d ч %02d мин", hours, minutes)
 }
 
 func ParseDuration(str string) (Duration, error) {
@@ -31,6 +34,15 @@ func ParseDuration(str string) (Duration, error) {
 		return 0, err
 	}
 	return Duration(hours*60 + minutes), nil
+}
+
+func (d Duration) ShortString() string {
+	if d == 0 {
+		return ""
+	}
+	hours := int(d / 60)
+	minutes := int(d) - hours*60
+	return fmt.Sprintf("%02d:%02d", hours, minutes)
 }
 
 func Today() time.Time {
