@@ -18,11 +18,11 @@ import (
 )
 
 const (
-	mainBarber = "Добрый день. Вы находитесь в главном меню. Выберите действие."
+	mainBarber = "Добрый день. Вы находитесь в главном меню."
 
-	settingsBarber = "Вы находитесь меню настроек. Выберите действие."
+	settingsBarber = "В этом меню собраны функции, обеспечивающие управление и настройки приложения."
 
-	manageAccountBarber = "В этом меню собраны функции для управления Вашим аккаунтом. Выберите действие."
+	manageAccountBarber = "В этом меню собраны функции для управления Вашим аккаунтом."
 	currentSettings     = `Ваши текущие настройки:
 `
 	personalBarber       = "Выберите данные, которые вы хотите обновить."
@@ -73,7 +73,9 @@ const (
 `
 	goodbuyBarber = "Ваш статус изменен. Спасибо, что работали с нами!"
 
-	manageBarbers = "В этом меню Вы можете добавить нового барбера или удалить существующего. Выберите действие."
+	manageServices = "В этом меню собраны функции для управления услугами. Каждый барбер настраивает свои услуги индивидуально."
+
+	manageBarbers = "В этом меню собраны функции для управления барберами."
 	listOfBarbers = "Список всех барберов, зарегистрированных в приложении:"
 	addBarber     = `Для добавления нового барбера пришлите в этот чат контакт профиля пользователя телеграм, которого вы хотите сделать барбером.
 Подробная инструкция:
@@ -82,7 +84,9 @@ const (
 3. Нажмите на "три точки" в верхнем правом углу дисплея.
 4. В открывшемся меню выберите "Поделиться контактом".
 5. В открывшемся списке Ваших чатов выберите чат с ботом (чат, в котором Вы читаете эту инструкцию).
-6. В правом нижнем углу нажмите на значек отправки сообщения.`
+6. В правом нижнем углу нажмите на значек отправки сообщения.
+
+Если вы передумали добавлять нового барбера, воспользуйтесь командой /start для возврата в главное меню.`
 	userIsAlreadyBarber       = "Статус пользователя не изменен, поскольку он уже является барбером."
 	addedNewBarberWithShedule = `Статус пользователя изменен на "барбер". Для нового барбера составлено расписание работы на ближайшие полгода.
 Для доступа к записи клиентов на стрижку новый барбер должен заполнить персональные данные.`
@@ -116,10 +120,11 @@ var (
 
 	markupSettingsBarber   = &tele.ReplyMarkup{}
 	btnManageAccountBarber = markupSettingsBarber.Data("Управление аккаунтом", "manage_account_barber")
+	btnManageServices      = markupSettingsBarber.Data("Управление услугами", "manage_services")
 	btnManageBarbers       = markupSettingsBarber.Data("Управление барберами", "manage_barbers")
 
 	markupManageAccountBarber    = &tele.ReplyMarkup{}
-	btnShowCurrentSettingsBarber = markupManageAccountBarber.Data("Посмотреть мои текущие настройки", "show_current_settings_barber")
+	btnShowCurrentSettingsBarber = markupManageAccountBarber.Data("Мои текущие настройки", "show_current_settings_barber")
 	btnUpdPersonalBarber         = markupManageAccountBarber.Data("Обновить персональные данные", "upd_personal_data_barber")
 	btnDeleteAccount             = markupManageAccountBarber.Data("Удаление аккаунта барбера", "delete_account")
 
@@ -135,8 +140,14 @@ var (
 	markupConfirmSelfDeletion = &tele.ReplyMarkup{}
 	btnSureToDelete           = markupConfirmSelfDeletion.Data("Уверен, удалить!", "sure_to_delete")
 
+	markupManageServices = &tele.ReplyMarkup{}
+	btnShowMyServices    = markupManageServices.Data("Список моих услуг", "show_my_services")
+	btnCreateService     = markupManageServices.Data("Создать услугу", "create_service")
+	btnEditService       = markupManageServices.Data("Изменить услугу", "edit_service")
+	btnDeleteService     = markupManageServices.Data("Удалить услугу", "delete_services")
+
 	markupManageBarbers    = &tele.ReplyMarkup{}
-	btnShowAllBurbers      = markupManageBarbers.Data("Посмотреть список барберов", "show_all_barbers")
+	btnShowAllBurbers      = markupManageBarbers.Data("Список барберов", "show_all_barbers")
 	btnAddBarber           = markupManageBarbers.Data("Добавить барбера", "add_barber")
 	btnDeleteBarber        = markupManageBarbers.Data("Удалить барбера", "delete_barber")
 	btnDeleteCertainBarber = markupManageBarbers.Data("", endpntBarberToDeletion)
@@ -152,6 +163,7 @@ func init() {
 
 	markupSettingsBarber.Inline(
 		markupSettingsBarber.Row(btnManageAccountBarber),
+		markupSettingsBarber.Row(btnManageServices),
 		markupSettingsBarber.Row(btnManageBarbers),
 		markupSettingsBarber.Row(btnBackToMainBarber),
 	)
@@ -178,6 +190,14 @@ func init() {
 	markupConfirmSelfDeletion.Inline(
 		markupConfirmSelfDeletion.Row(btnSureToDelete),
 		markupConfirmSelfDeletion.Row(btnBackToMainBarber),
+	)
+
+	markupManageServices.Inline(
+		markupManageServices.Row(btnShowMyServices),
+		markupManageServices.Row(btnCreateService),
+		markupManageServices.Row(btnEditService),
+		markupManageServices.Row(btnDeleteService),
+		markupManageServices.Row(btnBackToMainBarber),
 	)
 
 	markupManageBarbers.Inline(
@@ -361,9 +381,16 @@ func onSureToDelete(ctx tele.Context) error {
 	return ctx.Edit(goodbuyBarber)
 }
 
+func onManageServices(ctx tele.Context) error {
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+		return logAndMsgErrBarber(ctx, "can't open the manage services menu", err)
+	}
+	return ctx.Edit(manageServices, markupManageServices)
+}
+
 func onManageBarbers(ctx tele.Context) error {
 	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
-		return logAndMsgErrBarber(ctx, "can't open the set barbers menu", err)
+		return logAndMsgErrBarber(ctx, "can't open the manage barbers menu", err)
 	}
 	return ctx.Edit(manageBarbers, markupManageBarbers)
 }
@@ -559,9 +586,8 @@ func markupSelectLastWorkDate(firstDisplayedDateRange ent.DateRange, relativeFir
 	for i := 1; i < displayedDateRange.StartWeekday(); i++ {
 		btnsDatesToSelect = append(btnsDatesToSelect, btnEmpty)
 	}
-	var mapToStorage m.EntityToStorageMapper
 	for date := displayedDateRange.StartDate; date.Compare(displayedDateRange.EndDate) <= 0; date = date.Add(24 * time.Hour) {
-		btnDateToSelect := markup.Data(strconv.Itoa(date.Day()), endpntSelectLastWorkDate, mapToStorage.Date(date))
+		btnDateToSelect := markup.Data(strconv.Itoa(date.Day()), endpntSelectLastWorkDate, m.MapToStorage.Date(date))
 		btnsDatesToSelect = append(btnsDatesToSelect, btnDateToSelect)
 	}
 	for i := 7; i > displayedDateRange.EndWeekday(); i-- {
