@@ -34,7 +34,7 @@ func init() {
 	infiniteWorkDate = infWorkDate
 }
 
-func (b Barber) Info() string {
+func (b Barber) PuplicInfo() string {
 	var lastWorkDate string
 	if b.LastWorkdate.Equal(infiniteWorkDate) {
 		lastWorkDate = "бессрочно"
@@ -46,6 +46,6 @@ Tел.: %s
 Работает %s`, b.Name, b.Phone, lastWorkDate)
 }
 
-func (b Barber) Settings() string {
-	return b.Info()
+func (b Barber) PersonalInfo() string {
+	return b.PuplicInfo()
 }

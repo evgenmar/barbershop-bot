@@ -7,6 +7,7 @@ import (
 	"barbershop-bot/lib/e"
 	tm "barbershop-bot/lib/time"
 	rep "barbershop-bot/repository"
+	m "barbershop-bot/repository/mappers"
 	sched "barbershop-bot/scheduler"
 	"errors"
 	"log"
@@ -213,7 +214,7 @@ func onShowCurrentSettingsBarber(ctx tele.Context) error {
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	return ctx.Edit(currentSettings+barber.Settings(), markupBackToMainBarber)
+	return ctx.Edit(currentSettings+barber.PersonalInfo(), markupBackToMainBarber)
 }
 
 func onUpdPersonalBarber(ctx tele.Context) error {
@@ -269,7 +270,7 @@ func onSetLastWorkDate(ctx tele.Context) error {
 
 func onSelectLastWorkDate(ctx tele.Context) error {
 	errMsg := "can't save last work date"
-	dateToSave, err := time.ParseInLocation(time.DateOnly, ctx.Callback().Data, cfg.Location)
+	dateToSave, err := m.MapToEntity.Date(ctx.Callback().Data)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
@@ -363,7 +364,7 @@ func onShowAllBarbers(ctx tele.Context) error {
 		if err != nil {
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
-		barbersInfo = barbersInfo + "\n\n" + barber.Info()
+		barbersInfo = barbersInfo + "\n\n" + barber.PuplicInfo()
 	}
 	return ctx.Edit(listOfBarbers+barbersInfo, markupBackToMainBarber)
 }
@@ -542,8 +543,9 @@ func markupSelectLastWorkDate(firstDisplayedDateRange ent.DateRange, relativeFir
 	for i := 1; i < displayedDateRange.StartWeekday(); i++ {
 		btnsDatesToSelect = append(btnsDatesToSelect, btnEmpty)
 	}
+	var mapToStorage m.EntityToStorageMapper
 	for date := displayedDateRange.StartDate; date.Compare(displayedDateRange.EndDate) <= 0; date = date.Add(24 * time.Hour) {
-		btnDateToSelect := markup.Data(strconv.Itoa(date.Day()), endpntSelectLastWorkDate, date.Format(time.DateOnly))
+		btnDateToSelect := markup.Data(strconv.Itoa(date.Day()), endpntSelectLastWorkDate, mapToStorage.Date(date))
 		btnsDatesToSelect = append(btnsDatesToSelect, btnDateToSelect)
 	}
 	for i := 7; i > displayedDateRange.EndWeekday(); i-- {
