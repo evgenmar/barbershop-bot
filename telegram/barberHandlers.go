@@ -205,10 +205,11 @@ func onManageAccountBarber(ctx tele.Context) error {
 
 func onShowCurrentSettingsBarber(ctx tele.Context) error {
 	errMsg := "can't show current barber settings"
-	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+	barberID := ctx.Sender().ID
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, Status: ent.StatusStart}); err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	barber, err := cp.RepoWithContext.GetBarberByID(ctx.Sender().ID)
+	barber, err := cp.RepoWithContext.GetBarberByID(barberID)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
@@ -238,10 +239,11 @@ func onUpdPhoneBarber(ctx tele.Context) error {
 
 func onSetLastWorkDate(ctx tele.Context) error {
 	errMsg := "can't open select last work date menu"
-	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+	barberID := ctx.Sender().ID
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, Status: ent.StatusStart}); err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	latestAppointmentDate, err := cp.RepoWithContext.GetLatestAppointmentDate(ctx.Sender().ID)
+	latestAppointmentDate, err := cp.RepoWithContext.GetLatestAppointmentDate(barberID)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
@@ -271,39 +273,40 @@ func onSelectLastWorkDate(ctx tele.Context) error {
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	barber, err := cp.RepoWithContext.GetBarberByID(ctx.Sender().ID)
+	barberID := ctx.Sender().ID
+	barber, err := cp.RepoWithContext.GetBarberByID(barberID)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
 	switch dateToSave.Compare(barber.LastWorkdate) {
 	case 0:
-		if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+		if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, Status: ent.StatusStart}); err != nil {
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
 		return ctx.Edit(lastWorkDateUnchanged, markupBackToMainBarber)
 	case 1:
-		if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, LastWorkdate: dateToSave, Status: ent.StatusStart}); err != nil {
+		if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, LastWorkdate: dateToSave, Status: ent.StatusStart}); err != nil {
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
-		if err := sched.MakeSchedule(ctx.Sender().ID); err != nil {
+		if err := sched.MakeSchedule(barberID); err != nil {
 			log.Print(e.Wrap(errMsg, err))
 			return ctx.Send(lastWorkDateSavedWithoutShedule, markupBackToMainBarber)
 		}
 		return ctx.Edit(lastWorkDateSaved, markupBackToMainBarber)
 	case -1:
-		latestWorkDate, err := cp.RepoWithContext.GetLatestWorkDate(ctx.Sender().ID)
+		latestWorkDate, err := cp.RepoWithContext.GetLatestWorkDate(barberID)
 		if err != nil {
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
 		dateRangeToDelete := ent.DateRange{StartDate: dateToSave.Add(24 * time.Hour), EndDate: latestWorkDate}
-		err = cp.RepoWithContext.DeleteWorkdaysByDateRange(ctx.Sender().ID, dateRangeToDelete)
+		err = cp.RepoWithContext.DeleteWorkdaysByDateRange(barberID, dateRangeToDelete)
 		if err != nil && !errors.Is(err, rep.ErrInvalidDateRange) {
 			if errors.Is(err, rep.ErrAppointmentsExists) {
 				return ctx.Edit(haveAppointmentAfterDataToSave, markupBackToMainBarber)
 			}
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
-		if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, LastWorkdate: dateToSave, Status: ent.StatusStart}); err != nil {
+		if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, LastWorkdate: dateToSave, Status: ent.StatusStart}); err != nil {
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
 		return ctx.Edit(lastWorkDateSaved, markupBackToMainBarber)
@@ -314,10 +317,11 @@ func onSelectLastWorkDate(ctx tele.Context) error {
 
 func onSelfDeleteBarber(ctx tele.Context) error {
 	errMsg := "can't provide options for barber self deletion"
-	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+	barberID := ctx.Sender().ID
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, Status: ent.StatusStart}); err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	barberToDelete, err := cp.RepoWithContext.GetBarberByID(ctx.Sender().ID)
+	barberToDelete, err := cp.RepoWithContext.GetBarberByID(barberID)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
