@@ -18,7 +18,6 @@ var (
 	ErrAlreadyExists      = st.ErrAlreadyExists
 	ErrAppointmentsExists = st.ErrAppointmentsExists
 	ErrInvalidBarber      = m.ErrInvalidBarber
-	ErrInvalidDate        = m.ErrInvalidDate
 	ErrInvalidDateRange   = m.ErrInvalidDateRange
 	ErrInvalidService     = m.ErrInvalidService
 	ErrInvalidWorkday     = m.ErrInvalidWorkday
@@ -78,14 +77,7 @@ func (r Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (err
 }
 
 func (r Repository) DeleteAppointmentsBeforeDate(ctx context.Context, barberID int64, date time.Time) error {
-	d, err := m.MapToStorage.Date(date)
-	if err != nil {
-		if errors.Is(err, m.ErrInvalidDate) {
-			err = ErrInvalidDate
-		}
-		return err
-	}
-	return r.Storage.DeleteAppointmentsBeforeDate(ctx, barberID, d)
+	return r.Storage.DeleteAppointmentsBeforeDate(ctx, barberID, m.MapToStorage.Date(date))
 }
 
 func (r Repository) DeleteBarberByID(ctx context.Context, barberID int64) error {

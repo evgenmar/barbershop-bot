@@ -17,7 +17,6 @@ var MapToStorage ValidatedEntityToStorageMapper
 
 var (
 	ErrInvalidBarber    = errors.New("invalid barber")
-	ErrInvalidDate      = errors.New("invalid date")
 	ErrInvalidDateRange = errors.New("invalid date range")
 	ErrInvalidService   = errors.New("invalid service")
 	ErrInvalidWorkday   = errors.New("invalid workday")
@@ -38,11 +37,8 @@ func (v ValidatedEntityToStorageMapper) Barber(barber ent.Barber) (st.Barber, er
 	return v.EntityToStorageMapper.Barber(barber), nil
 }
 
-func (v ValidatedEntityToStorageMapper) Date(date time.Time) (string, error) {
-	if date.Year() < 2000 {
-		return "", ErrInvalidDate
-	}
-	return v.EntityToStorageMapper.Date(date), nil
+func (v ValidatedEntityToStorageMapper) Date(date time.Time) string {
+	return v.EntityToStorageMapper.Date(date)
 }
 
 func (v ValidatedEntityToStorageMapper) DateRange(dateRange ent.DateRange) (st.DateRange, error) {
@@ -53,9 +49,6 @@ func (v ValidatedEntityToStorageMapper) DateRange(dateRange ent.DateRange) (st.D
 }
 
 func (v ValidatedEntityToStorageMapper) Service(service ent.Service) (st.Service, error) {
-	if service.ID < 0 || service.BarberID < 0 || service.Duration < 0 {
-		return st.Service{}, ErrInvalidService
-	}
 	if service.Name != "" && !isValidServiceName(service.Name) {
 		return st.Service{}, ErrInvalidService
 	}
