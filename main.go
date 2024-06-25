@@ -8,6 +8,6 @@ import (
 
 func main() {
 	initialization.InitGlobals()
-	sched.Cron.Start()
+	sched.Start()
 	tg.Bot.Start()
 }

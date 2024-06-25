@@ -6,21 +6,34 @@ import (
 	cfg "barbershop-bot/lib/config"
 	"barbershop-bot/lib/e"
 	tm "barbershop-bot/lib/time"
+	sess "barbershop-bot/sessions"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/robfig/cron/v3"
 )
 
-var Cron *cron.Cron
+var (
+	crn  *cron.Cron
+	once sync.Once
+)
 
-func InitCron() {
-	Cron = CronWithSettings()
+func getCron() *cron.Cron {
+	once.Do(func() {
+		crn = CronWithSettings()
+	})
+	return crn
+}
+
+func Start() {
+	getCron().Start()
 }
 
 // CronWithSettings creates *cron.Cron and set it with several functions to be run on a schedule.
 // Triggered events:
 //   - making schedules for barbers - every Monday at 03:00 AM
+//   - cleaning up all barbers and users sessions - every Monday at 03:05 AM
 func CronWithSettings() *cron.Cron {
 	crn := cron.New(cron.WithLocation(cfg.Location))
 	crn.AddFunc("0 3 * * 1",
@@ -28,6 +41,10 @@ func CronWithSettings() *cron.Cron {
 			if err := MakeSchedules(); err != nil {
 				log.Print(err)
 			}
+		})
+	crn.AddFunc("5 3 * * 1",
+		func() {
+			sess.CleanupSessions()
 		})
 	return crn
 }

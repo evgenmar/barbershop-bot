@@ -23,7 +23,6 @@ func InitGlobals() {
 		cfg.InitBarberIDs(getBarberIDsFromRepo()...)
 		initBarbersSchedules()
 		tg.InitBot()
-		sched.InitCron()
 	})
 }
 

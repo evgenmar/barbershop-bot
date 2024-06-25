@@ -2,10 +2,12 @@ package sessions
 
 import (
 	"sync"
+	"time"
 )
 
 type BarberSession struct {
 	Status
+	expiresAt int64
 }
 
 type BarberSessionManager struct {
@@ -32,7 +34,7 @@ func (m *BarberSessionManager) get(id int64) BarberSession {
 	defer m.mutex.RUnlock()
 	session, ok := m.sessions[id]
 	if !ok {
-		return BarberSession{Status: StatusStart}
+		return BarberSession{Status: NewStatus(StateStart)}
 	}
 	return session
 }
@@ -43,12 +45,24 @@ func (m *BarberSessionManager) update(id int64, session BarberSession) {
 	defer m.mutex.Unlock()
 	existingSession, ok := m.sessions[id]
 	if !ok {
-		existingSession = BarberSession{Status: StatusStart}
+		existingSession = BarberSession{Status: NewStatus(StateStart)}
 	}
 	if session.State != 0 {
 		existingSession.Status = session.Status
 	}
+	existingSession.expiresAt = time.Now().Add(time.Hour * 48).Unix()
 	m.sessions[id] = existingSession
+}
+
+func (m *BarberSessionManager) cleanupBarberSessions() {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	now := time.Now().Unix()
+	for id, session := range m.sessions {
+		if session.expiresAt < now {
+			delete(m.sessions, id)
+		}
+	}
 }
 
 // TODO: make it unexported
@@ -59,7 +73,7 @@ func GetBarberSession(id int64) BarberSession {
 func GetBarberState(id int64) State {
 	session := GetBarberSession(id)
 	if !session.Status.isValid() {
-		UpdateBarberSession(id, BarberSession{Status: StatusStart})
+		UpdateBarberState(id, StateStart)
 		return StateStart
 	}
 	return session.State
