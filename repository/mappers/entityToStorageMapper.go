@@ -18,7 +18,6 @@ func (e EntityToStorageMapper) Barber(barber ent.Barber) st.Barber {
 	if !barber.LastWorkdate.Equal(time.Time{}) {
 		br.LastWorkDate = e.Date(barber.LastWorkdate)
 	}
-	br.Status = mapStatusToStorage(barber.Status)
 	return br
 }
 
@@ -51,16 +50,6 @@ func (e EntityToStorageMapper) Workday(workday ent.Workday) st.Workday {
 		StartTime: workday.StartTime.ShortString(),
 		EndTime:   workday.EndTime.ShortString(),
 	}
-}
-
-func mapStatusToStorage(stat ent.Status) (status st.Status) {
-	if stat.State != 0 {
-		status.State = sql.NullByte{Byte: byte(stat.State), Valid: true}
-	}
-	if !stat.Expiration.Equal(time.Time{}) {
-		status.Expiration = nullString(stat.Expiration.Format(time.DateTime))
-	}
-	return
 }
 
 func normalizePhone(phone string) (normalized string) {

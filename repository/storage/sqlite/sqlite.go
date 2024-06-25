@@ -169,10 +169,10 @@ func (s *Storage) GetAllBarberIDs(ctx context.Context) (barberIDs []int64, err e
 
 // GetBarberByID returns barber with barberID.
 func (s *Storage) GetBarberByID(ctx context.Context, barberID int64) (st.Barber, error) {
-	q := `SELECT name, phone, last_workdate, state, state_expiration FROM barbers WHERE id = ?`
+	q := `SELECT name, phone, last_workdate FROM barbers WHERE id = ?`
 	var barber st.Barber
 	s.rwMutex.RLock()
-	err := s.db.QueryRowContext(ctx, q, barberID).Scan(&barber.Name, &barber.Phone, &barber.LastWorkDate, &barber.State, &barber.Expiration)
+	err := s.db.QueryRowContext(ctx, q, barberID).Scan(&barber.Name, &barber.Phone, &barber.LastWorkDate)
 	s.rwMutex.RUnlock()
 	if errors.Is(err, sql.ErrNoRows) {
 		return st.Barber{}, st.ErrNoSavedBarber
@@ -281,9 +281,7 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 	q := `CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY, 
 		name TEXT, 
-		phone TEXT, 
-		state INTEGER,
-		state_expiration TEXT
+		phone TEXT
 		)`
 	_, err = s.db.ExecContext(ctx, q)
 	if err != nil {
@@ -293,9 +291,7 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 		id INTEGER PRIMARY KEY, 
 		name TEXT UNIQUE, 
 		phone TEXT UNIQUE, 
-		last_workdate TEXT DEFAULT '` + cfg.InfiniteWorkDate + `',
-		state INTEGER,
-		state_expiration TEXT
+		last_workdate TEXT DEFAULT '` + cfg.InfiniteWorkDate + `'
 		)`
 	_, err = s.db.ExecContext(ctx, q)
 	if err != nil {
@@ -350,8 +346,8 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 
 // UpdateBarber updates valid fields of Barber. ID field must be valid and remains not updated.
 func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) error {
-	query := make([]string, 0, 4)
-	args := make([]interface{}, 0, 5)
+	query := make([]string, 0, 3)
+	args := make([]interface{}, 0, 3)
 	if barber.Name.Valid {
 		query = append(query, "name = ?")
 		args = append(args, barber.Name)
@@ -363,10 +359,6 @@ func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) error {
 	if barber.LastWorkDate != "" {
 		query = append(query, "last_workdate = ?")
 		args = append(args, barber.LastWorkDate)
-	}
-	if barber.State.Valid && barber.Expiration.Valid {
-		query = append(query, "state = ? , state_expiration = ?")
-		args = append(args, barber.State, barber.Expiration)
 	}
 	args = append(args, barber.ID)
 	q := fmt.Sprintf(`UPDATE barbers SET %s WHERE id = ?`, strings.Join(query, " , "))

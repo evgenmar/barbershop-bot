@@ -26,12 +26,6 @@ func (s StorageToEntityMapper) Barber(barber st.Barber) (ent.Barber, error) {
 		return ent.Barber{}, e.Wrap("can't map barber's last workdate to entity", err)
 	}
 	br.LastWorkdate = lastWorkDate
-
-	status, err := mapStatusToEntity(barber.Status)
-	if err != nil {
-		return ent.Barber{}, e.Wrap("can't map barber's status to entity", err)
-	}
-	br.Status = status
 	return br, nil
 }
 
@@ -88,18 +82,4 @@ func mapBarberPhoneToEntity(phone sql.NullString) string {
 		return ent.NoPhoneBarber
 	}
 	return phone.String
-}
-
-func mapStatusToEntity(stat st.Status) (ent.Status, error) {
-	if !stat.State.Valid || !stat.Expiration.Valid {
-		return ent.StatusStart, nil
-	}
-	expiration, err := time.Parse(time.DateTime, stat.Expiration.String)
-	if err != nil {
-		return ent.StatusStart, e.Wrap("can't map status to entity", err)
-	}
-	return ent.Status{
-		State:      ent.State(stat.State.Byte),
-		Expiration: expiration,
-	}, nil
 }

@@ -80,7 +80,6 @@ type Barber struct {
 
 	//LastWorkdate is a date in YYYY-MM-DD format in local time zone. Default is '3000-01-01'.
 	LastWorkDate string `db:"last_workdate"`
-	Status
 }
 
 type DateRange struct {
@@ -96,13 +95,6 @@ type Service struct {
 	Desciption string `db:"description"`
 	Price      uint   `db:"price"`
 	Duration   string `db:"duration"`
-}
-
-type Status struct {
-	State sql.NullByte `db:"state"`
-
-	//State expiration in YYYY-MM-DD HH:MM:SS format in UTC.
-	Expiration sql.NullString `db:"state_expiration"`
 }
 
 type Workday struct {

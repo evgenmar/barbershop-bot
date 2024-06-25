@@ -1,6 +1,7 @@
-package entities
+package sessions
 
 import (
+	cfg "barbershop-bot/lib/config"
 	"barbershop-bot/lib/e"
 	"log"
 	"time"
@@ -9,7 +10,7 @@ import (
 type Status struct {
 	State State
 
-	//Expiration must ese UTC location.
+	//Expiration must use UTC location.
 	Expiration time.Time
 }
 
@@ -25,7 +26,7 @@ const (
 var StatusStart Status
 
 func init() {
-	expiration, err := time.Parse(time.DateTime, "3000-01-01 00:00:00")
+	expiration, err := time.Parse(time.DateOnly, cfg.InfiniteWorkDate)
 	if err != nil {
 		log.Fatal(e.Wrap("can't parse default expiration for StatusStart", err))
 	}
@@ -46,6 +47,6 @@ func NewStatus(state State) Status {
 	}
 }
 
-func (s Status) IsValid() bool {
+func (s Status) isValid() bool {
 	return s.Expiration.After(time.Now().In(time.FixedZone("UTC", 0)))
 }
