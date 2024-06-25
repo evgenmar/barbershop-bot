@@ -76,7 +76,9 @@ const (
 `
 	goodbuyBarber = "Ваш статус изменен. Спасибо, что работали с нами!"
 
-	manageServices = "В этом меню собраны функции для управления услугами. Каждый барбер настраивает свои услуги индивидуально."
+	manageServices    = "В этом меню собраны функции для управления услугами. Каждый барбер настраивает свои услуги индивидуально."
+	youHaveNoServices = "У Вас нет ни одной услуги."
+	yourServices      = "Список Ваших услуг:"
 
 	manageBarbers = "В этом меню собраны функции для управления барберами."
 	listOfBarbers = "Список всех барберов, зарегистрированных в приложении:"
@@ -149,6 +151,9 @@ var (
 	btnEditService       = markupManageServices.Data("Изменить услугу", "edit_service")
 	btnDeleteService     = markupManageServices.Data("Удалить услугу", "delete_services")
 
+	markupShowMyServices = &tele.ReplyMarkup{}
+	markupShowNoServices = &tele.ReplyMarkup{}
+
 	markupManageBarbers    = &tele.ReplyMarkup{}
 	btnShowAllBurbers      = markupManageBarbers.Data("Список барберов", "show_all_barbers")
 	btnAddBarber           = markupManageBarbers.Data("Добавить барбера", "add_barber")
@@ -201,6 +206,18 @@ func init() {
 		markupManageServices.Row(btnEditService),
 		markupManageServices.Row(btnDeleteService),
 		markupManageServices.Row(btnBackToMainBarber),
+	)
+
+	markupShowNoServices.Inline(
+		markupShowNoServices.Row(btnCreateService),
+		markupShowNoServices.Row(btnBackToMainBarber),
+	)
+
+	markupShowMyServices.Inline(
+		markupShowMyServices.Row(btnCreateService),
+		markupShowMyServices.Row(btnEditService),
+		markupShowMyServices.Row(btnDeleteService),
+		markupShowMyServices.Row(btnBackToMainBarber),
 	)
 
 	markupManageBarbers.Inline(
@@ -391,6 +408,25 @@ func onManageServices(ctx tele.Context) error {
 		return logAndMsgErrBarber(ctx, "can't open the manage services menu", err)
 	}
 	return ctx.Edit(manageServices, markupManageServices)
+}
+
+func onShowMyServices(ctx tele.Context) error {
+	errMsg := "can't show list of services"
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Status: ent.StatusStart}); err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	services, err := cp.RepoWithContext.GetServicesByBarberID(ctx.Sender().ID)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	if len(services) == 0 {
+		return ctx.Edit(youHaveNoServices, markupShowNoServices)
+	}
+	servicesInfo := ""
+	for _, service := range services {
+		servicesInfo = servicesInfo + "\n\n" + service.Info()
+	}
+	return ctx.Edit(yourServices+servicesInfo, markupShowMyServices)
 }
 
 func onManageBarbers(ctx tele.Context) error {

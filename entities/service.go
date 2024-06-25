@@ -2,6 +2,7 @@ package entities
 
 import (
 	tm "barbershop-bot/lib/time"
+	"fmt"
 	"strconv"
 )
 
@@ -16,7 +17,7 @@ type Service struct {
 
 type Price uint
 
-func GetPrice(text string) (Price, error) {
+func NewPrice(text string) (Price, error) {
 	price, err := strconv.ParseUint(text, 10, 64)
 	if err != nil {
 		return 0, err
@@ -26,4 +27,12 @@ func GetPrice(text string) (Price, error) {
 
 func (p Price) String() string {
 	return strconv.FormatUint(uint64(p), 10) + " ₽"
+}
+
+func (s Service) BtnSignature() string {
+	return s.Name + " " + s.Price.String()
+}
+
+func (s Service) Info() string {
+	return fmt.Sprintf("%s\n%s %s\n%s", s.Name, s.Price.String(), s.Duration.LongString(), s.Desciption)
 }

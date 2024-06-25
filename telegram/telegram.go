@@ -64,6 +64,7 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	barbers.Handle(&btnSureToDelete, onSureToDelete)
 
 	barbers.Handle(&btnManageServices, onManageServices)
+	barbers.Handle(&btnShowMyServices, onShowMyServices)
 
 	barbers.Handle(&btnManageBarbers, onManageBarbers)
 	barbers.Handle(&btnShowAllBurbers, onShowAllBarbers)
