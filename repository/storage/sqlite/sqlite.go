@@ -344,7 +344,7 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 	return nil
 }
 
-// UpdateBarber updates valid fields of Barber. ID field must be valid and remains not updated.
+// UpdateBarber updates valid  and non-niladic fields of Barber. ID field must be non-niladic and remains not updated.
 func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) error {
 	query := make([]string, 0, 3)
 	args := make([]interface{}, 0, 3)
@@ -374,8 +374,8 @@ func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) error {
 	return nil
 }
 
-// UpdateService updates valid fields of Service. ID field must be valid and remains not updated.
-// UpdateService also doesn't updates barber_id field even if it's valid.
+// UpdateService updates non-niladic fields of Service. ID field must be non-niladic and remains not updated.
+// UpdateService also doesn't updates barber_id field even if it's non-niladic.
 func (s *Storage) UpdateService(ctx context.Context, service st.Service) (err error) {
 	defer func() { err = e.WrapIfErr("can't update service", err) }()
 	if service.ID < 1 {

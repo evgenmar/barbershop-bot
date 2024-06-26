@@ -65,6 +65,15 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 
 	barbers.Handle(&btnManageServices, onManageServices)
 	barbers.Handle(&btnShowMyServices, onShowMyServices)
+	barbers.Handle(&btnCreateService, onCreateService)
+	barbers.Handle(&btnСontinueOldService, onСontinueOldService)
+	barbers.Handle(&btnMakeNewService, onMakeNewService)
+	barbers.Handle(&btnEnterServiceName, onEnterServiceName)
+	barbers.Handle(&btnEnterServiceDescription, onEnterServiceDescription)
+	barbers.Handle(&btnEnterServicePrice, onEnterServicePrice)
+	barbers.Handle(&btnSelectServiceDuration, onSelectServiceDuration)
+	barbers.Handle(&btnSelectCertainDuration, onSelectCertainDuration)
+	barbers.Handle(&btnSaveNewService, onSaveNewService)
 
 	barbers.Handle(&btnManageBarbers, onManageBarbers)
 	barbers.Handle(&btnShowAllBurbers, onShowAllBarbers)

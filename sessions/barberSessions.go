@@ -1,18 +1,29 @@
 package sessions
 
 import (
+	ent "barbershop-bot/entities"
+	tm "barbershop-bot/lib/time"
+	"fmt"
 	"sync"
 	"time"
 )
 
 type BarberSession struct {
-	Status
+	status
+	NewService
 	expiresAt int64
 }
 
 type BarberSessionManager struct {
 	sessions map[int64]BarberSession
 	mutex    sync.RWMutex
+}
+
+type NewService struct {
+	Name       string
+	Desciption string
+	Price      ent.Price
+	Duration   tm.Duration
 }
 
 var (
@@ -34,24 +45,16 @@ func (m *BarberSessionManager) get(id int64) BarberSession {
 	defer m.mutex.RUnlock()
 	session, ok := m.sessions[id]
 	if !ok {
-		return BarberSession{Status: NewStatus(StateStart)}
+		return BarberSession{}
 	}
 	return session
 }
 
-// Update updates only non-niladic fields of session. Niladic fields remains unchanged.
 func (m *BarberSessionManager) update(id int64, session BarberSession) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	existingSession, ok := m.sessions[id]
-	if !ok {
-		existingSession = BarberSession{Status: NewStatus(StateStart)}
-	}
-	if session.State != 0 {
-		existingSession.Status = session.Status
-	}
-	existingSession.expiresAt = time.Now().Add(time.Hour * 48).Unix()
-	m.sessions[id] = existingSession
+	session.expiresAt = time.Now().Add(time.Hour * 72).Unix()
+	m.sessions[id] = session
 }
 
 func (m *BarberSessionManager) cleanupBarberSessions() {
@@ -65,26 +68,59 @@ func (m *BarberSessionManager) cleanupBarberSessions() {
 	}
 }
 
-// TODO: make it unexported
-func GetBarberSession(id int64) BarberSession {
+func (s NewService) Info() string {
+	name := "не указано"
+	description := "не указано"
+	price := "не указана"
+	duration := "не указана"
+	if s.Name != "" {
+		name = fmt.Sprintf("*%s*", s.Name)
+	}
+	if s.Desciption != "" {
+		description = fmt.Sprintf("*%s*", s.Desciption)
+	}
+	if s.Price != 0 {
+		price = fmt.Sprintf("*%s*", s.Price.String())
+	}
+	if s.Duration != 0 {
+		duration = fmt.Sprintf("*%s*", s.Duration.LongString())
+	}
+	format := "На данный момент создаваемая услуга имеет вид:\nНазвание услуги: %s\nОписание услуги: %s\nЦена услуги: %s\nПродолжительность услуги: %s\n"
+	return fmt.Sprintf(format, name, description, price, duration)
+}
+
+func getBarberSession(id int64) BarberSession {
 	return getBarberSessionManager().get(id)
 }
 
 func GetBarberState(id int64) State {
-	session := GetBarberSession(id)
-	if !session.Status.isValid() {
-		UpdateBarberState(id, StateStart)
+	session := getBarberSession(id)
+	if !session.status.isValid() {
+		session.status = newStatus(StateStart)
+		updateBarberSession(id, session)
 		return StateStart
 	}
-	return session.State
+	return session.state
 }
 
-// TODO: make it unexported
-// Update updates only non-niladic fields of session. Niladic fields remains unchanged.
-func UpdateBarberSession(id int64, session BarberSession) {
+func GetNewService(id int64) NewService {
+	session := getBarberSession(id)
+	return session.NewService
+}
+
+func updateBarberSession(id int64, session BarberSession) {
 	getBarberSessionManager().update(id, session)
 }
 
 func UpdateBarberState(id int64, state State) {
-	UpdateBarberSession(id, BarberSession{Status: NewStatus(state)})
+	session := getBarberSession(id)
+	session.status = newStatus(state)
+	updateBarberSession(id, session)
+}
+
+func UpdateNewServiceAndState(id int64, nservice NewService, state State) {
+	session := getBarberSession(id)
+	session.NewService = nservice
+	session.status = newStatus(state)
+	updateBarberSession(id, session)
 }

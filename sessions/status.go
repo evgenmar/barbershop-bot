@@ -4,34 +4,37 @@ import (
 	"time"
 )
 
-type Status struct {
-	State      State
-	Expiration int64
+type status struct {
+	state      State
+	expiration int64
 }
 
 type State byte
 
 const (
-	StateStart State = iota + 1
+	StateStart State = iota
 	StateUpdName
 	StateUpdPhone
 	StateAddBarber
+	StateEnterServiceName
+	StateEnterServiceDescription
+	StateEnterServicePrice
 )
 
 // By default new Status lifetime is 24 hours except of StatusStart with a lifetime till 3000-01-01 00:00:00 UTC.
-func NewStatus(state State) Status {
+func newStatus(state State) status {
 	if state == StateStart {
-		return Status{State: StateStart}
+		return status{state: StateStart}
 	}
-	return Status{
-		State:      state,
-		Expiration: time.Now().Add(24 * time.Hour).Unix(),
+	return status{
+		state:      state,
+		expiration: time.Now().Add(24 * time.Hour).Unix(),
 	}
 }
 
-func (s Status) isValid() bool {
-	if s.State == StateStart {
+func (s status) isValid() bool {
+	if s.state == StateStart {
 		return true
 	}
-	return s.Expiration > time.Now().Unix()
+	return s.expiration > time.Now().Unix()
 }

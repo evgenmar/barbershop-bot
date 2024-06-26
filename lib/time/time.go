@@ -24,6 +24,9 @@ func (d Duration) LongString() string {
 	if hours == 0 {
 		return fmt.Sprintf("%02d мин", minutes)
 	}
+	if minutes == 0 {
+		return fmt.Sprintf("%01d ч", hours)
+	}
 	return fmt.Sprintf("%01d ч %02d мин", hours, minutes)
 }
 

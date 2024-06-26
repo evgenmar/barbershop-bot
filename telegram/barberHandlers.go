@@ -18,221 +18,6 @@ import (
 	tele "gopkg.in/telebot.v3"
 )
 
-const (
-	mainBarber = "Добрый день. Вы находитесь в главном меню."
-
-	settingsBarber = "В этом меню собраны функции, обеспечивающие управление и настройки приложения."
-
-	manageAccountBarber = "В этом меню собраны функции для управления Вашим аккаунтом."
-	currentSettings     = `Ваши текущие настройки:
-`
-	personalBarber       = "Выберите данные, которые вы хотите обновить."
-	updNameBarber        = "Введите Ваше имя"
-	updNameSuccessBarber = "Имя успешно обновлено. Хотите обновить другие данные?"
-	invalidBarberName    = `Введенное имя не соответствует установленным критериям:
-		- имя может содержать русские и английские буквы, цифры и пробелы;
-		- длина имени должна быть не менее 2 символов и не более 20 символов.
-Пожалуйста, попробуйте ввести имя еще раз. При необходимости вернуться в главное меню воспользуйтесь командой /start`
-	notUniqueBarberName = `Имя не сохранено. Другой барбер с таким именем уже зарегистрирован в приложении. Введите другое имя.
-При необходимости вернуться в главное меню воспользуйтесь командой /start`
-
-	updPhoneBarber        = "Введите свой номер телефона"
-	updPhoneSuccessBarber = "Номер телефона успешно обновлен. Хотите обновить другие данные?"
-	invalidBarberPhone    = `Неизвестный формат номера телефона. Примеры поддерживаемых форматов:
-		81234567890
-		8(123)-456-7890
-		+71234567890
-		+7 123 456 7890
-Номер должен начинаться с "+7" или с "8". Региональный код можно по желанию заключить в скобки, также допустимо разделять пробелами или тире группы цифр.
-Пожалуйста, попробуйте ввести номер телефона еще раз. При необходимости вернуться в главное меню воспользуйтесь командой /start`
-	notUniqueBarberPhone = `Номер телефона не сохранен. Другой барбер с таким номером уже зарегистрирован в приложении. Введите другой номер.
-При необходимости вернуться в главное меню воспользуйтесь командой /start`
-
-	deleteAccount                   = "В этом меню собраны функции, необходимые для корректного прекращения работы в качестве барбера в этом боте."
-	endpntSelectMonthOfLastWorkDate = "select_month_of_last_work_date"
-	endpntSelectLastWorkDate        = "select_last_work_date"
-	selectLastWorkDate              = `Данную функцию следует использовать, если Вы планируете прекратить использовать этот бот в своей работе и хотите, чтобы клиенты перестали использовать бот для записи к Вам на стрижку.
-	
-Выберите дату последнего рабочего дня.
-Для выбора доступны только даты позже последней существующей записи клиента на стрижку.
-Если Вы хотите выбрать более раннюю дату, сначала отмените последние записи клиентов на стрижку.
-	
-ВНИМАНИЕ!!! После установки даты последнего рабочего дня клиенты не смогут записаться на стрижку на более позднюю дату.
-По умолчанию установлена бессрочная дата последнего рабочего дня.
-Если Вы ранее меняли эту дату и хотите снова установить бессрочную дату, нажмите кнопку в нижней части меню.`
-	haveAppointmentAfterDataToSave = `Невозможно сохранить дату, поскольку пока Вы выбирали дату, клиент успел записаться к Вам на стрижку на дату позже выбранной Вами даты.
-Пожалуйста проверьте записи клиентов и при необходимости отмените самую позднюю запись. Или выберите более позднюю дату последнего рабочего дня.`
-	lastWorkDateSaved                = "Новая дата последнего рабочего дня успешно сохранена."
-	lastWorkDateUnchanged            = "Указанная дата совпадает с той, которую вы уже установили ранее"
-	lastWorkDateSavedWithoutSсhedule = `Новая дата последнего рабочего дня сохранена.
-ВНИМАНИЕ!!! При попытке составить расписание работы вплоть до сохраненной даты произошла ошибка. Расписание не составлено!
-Для доступа к записи клиентов на стрижку необходимо составить расписание работы.`
-	lastWorkDateNotSavedButScheduleDeleted = `При выполнении команды произошла ошибка, в результате которой Ваше расписание работы после желаемой даты окончания работы было удалено.
-Однако сама дата окончания работы не была настроена. Планировшик расписания восстановит удаленную часть расписания во время планового запуска. Однако, дата последнего рабочего дня так и останется не измененной.
-Чтобы исправить это, пожалуйста попробуйте еще раз установить интересующую Вас дату последнего рабочего дня.`
-	confirmSelfDeletion = `Вы собираетесь отказаться от статуса "барбер".
-ВНИМАНИЕ!!! Помимо изменения Вашего статуса также будет удален весь перечень оказываемых Вами услуг и вся история прошедших записей Ваших клиентов. Клиенты больше не смогут записаться к Вам на стрижку через этот бот.
-Если Вы уверены, нажмите "Уверен, удалить!". Если передумали, просто вернитесь в главное меню.`
-	youHaveActiveSchedule = `Невозможно отказаться от статуса "барбер" прямо сейчас. Предварительно вы должны выполнить следующие действия:
-`
-	goodbuyBarber = "Ваш статус изменен. Спасибо, что работали с нами!"
-
-	manageServices    = "В этом меню собраны функции для управления услугами. Каждый барбер настраивает свои услуги индивидуально."
-	youHaveNoServices = "У Вас нет ни одной услуги."
-	yourServices      = "Список Ваших услуг:"
-
-	manageBarbers = "В этом меню собраны функции для управления барберами."
-	listOfBarbers = "Список всех барберов, зарегистрированных в приложении:"
-	addBarber     = `Для добавления нового барбера пришлите в этот чат контакт профиля пользователя телеграм, которого вы хотите сделать барбером.
-Подробная инструкция:
-1. Зайдите в личный чат с пользователем.
-2. В верхней части чата нажмите на поле, отображающее аватар аккаунта пользователя и его имя. Таким образом Вы откроете окно просмотра профиля пользователя.
-3. Нажмите на "три точки" в верхнем правом углу дисплея.
-4. В открывшемся меню выберите "Поделиться контактом".
-5. В открывшемся списке Ваших чатов выберите чат с ботом (чат, в котором Вы читаете эту инструкцию).
-6. В правом нижнем углу нажмите на значек отправки сообщения.
-
-Если вы передумали добавлять нового барбера, воспользуйтесь командой /start для возврата в главное меню.`
-	userIsAlreadyBarber        = "Статус пользователя не изменен, поскольку он уже является барбером."
-	addedNewBarberWithSсhedule = `Статус пользователя изменен на "барбер". Для нового барбера составлено расписание работы на ближайшие полгода.
-Для доступа к записи клиентов на стрижку новый барбер должен заполнить персональные данные.`
-	addedNewBarberWithoutSсhedule = `Статус пользователя изменен на "барбер".
-ВНИМАНИЕ!!! При попытке составить расписание работы для нового барбера произошла ошибка. Расписание не составлено!
-Для доступа к записи клиентов на стрижку новый барбер должен заполнить персональные данные, а также составить расписание работы.`
-	onlyOneBarberExists = "Вы единственный зарегистрированный барбер в приложении. Некого удалять."
-	noBarbersToDelete   = `Нет ни одного барбера, которого можно было бы удалить. 
-Для того, чтобы барбера можно было удалить, он предварительно должен выполнить следующие действия:
-`
-	selectBarberToDeletion = `Выберите барбера, которого Вы хотите удалить.
-ВНИМАНИЕ!!! При удалении барбера будет также удален весь перечень оказываемых им услуг и вся история прошедших записей клиентов этого барбера. 
-Если нужного барбера нет в этом списке, значит он еще не выполнил необходимые действия перед удалением:
-`
-	preDeletionBarberInstruction = `1. Установить не бессрочную дату последнего рабочего дня. По умолчанию установлена бессрочная дата последнего рабочего дня.
-2. Дождаться наступления следующего дня после даты установленной в прошлом пункте.
-	
-Эти действия необходимы, чтобы гарантировать, что ни один клиент, записавшийся на стрижку, не останется необслуженным в процессе удаления барбера из приложения.`
-	endpntBarberToDeletion   = "barber_to_deletion"
-	barberDeleted            = `Статус указанного пользователя изменен. Пользователь больше не имеет статуса "барбер".`
-	barberHaveActiveSchedule = `Невозможно изменить статус барбера, поскольку пока Вы выбирали барбера для удаления, выбранный барбер изменил свою дату последнего рабочего дня на более позднюю.`
-
-	unknownCmdBarber = "Неизвестная команда. Пожалуйста, выберите команду из меню. Для вызова главного меню воспользуйтесь командой /start"
-	errorBarber      = `Произошла ошибка обработки команды. Команда не была выполнена. Если ошибка будет повторяться, возможно, потребуется перезапуск сервиса.
-Пожалуйста, перейдите в главное меню и попробуйте выполнить команду заново.`
-)
-
-var (
-	markupMainBarber  = &tele.ReplyMarkup{}
-	btnSettingsBarber = markupMainBarber.Data("Настройки", "settings_barber")
-
-	markupSettingsBarber   = &tele.ReplyMarkup{}
-	btnManageAccountBarber = markupSettingsBarber.Data("Управление аккаунтом", "manage_account_barber")
-	btnManageServices      = markupSettingsBarber.Data("Управление услугами", "manage_services")
-	btnManageBarbers       = markupSettingsBarber.Data("Управление барберами", "manage_barbers")
-
-	markupManageAccountBarber    = &tele.ReplyMarkup{}
-	btnShowCurrentSettingsBarber = markupManageAccountBarber.Data("Мои текущие настройки", "show_current_settings_barber")
-	btnUpdPersonalBarber         = markupManageAccountBarber.Data("Обновить персональные данные", "upd_personal_data_barber")
-	btnDeleteAccount             = markupManageAccountBarber.Data("Удаление аккаунта барбера", "delete_account")
-
-	markupPersonalBarber = &tele.ReplyMarkup{}
-	btnUpdNameBarber     = markupPersonalBarber.Data("Обновить имя", "upd_name_barber")
-	btnUpdPhoneBarber    = markupPersonalBarber.Data("Обновить номер телефона", "upd_phone_barber")
-
-	markupDeleteAccount   = &tele.ReplyMarkup{}
-	btnSetLastWorkDate    = markupDeleteAccount.Data("Установить последний рабочий день", endpntSelectMonthOfLastWorkDate, "0")
-	btnSelectLastWorkDate = markupDeleteAccount.Data("", endpntSelectLastWorkDate)
-	btnSelfDeleteBarber   = markupDeleteAccount.Data(`Отказаться от статуса "барбер"`, "self_delete_barber")
-
-	markupConfirmSelfDeletion = &tele.ReplyMarkup{}
-	btnSureToDelete           = markupConfirmSelfDeletion.Data("Уверен, удалить!", "sure_to_delete")
-
-	markupManageServices = &tele.ReplyMarkup{}
-	btnShowMyServices    = markupManageServices.Data("Список моих услуг", "show_my_services")
-	btnCreateService     = markupManageServices.Data("Создать услугу", "create_service")
-	btnEditService       = markupManageServices.Data("Изменить услугу", "edit_service")
-	btnDeleteService     = markupManageServices.Data("Удалить услугу", "delete_services")
-
-	markupShowMyServices = &tele.ReplyMarkup{}
-	markupShowNoServices = &tele.ReplyMarkup{}
-
-	markupManageBarbers    = &tele.ReplyMarkup{}
-	btnShowAllBurbers      = markupManageBarbers.Data("Список барберов", "show_all_barbers")
-	btnAddBarber           = markupManageBarbers.Data("Добавить барбера", "add_barber")
-	btnDeleteBarber        = markupManageBarbers.Data("Удалить барбера", "delete_barber")
-	btnDeleteCertainBarber = markupManageBarbers.Data("", endpntBarberToDeletion)
-
-	markupBackToMainBarber = &tele.ReplyMarkup{}
-	btnBackToMainBarber    = markupBackToMainBarber.Data("Вернуться в главное меню", "back_to_main_barber")
-)
-
-func init() {
-	markupMainBarber.Inline(
-		markupMainBarber.Row(btnSettingsBarber),
-	)
-
-	markupSettingsBarber.Inline(
-		markupSettingsBarber.Row(btnManageAccountBarber),
-		markupSettingsBarber.Row(btnManageServices),
-		markupSettingsBarber.Row(btnManageBarbers),
-		markupSettingsBarber.Row(btnBackToMainBarber),
-	)
-
-	markupManageAccountBarber.Inline(
-		markupManageAccountBarber.Row(btnShowCurrentSettingsBarber),
-		markupManageAccountBarber.Row(btnUpdPersonalBarber),
-		markupManageAccountBarber.Row(btnDeleteAccount),
-		markupManageAccountBarber.Row(btnBackToMainBarber),
-	)
-
-	markupPersonalBarber.Inline(
-		markupPersonalBarber.Row(btnUpdNameBarber),
-		markupPersonalBarber.Row(btnUpdPhoneBarber),
-		markupPersonalBarber.Row(btnBackToMainBarber),
-	)
-
-	markupDeleteAccount.Inline(
-		markupDeleteAccount.Row(btnSetLastWorkDate),
-		markupDeleteAccount.Row(btnSelfDeleteBarber),
-		markupDeleteAccount.Row(btnBackToMainBarber),
-	)
-
-	markupConfirmSelfDeletion.Inline(
-		markupConfirmSelfDeletion.Row(btnSureToDelete),
-		markupConfirmSelfDeletion.Row(btnBackToMainBarber),
-	)
-
-	markupManageServices.Inline(
-		markupManageServices.Row(btnShowMyServices),
-		markupManageServices.Row(btnCreateService),
-		markupManageServices.Row(btnEditService),
-		markupManageServices.Row(btnDeleteService),
-		markupManageServices.Row(btnBackToMainBarber),
-	)
-
-	markupShowNoServices.Inline(
-		markupShowNoServices.Row(btnCreateService),
-		markupShowNoServices.Row(btnBackToMainBarber),
-	)
-
-	markupShowMyServices.Inline(
-		markupShowMyServices.Row(btnCreateService),
-		markupShowMyServices.Row(btnEditService),
-		markupShowMyServices.Row(btnDeleteService),
-		markupShowMyServices.Row(btnBackToMainBarber),
-	)
-
-	markupManageBarbers.Inline(
-		markupManageBarbers.Row(btnShowAllBurbers),
-		markupManageBarbers.Row(btnAddBarber),
-		markupManageBarbers.Row(btnDeleteBarber),
-		markupManageBarbers.Row(btnBackToMainBarber),
-	)
-
-	markupBackToMainBarber.Inline(
-		markupBackToMainBarber.Row(btnBackToMainBarber),
-	)
-}
-
 func onStartBarber(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
 	return ctx.Send(mainBarber, markupMainBarber)
@@ -401,6 +186,90 @@ func onShowMyServices(ctx tele.Context) error {
 	return ctx.Edit(yourServices+servicesInfo, markupShowMyServices)
 }
 
+func onCreateService(ctx tele.Context) error {
+	barberID := ctx.Sender().ID
+	sess.UpdateBarberState(barberID, sess.StateStart)
+	newService := sess.GetNewService(barberID)
+	if newService.Name != "" || newService.Desciption != "" || newService.Price != 0 || newService.Duration != 0 {
+		return ctx.Edit(continueOldOrMakeNewService, markupСontinueOldOrMakeNewService)
+	}
+	return onNewService(ctx)
+}
+
+func onСontinueOldService(ctx tele.Context) error {
+	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
+	return onNewService(ctx)
+}
+
+func onMakeNewService(ctx tele.Context) error {
+	sess.UpdateNewServiceAndState(ctx.Sender().ID, sess.NewService{}, sess.StateStart)
+	return onNewService(ctx)
+}
+
+func onNewService(ctx tele.Context) error {
+	newService := sess.GetNewService(ctx.Sender().ID)
+	if newService.Name != "" && newService.Desciption != "" && newService.Price != 0 && newService.Duration != 0 {
+		return ctx.Edit(readyToCreateService+"\n\n"+enterServiceParams+"\n\n"+newService.Info(), markupReadyToCreateService, tele.ModeMarkdown)
+	}
+	return ctx.Edit(enterServiceParams+"\n\n"+newService.Info(), markupEnterServiceParams, tele.ModeMarkdown)
+}
+
+func onEnterServiceName(ctx tele.Context) error {
+	sess.UpdateBarberState(ctx.Sender().ID, sess.StateEnterServiceName)
+	return ctx.Edit(enterServiceName)
+}
+
+func onEnterServiceDescription(ctx tele.Context) error {
+	sess.UpdateBarberState(ctx.Sender().ID, sess.StateEnterServiceDescription)
+	return ctx.Edit(enterServiceDescription)
+}
+
+func onEnterServicePrice(ctx tele.Context) error {
+	sess.UpdateBarberState(ctx.Sender().ID, sess.StateEnterServicePrice)
+	return ctx.Edit(enterServicePrice)
+}
+
+func onSelectServiceDuration(ctx tele.Context) error {
+	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
+	return ctx.Edit(selectServiceDuration, markupSelectServiceDuration())
+}
+
+func onSelectCertainDuration(ctx tele.Context) error {
+	dur, err := strconv.ParseUint(ctx.Callback().Data, 10, 64)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, "can't handle select certain service duration", err)
+	}
+	barberID := ctx.Sender().ID
+	newService := sess.GetNewService(barberID)
+	newService.Duration = tm.Duration(dur)
+	sess.UpdateNewServiceAndState(barberID, newService, sess.StateStart)
+	return onNewService(ctx)
+}
+
+func onSaveNewService(ctx tele.Context) error {
+	barberID := ctx.Sender().ID
+	newService := sess.GetNewService(barberID)
+	serviceToCreate := ent.Service{
+		BarberID:   barberID,
+		Name:       newService.Name,
+		Desciption: newService.Desciption,
+		Price:      newService.Price,
+		Duration:   newService.Duration,
+	}
+	if err := cp.RepoWithContext.CreateService(serviceToCreate); err != nil {
+		sess.UpdateBarberState(barberID, sess.StateStart)
+		if errors.Is(err, rep.ErrInvalidService) {
+			return ctx.Edit(invalidService, markupBackToMainBarber)
+		}
+		if errors.Is(err, rep.ErrAlreadyExists) {
+			return ctx.Edit(nonUniqueServiceName+"\n\n"+newService.Info(), markupEnterServiceName, tele.ModeMarkdown)
+		}
+		return logAndMsgErrBarber(ctx, "can't create service", err)
+	}
+	sess.UpdateNewServiceAndState(barberID, sess.NewService{}, sess.StateStart)
+	return ctx.Edit(serviceCreated, markupManageServices)
+}
+
 func onManageBarbers(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
 	return ctx.Edit(manageBarbers, markupManageBarbers)
@@ -475,25 +344,107 @@ func onTextBarber(ctx tele.Context) error {
 	state := sess.GetBarberState(ctx.Sender().ID)
 	switch state {
 	case sess.StateUpdName:
-		return updateBarberName(ctx)
+		return onUpdateBarberName(ctx)
 	case sess.StateUpdPhone:
-		return updateBarberPhone(ctx)
+		return onUpdateBarberPhone(ctx)
+	case sess.StateEnterServiceName:
+		return onEnterServName(ctx)
+	case sess.StateEnterServiceDescription:
+		return onEnterServDescription(ctx)
+	case sess.StateEnterServicePrice:
+		return onEnterServPrice(ctx)
 	default:
 		return ctx.Send(unknownCmdBarber)
 	}
+}
+
+func onUpdateBarberName(ctx tele.Context) error {
+	barberID := ctx.Sender().ID
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, Name: ctx.Message().Text}); err != nil {
+		if errors.Is(err, rep.ErrInvalidBarber) {
+			log.Print(e.Wrap("invalid barber name", err))
+			return ctx.Send(invalidBarberName)
+		}
+		if errors.Is(err, rep.ErrNonUniqueData) {
+			log.Print(e.Wrap("barber's name must be unique", err))
+			return ctx.Send(notUniqueBarberName)
+		}
+		sess.UpdateBarberState(barberID, sess.StateStart)
+		return logAndMsgErrBarber(ctx, "can't update barber's name", err)
+	}
+	sess.UpdateBarberState(barberID, sess.StateStart)
+	return ctx.Send(updNameSuccessBarber, markupPersonalBarber)
+}
+
+func onUpdateBarberPhone(ctx tele.Context) error {
+	barberID := ctx.Sender().ID
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, Phone: ctx.Message().Text}); err != nil {
+		if errors.Is(err, rep.ErrInvalidBarber) {
+			log.Print(e.Wrap("invalid barber phone", err))
+			return ctx.Send(invalidBarberPhone)
+		}
+		if errors.Is(err, rep.ErrNonUniqueData) {
+			log.Print(e.Wrap("barber's phone must be unique", err))
+			return ctx.Send(notUniqueBarberPhone)
+		}
+		sess.UpdateBarberState(barberID, sess.StateStart)
+		return logAndMsgErrBarber(ctx, "can't update barber's phone", err)
+	}
+	sess.UpdateBarberState(barberID, sess.StateStart)
+	return ctx.Send(updPhoneSuccessBarber, markupPersonalBarber)
+}
+
+func onEnterServName(ctx tele.Context) error {
+	text := ctx.Message().Text
+	if !m.IsValidServiceName(text) {
+		return ctx.Send(invalidServiceName)
+	}
+	newService := sess.GetNewService(ctx.Sender().ID)
+	newService.Name = text
+	return onNewServ(ctx, newService)
+}
+
+func onEnterServDescription(ctx tele.Context) error {
+	text := ctx.Message().Text
+	if !m.IsValidDescription(text) {
+		return ctx.Send(invalidServiceDescription)
+	}
+	newService := sess.GetNewService(ctx.Sender().ID)
+	newService.Desciption = text
+	return onNewServ(ctx, newService)
+}
+
+func onEnterServPrice(ctx tele.Context) error {
+	text := ctx.Message().Text
+	price, err := ent.NewPrice(text)
+	if err != nil {
+		log.Print(e.Wrap("invalid service price", err))
+		return ctx.Send(invalidServicePrice)
+	}
+	newService := sess.GetNewService(ctx.Sender().ID)
+	newService.Price = price
+	return onNewServ(ctx, newService)
+}
+
+func onNewServ(ctx tele.Context, newService sess.NewService) error {
+	sess.UpdateNewServiceAndState(ctx.Sender().ID, newService, sess.StateStart)
+	if newService.Name != "" && newService.Desciption != "" && newService.Price != 0 && newService.Duration != 0 {
+		return ctx.Send(readyToCreateService+"\n\n"+enterServiceParams+"\n\n"+newService.Info(), markupReadyToCreateService, tele.ModeMarkdown)
+	}
+	return ctx.Send(enterServiceParams+"\n\n"+newService.Info(), markupEnterServiceParams, tele.ModeMarkdown)
 }
 
 func onContactBarber(ctx tele.Context) error {
 	state := sess.GetBarberState(ctx.Sender().ID)
 	switch state {
 	case sess.StateAddBarber:
-		return addNewBarber(ctx)
+		return onAddNewBarber(ctx)
 	default:
 		return ctx.Send(unknownCmdBarber)
 	}
 }
 
-func addNewBarber(ctx tele.Context) error {
+func onAddNewBarber(ctx tele.Context) error {
 	errMsg := "can't add new barber"
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
 	newBarberID := ctx.Message().Contact.UserID
@@ -581,36 +532,14 @@ func markupSelectLastWorkDate(firstDisplayedDateRange ent.DateRange, relativeFir
 	return markup
 }
 
-func updateBarberName(ctx tele.Context) error {
-	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Name: ctx.Message().Text}); err != nil {
-		if errors.Is(err, rep.ErrInvalidBarber) {
-			log.Print(e.Wrap("invalid barber name", err))
-			return ctx.Send(invalidBarberName)
-		}
-		if errors.Is(err, rep.ErrNonUniqueData) {
-			log.Print(e.Wrap("barber's name must be unique", err))
-			return ctx.Send(notUniqueBarberName)
-		}
-		sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-		return logAndMsgErrBarber(ctx, "can't update barber's name", err)
+func markupSelectServiceDuration() *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{}
+	btnsDurationsToSelect := make([]tele.Btn, 4)
+	for duration := 30 * tm.Minute; duration <= 2*tm.Hour; duration += 30 * tm.Minute {
+		btnsDurationsToSelect = append(btnsDurationsToSelect, btnServiceDuration(duration))
 	}
-	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Send(updNameSuccessBarber, markupPersonalBarber)
-}
-
-func updateBarberPhone(ctx tele.Context) error {
-	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: ctx.Sender().ID, Phone: ctx.Message().Text}); err != nil {
-		if errors.Is(err, rep.ErrInvalidBarber) {
-			log.Print(e.Wrap("invalid barber phone", err))
-			return ctx.Send(invalidBarberPhone)
-		}
-		if errors.Is(err, rep.ErrNonUniqueData) {
-			log.Print(e.Wrap("barber's phone must be unique", err))
-			return ctx.Send(notUniqueBarberPhone)
-		}
-		sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-		return logAndMsgErrBarber(ctx, "can't update barber's phone", err)
-	}
-	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Send(updPhoneSuccessBarber, markupPersonalBarber)
+	rows := markup.Split(2, btnsDurationsToSelect)
+	rows = append(rows, markup.Row(btnBackToMainBarber))
+	markup.Inline(rows...)
+	return markup
 }

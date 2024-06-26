@@ -49,10 +49,10 @@ func (v ValidatedEntityToStorageMapper) DateRange(dateRange ent.DateRange) (st.D
 }
 
 func (v ValidatedEntityToStorageMapper) Service(service ent.Service) (st.Service, error) {
-	if service.Name != "" && !isValidServiceName(service.Name) {
+	if service.Name != "" && !IsValidServiceName(service.Name) {
 		return st.Service{}, ErrInvalidService
 	}
-	if service.Desciption != "" && !isValidDescription(service.Desciption) {
+	if service.Desciption != "" && !IsValidDescription(service.Desciption) {
 		return st.Service{}, ErrInvalidService
 	}
 	return v.EntityToStorageMapper.Service(service), nil
@@ -65,7 +65,7 @@ func (v ValidatedEntityToStorageMapper) Workday(workday ent.Workday) (st.Workday
 	return v.EntityToStorageMapper.Workday(workday), nil
 }
 
-func isValidDescription(text string) bool {
+func IsValidDescription(text string) bool {
 	namePattern := `^[a-zA-Zа-яА-Я0-9,.\s+\-\(\)\/\"!]{10,400}$`
 	regex := regexp.MustCompile(namePattern)
 	var has7Letters bool
@@ -101,7 +101,7 @@ func isValidPhone(text string) bool {
 	return regex.MatchString(text)
 }
 
-func isValidServiceName(text string) bool {
+func IsValidServiceName(text string) bool {
 	namePattern := `^[a-zA-Zа-яА-Я0-9,.\s+\-\(\)\/\"!]{3,50}$`
 	regex := regexp.MustCompile(namePattern)
 	var hasLetter bool

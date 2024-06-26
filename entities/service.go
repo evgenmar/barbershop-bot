@@ -2,6 +2,7 @@ package entities
 
 import (
 	tm "barbershop-bot/lib/time"
+	"errors"
 	"fmt"
 	"strconv"
 )
@@ -22,6 +23,9 @@ func NewPrice(text string) (Price, error) {
 	if err != nil {
 		return 0, err
 	}
+	if price == 0 {
+		return 0, errors.New("Price should have a positive value")
+	}
 	return Price(price), nil
 }
 
@@ -34,5 +38,5 @@ func (s Service) BtnSignature() string {
 }
 
 func (s Service) Info() string {
-	return fmt.Sprintf("%s\n%s %s\n%s", s.Name, s.Price.String(), s.Duration.LongString(), s.Desciption)
+	return fmt.Sprintf("%s\n%s, %s\n%s", s.Name, s.Price.String(), s.Duration.LongString(), s.Desciption)
 }

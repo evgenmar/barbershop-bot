@@ -63,11 +63,11 @@ type Storage interface {
 	// Init prepares the storage for use. It creates the necessary tables if not exists.
 	Init(ctx context.Context) error
 
-	// UpdateBarber updates valid fields of Barber. ID field must be valid and remains not updated.
+	// UpdateBarber updates valid  and non-niladic fields of Barber. ID field must be non-niladic and remains not updated.
 	UpdateBarber(ctx context.Context, barber Barber) error
 
-	// UpdateService updates valid fields of Service. ID field must be valid and remains not updated.
-	// UpdateService also doesn't updates barber_id field even if it's valid.
+	// UpdateService updates non-niladic fields of Service. ID field must be non-niladic and remains not updated.
+	// UpdateService also doesn't updates barber_id field even if it's non-niladic.
 	UpdateService(ctx context.Context, service Service) error
 }
 
