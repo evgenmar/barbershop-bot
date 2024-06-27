@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	ent "barbershop-bot/entities"
 	tm "barbershop-bot/lib/time"
 	"strconv"
 
@@ -76,7 +77,7 @@ const (
 	enterServiceName   = "Введите название услуги. Название услуги не должно совпадать с названиями других Ваших услуг."
 	invalidServiceName = `Введенное название услуги не соответствует установленным критериям:
 	- название услуги может содержать русские и английские буквы, цифры, пробелы, запятые, точки, кавычки, а также знаки +, -, (, ), /, !;
-	- длина названия услуги должна быть не менее 3 символов и не более 50 символов.
+	- длина названия услуги должна быть не менее 3 символов и не более 35 символов.
 Пожалуйста, попробуйте ввести название услуги еще раз. При необходимости вернуться в главное меню воспользуйтесь командой /start`
 	enterServiceDescription   = "Введите описание услуги."
 	invalidServiceDescription = `Введенное описание услуги не соответствует установленным критериям:
@@ -86,11 +87,20 @@ const (
 	enterServicePrice   = "Введите цену услуги в рублях. Цена услуги должна быть больше нуля. Нужно ввести только число, дополнительные символы, какие-либо сокращения вводить не нужно."
 	invalidServicePrice = `Неизвестный формат цены. Введите число, равное стоимости оказания услуги в рублях. Цена услуги должна быть больше нуля. Нужно ввести только число, дополнительные символы, какие-либо сокращения вводить не нужно.
 Пожалуйста, попробуйте ввести цену услуги еще раз. При необходимости вернуться в главное меню воспользуйтесь командой /start`
-	selectServiceDuration = "Выберите продолжительность услуги."
-	endpntServiceDuration = "service_duration"
-	invalidService        = "Недопустимые параметры услуги. Попробуйте создать услугу заново с другими параметрами."
-	nonUniqueServiceName  = "Услуга не сохранена. У Вас уже есть другая услуга с таким же названием. Измените название услуги перед сохранением."
-	serviceCreated        = "Услуга успешно создана!"
+	selectServiceDuration      = "Выберите продолжительность услуги."
+	endpntEnterServiceDuration = "enter_service_duration"
+	invalidService             = "Невозможно выполнить команду. Недопустимые параметры услуги."
+	nonUniqueServiceName       = "Услуга не сохранена. У Вас уже есть другая услуга с таким же названием. Измените название услуги перед сохранением."
+	serviceCreated             = "Услуга успешно создана!"
+
+	continueEditingOrSelectService = "Ранее Вы уже начали редактировать услугу. Хотите продолжить с того места, где остановились? Или хотите заново выбрать услугу и начать ее редактировать?"
+	selectServiceToEdit            = "Выберите услугу, которую Вы хотите отредактировать."
+	endpntServiceToEdit            = "service_to_edit"
+	editServiceParams              = `Для изменения параметров услуги выберите соответствующую опцию.
+Вы также можете покинуть это меню и вернуться к редактированию услуги позднее.`
+	readyToUpdateService      = `Для того, чтобы внесенные изменения вступили в силу, нажмите на кнопку "Применить изменения".`
+	endpntEditServiceDuration = "edit_service_duration"
+	serviceUpdated            = "Услуга успешно изменена!"
 
 	manageBarbers = "В этом меню собраны функции для управления барберами."
 	listOfBarbers = "Список всех барберов, зарегистрированных в приложении:"
@@ -133,161 +143,210 @@ const (
 
 var (
 	markupMainBarber  = &tele.ReplyMarkup{}
-	btnSettingsBarber = markupMainBarber.Data("Настройки", "settings_barber")
+	btnSettingsBarber = markupEmpty.Data("Настройки", "settings_barber")
 
 	markupSettingsBarber   = &tele.ReplyMarkup{}
-	btnManageAccountBarber = markupSettingsBarber.Data("Управление аккаунтом", "manage_account_barber")
-	btnManageServices      = markupSettingsBarber.Data("Управление услугами", "manage_services")
-	btnManageBarbers       = markupSettingsBarber.Data("Управление барберами", "manage_barbers")
+	btnManageAccountBarber = markupEmpty.Data("Управление аккаунтом", "manage_account_barber")
+	btnManageServices      = markupEmpty.Data("Управление услугами", "manage_services")
+	btnManageBarbers       = markupEmpty.Data("Управление барберами", "manage_barbers")
 
 	markupManageAccountBarber    = &tele.ReplyMarkup{}
-	btnShowCurrentSettingsBarber = markupManageAccountBarber.Data("Мои текущие настройки", "show_current_settings_barber")
-	btnUpdPersonalBarber         = markupManageAccountBarber.Data("Обновить персональные данные", "upd_personal_data_barber")
-	btnDeleteAccount             = markupManageAccountBarber.Data("Удаление аккаунта барбера", "delete_account")
+	btnShowCurrentSettingsBarber = markupEmpty.Data("Мои текущие настройки", "show_current_settings_barber")
+	btnUpdPersonalBarber         = markupEmpty.Data("Обновить персональные данные", "upd_personal_data_barber")
+	btnDeleteAccount             = markupEmpty.Data("Удаление аккаунта барбера", "delete_account")
 
 	markupPersonalBarber = &tele.ReplyMarkup{}
-	btnUpdNameBarber     = markupPersonalBarber.Data("Обновить имя", "upd_name_barber")
-	btnUpdPhoneBarber    = markupPersonalBarber.Data("Обновить номер телефона", "upd_phone_barber")
+	btnUpdNameBarber     = markupEmpty.Data("Обновить имя", "upd_name_barber")
+	btnUpdPhoneBarber    = markupEmpty.Data("Обновить номер телефона", "upd_phone_barber")
 
 	markupDeleteAccount   = &tele.ReplyMarkup{}
-	btnSetLastWorkDate    = markupDeleteAccount.Data("Установить последний рабочий день", endpntSelectMonthOfLastWorkDate, "0")
-	btnSelectLastWorkDate = markupDeleteAccount.Data("", endpntSelectLastWorkDate)
-	btnSelfDeleteBarber   = markupDeleteAccount.Data(`Отказаться от статуса "барбер"`, "self_delete_barber")
+	btnSetLastWorkDate    = markupEmpty.Data("Установить последний рабочий день", endpntSelectMonthOfLastWorkDate, "0")
+	btnSelectLastWorkDate = markupEmpty.Data("", endpntSelectLastWorkDate)
+	btnSelfDeleteBarber   = markupEmpty.Data(`Отказаться от статуса "барбер"`, "self_delete_barber")
 
 	markupConfirmSelfDeletion = &tele.ReplyMarkup{}
-	btnSureToDelete           = markupConfirmSelfDeletion.Data("Уверен, удалить!", "sure_to_delete")
+	btnSureToDelete           = markupEmpty.Data("Уверен, удалить!", "sure_to_delete")
 
-	markupManageServices = &tele.ReplyMarkup{}
-	btnShowMyServices    = markupManageServices.Data("Список моих услуг", "show_my_services")
-	btnCreateService     = markupManageServices.Data("Создать услугу", "create_service")
-	btnEditService       = markupManageServices.Data("Изменить услугу", "edit_service")
-	btnDeleteService     = markupManageServices.Data("Удалить услугу", "delete_services")
+	markupManageServicesFull = &tele.ReplyMarkup{}
+	btnShowMyServices        = markupEmpty.Data("Список моих услуг", "show_my_services")
+	btnCreateService         = markupEmpty.Data("Создать услугу", "create_service")
+	btnEditService           = markupEmpty.Data("Изменить услугу", "edit_service")
+	btnDeleteService         = markupEmpty.Data("Удалить услугу", "delete_services")
 
-	markupShowMyServices = &tele.ReplyMarkup{}
-	markupShowNoServices = &tele.ReplyMarkup{}
+	markupManageServicesShort = &tele.ReplyMarkup{}
+	markupShowMyServices      = &tele.ReplyMarkup{}
 
 	markupСontinueOldOrMakeNewService = &tele.ReplyMarkup{}
-	btnСontinueOldService             = markupСontinueOldOrMakeNewService.Data("Продолжить ранее начатое", "continue_old_service")
-	btnMakeNewService                 = markupСontinueOldOrMakeNewService.Data("Начать заново", "make_new_service")
+	btnСontinueOldService             = markupEmpty.Data("Продолжить ранее начатое", "continue_old_service")
+	btnMakeNewService                 = markupEmpty.Data("Начать заново", "make_new_service")
 
-	markupEnterServiceParams   = &tele.ReplyMarkup{}
-	btnEnterServiceName        = markupEnterServiceParams.Data("Ввести название услуги", "enter_service_name")
-	btnEnterServiceDescription = markupEnterServiceParams.Data("Ввести описание услуги", "enter_service_description")
-	btnEnterServicePrice       = markupEnterServiceParams.Data("Ввести цену услуги", "enter_service_price")
-	btnSelectServiceDuration   = markupEnterServiceParams.Data("Выбрать продолжительность услуги", "select_service_duration")
-	btnSelectCertainDuration   = markupEnterServiceParams.Data("", endpntServiceDuration)
+	markupEnterServiceParams        = &tele.ReplyMarkup{}
+	btnEnterServiceName             = markupEmpty.Data("Ввести название услуги", "enter_service_name")
+	btnEnterServiceDescription      = markupEmpty.Data("Ввести описание услуги", "enter_service_description")
+	btnEnterServicePrice            = markupEmpty.Data("Ввести цену услуги", "enter_service_price")
+	btnSelectServiceDurationOnEnter = markupEmpty.Data("Выбрать продолжительность услуги", "select_service_duration_on_enter")
+	btnSelectCertainDurationOnEnter = markupEmpty.Data("", endpntEnterServiceDuration)
 
 	markupReadyToCreateService = &tele.ReplyMarkup{}
-	btnSaveNewService          = markupReadyToCreateService.Data("Сохранить новую услугу", "save_new_service")
+	btnSaveNewService          = markupEmpty.Data("Сохранить новую услугу", "save_new_service")
 
 	markupEnterServiceName = &tele.ReplyMarkup{}
 
+	markupContinueEditingOrSelectService = &tele.ReplyMarkup{}
+	btnСontinueEditingService            = markupEmpty.Data("Продолжить ранее начатое", "continue_editing")
+	btnSelectServiceToEdit               = markupEmpty.Data("Начать заново", "select_service_to_edit")
+	btnSelectCertainServiceToEdit        = markupEmpty.Data("", endpntServiceToEdit)
+
+	markupEditServiceParams        = &tele.ReplyMarkup{}
+	btnEditServiceName             = markupEmpty.Data("Изменить название услуги", "edit_service_name")
+	btnEditServiceDescription      = markupEmpty.Data("Изменить описание услуги", "edit_service_description")
+	btnEditServicePrice            = markupEmpty.Data("Изменить цену услуги", "edit_service_price")
+	btnSelectServiceDurationOnEdit = markupEmpty.Data("Изменить продолжительность услуги", "select_service_duration_on_edit")
+	btnSelectCertainDurationOnEdit = markupEmpty.Data("", endpntEditServiceDuration)
+
+	markupReadyToUpdateService = &tele.ReplyMarkup{}
+	btnUpdateService           = markupEmpty.Data("Применить изменения", "update_service")
+
+	markupEditServiceName = &tele.ReplyMarkup{}
+
 	markupManageBarbers    = &tele.ReplyMarkup{}
-	btnShowAllBurbers      = markupManageBarbers.Data("Список барберов", "show_all_barbers")
-	btnAddBarber           = markupManageBarbers.Data("Добавить барбера", "add_barber")
-	btnDeleteBarber        = markupManageBarbers.Data("Удалить барбера", "delete_barber")
-	btnDeleteCertainBarber = markupManageBarbers.Data("", endpntBarberToDeletion)
+	btnShowAllBurbers      = markupEmpty.Data("Список барберов", "show_all_barbers")
+	btnAddBarber           = markupEmpty.Data("Добавить барбера", "add_barber")
+	btnDeleteBarber        = markupEmpty.Data("Удалить барбера", "delete_barber")
+	btnDeleteCertainBarber = markupEmpty.Data("", endpntBarberToDeletion)
 
 	markupBackToMainBarber = &tele.ReplyMarkup{}
-	btnBackToMainBarber    = markupBackToMainBarber.Data("Вернуться в главное меню", "back_to_main_barber")
+	btnBackToMainBarber    = markupEmpty.Data("Вернуться в главное меню", "back_to_main_barber")
 )
 
 func init() {
 	markupMainBarber.Inline(
-		markupMainBarber.Row(btnSettingsBarber),
+		markupEmpty.Row(btnSettingsBarber),
 	)
 
 	markupSettingsBarber.Inline(
-		markupSettingsBarber.Row(btnManageAccountBarber),
-		markupSettingsBarber.Row(btnManageServices),
-		markupSettingsBarber.Row(btnManageBarbers),
-		markupSettingsBarber.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnManageAccountBarber),
+		markupEmpty.Row(btnManageServices),
+		markupEmpty.Row(btnManageBarbers),
+		markupEmpty.Row(btnBackToMainBarber),
 	)
 
 	markupManageAccountBarber.Inline(
-		markupManageAccountBarber.Row(btnShowCurrentSettingsBarber),
-		markupManageAccountBarber.Row(btnUpdPersonalBarber),
-		markupManageAccountBarber.Row(btnDeleteAccount),
-		markupManageAccountBarber.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnShowCurrentSettingsBarber),
+		markupEmpty.Row(btnUpdPersonalBarber),
+		markupEmpty.Row(btnDeleteAccount),
+		markupEmpty.Row(btnBackToMainBarber),
 	)
 
 	markupPersonalBarber.Inline(
-		markupPersonalBarber.Row(btnUpdNameBarber),
-		markupPersonalBarber.Row(btnUpdPhoneBarber),
-		markupPersonalBarber.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnUpdNameBarber),
+		markupEmpty.Row(btnUpdPhoneBarber),
+		markupEmpty.Row(btnBackToMainBarber),
 	)
 
 	markupDeleteAccount.Inline(
-		markupDeleteAccount.Row(btnSetLastWorkDate),
-		markupDeleteAccount.Row(btnSelfDeleteBarber),
-		markupDeleteAccount.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnSetLastWorkDate),
+		markupEmpty.Row(btnSelfDeleteBarber),
+		markupEmpty.Row(btnBackToMainBarber),
 	)
 
 	markupConfirmSelfDeletion.Inline(
-		markupConfirmSelfDeletion.Row(btnSureToDelete),
-		markupConfirmSelfDeletion.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnSureToDelete),
+		markupEmpty.Row(btnBackToMainBarber),
 	)
 
-	markupManageServices.Inline(
-		markupManageServices.Row(btnShowMyServices),
-		markupManageServices.Row(btnCreateService),
-		markupManageServices.Row(btnEditService),
-		markupManageServices.Row(btnDeleteService),
-		markupManageServices.Row(btnBackToMainBarber),
+	markupManageServicesFull.Inline(
+		markupEmpty.Row(btnShowMyServices),
+		markupEmpty.Row(btnCreateService),
+		markupEmpty.Row(btnEditService),
+		markupEmpty.Row(btnDeleteService),
+		markupEmpty.Row(btnBackToMainBarber),
 	)
 
-	markupShowNoServices.Inline(
-		markupShowNoServices.Row(btnCreateService),
-		markupShowNoServices.Row(btnBackToMainBarber),
+	markupManageServicesShort.Inline(
+		markupEmpty.Row(btnCreateService),
+		markupEmpty.Row(btnBackToMainBarber),
 	)
 
 	markupShowMyServices.Inline(
-		markupShowMyServices.Row(btnCreateService),
-		markupShowMyServices.Row(btnEditService),
-		markupShowMyServices.Row(btnDeleteService),
-		markupShowMyServices.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnCreateService),
+		markupEmpty.Row(btnEditService),
+		markupEmpty.Row(btnDeleteService),
+		markupEmpty.Row(btnBackToMainBarber),
 	)
 
 	markupСontinueOldOrMakeNewService.Inline(
-		markupСontinueOldOrMakeNewService.Row(btnСontinueOldService),
-		markupСontinueOldOrMakeNewService.Row(btnMakeNewService),
-		markupСontinueOldOrMakeNewService.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnСontinueOldService),
+		markupEmpty.Row(btnMakeNewService),
+		markupEmpty.Row(btnBackToMainBarber),
 	)
 
 	markupEnterServiceParams.Inline(
-		markupEnterServiceParams.Row(btnEnterServiceName),
-		markupEnterServiceParams.Row(btnEnterServiceDescription),
-		markupEnterServiceParams.Row(btnEnterServicePrice),
-		markupEnterServiceParams.Row(btnSelectServiceDuration),
-		markupEnterServiceParams.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnEnterServiceName),
+		markupEmpty.Row(btnEnterServiceDescription),
+		markupEmpty.Row(btnEnterServicePrice),
+		markupEmpty.Row(btnSelectServiceDurationOnEnter),
+		markupEmpty.Row(btnBackToMainBarber),
 	)
 
 	markupReadyToCreateService.Inline(
-		markupReadyToCreateService.Row(btnSaveNewService),
-		markupReadyToCreateService.Row(btnEnterServiceName),
-		markupReadyToCreateService.Row(btnEnterServiceDescription),
-		markupReadyToCreateService.Row(btnEnterServicePrice),
-		markupReadyToCreateService.Row(btnSelectServiceDuration),
-		markupReadyToCreateService.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnSaveNewService),
+		markupEmpty.Row(btnEnterServiceName),
+		markupEmpty.Row(btnEnterServiceDescription),
+		markupEmpty.Row(btnEnterServicePrice),
+		markupEmpty.Row(btnSelectServiceDurationOnEnter),
+		markupEmpty.Row(btnBackToMainBarber),
 	)
 
 	markupEnterServiceName.Inline(
-		markupEnterServiceName.Row(btnEnterServiceName),
-		markupEnterServiceName.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnEnterServiceName),
+		markupEmpty.Row(btnBackToMainBarber),
+	)
+
+	markupContinueEditingOrSelectService.Inline(
+		markupEmpty.Row(btnСontinueEditingService),
+		markupEmpty.Row(btnSelectServiceToEdit),
+		markupEmpty.Row(btnBackToMainBarber),
+	)
+
+	markupEditServiceParams.Inline(
+		markupEmpty.Row(btnEditServiceName),
+		markupEmpty.Row(btnEditServiceDescription),
+		markupEmpty.Row(btnEditServicePrice),
+		markupEmpty.Row(btnSelectServiceDurationOnEdit),
+		markupEmpty.Row(btnBackToMainBarber),
+	)
+
+	markupReadyToUpdateService.Inline(
+		markupEmpty.Row(btnUpdateService),
+		markupEmpty.Row(btnEditServiceName),
+		markupEmpty.Row(btnEditServiceDescription),
+		markupEmpty.Row(btnEditServicePrice),
+		markupEmpty.Row(btnSelectServiceDurationOnEdit),
+		markupEmpty.Row(btnBackToMainBarber),
+	)
+
+	markupEditServiceName.Inline(
+		markupEmpty.Row(btnEditServiceName),
+		markupEmpty.Row(btnBackToMainBarber),
 	)
 
 	markupManageBarbers.Inline(
-		markupManageBarbers.Row(btnShowAllBurbers),
-		markupManageBarbers.Row(btnAddBarber),
-		markupManageBarbers.Row(btnDeleteBarber),
-		markupManageBarbers.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnShowAllBurbers),
+		markupEmpty.Row(btnAddBarber),
+		markupEmpty.Row(btnDeleteBarber),
+		markupEmpty.Row(btnBackToMainBarber),
 	)
 
 	markupBackToMainBarber.Inline(
-		markupBackToMainBarber.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBackToMainBarber),
 	)
 }
 
-func btnServiceDuration(dur tm.Duration) tele.Btn {
-	return markupEmpty.Data(dur.LongString(), endpntServiceDuration, strconv.FormatUint(uint64(dur), 10))
+func btnServiceDuration(dur tm.Duration, endpnt string) tele.Btn {
+	return markupEmpty.Data(dur.LongString(), endpnt, strconv.FormatUint(uint64(dur), 10))
+}
+
+func btnServiceToEdit(serv ent.Service) tele.Btn {
+	return markupEmpty.Data(serv.BtnSignature(), endpntServiceToEdit, strconv.Itoa(serv.ID))
 }

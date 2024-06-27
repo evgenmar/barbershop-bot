@@ -12,6 +12,7 @@ var (
 	ErrInvalidService       = errors.New("invalid service")
 	ErrNonUniqueData        = errors.New("data to save must be unique")
 	ErrNoSavedBarber        = errors.New("no saved barber with specified ID")
+	ErrNoSavedService       = errors.New("no saved service with specified ID")
 	ErrUnspecifiedServiceID = errors.New("unspecified serviceID")
 )
 
@@ -41,7 +42,7 @@ type Storage interface {
 	//FindAllBarberIDs return a slice of IDs of all barbers.
 	GetAllBarberIDs(ctx context.Context) ([]int64, error)
 
-	//GetBarberByID returns barber with barberID.
+	//GetBarberByID returns barber with specified ID.
 	GetBarberByID(ctx context.Context, barberID int64) (Barber, error)
 
 	//GetLatestAppointmentDate returns the latest work date saved for barber with specified ID for which at least one appointment exists.
@@ -51,6 +52,9 @@ type Storage interface {
 	//GetLatestWorkDate returns the latest work date saved for barber with specified ID.
 	//If there is no saved work dates it returns "2000-01-01".
 	GetLatestWorkDate(ctx context.Context, barberID int64) (string, error)
+
+	// GetServiceByID returns service with specified ID.
+	GetServiceByID(ctx context.Context, serviceID int) (Service, error)
 
 	// GetServicesByBarberID returns all services provided by barber with specified ID.
 	GetServicesByBarberID(ctx context.Context, barberID int64) ([]Service, error)

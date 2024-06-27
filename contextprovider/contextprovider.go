@@ -105,6 +105,13 @@ func (c ContextProvider) GetLatestWorkDate(barberID int64) (date time.Time, err 
 	return c.repo.GetLatestWorkDate(ctx, barberID)
 }
 
+func (c ContextProvider) GetServiceByID(serviceID int) (ervice ent.Service, err error) {
+	defer func() { err = e.WrapIfErr("can't get service", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
+	defer cancel()
+	return c.repo.GetServiceByID(ctx, serviceID)
+}
+
 func (c ContextProvider) GetServicesByBarberID(barberID int64) (services []ent.Service, err error) {
 	defer func() { err = e.WrapIfErr("can't get services", err) }()
 	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)

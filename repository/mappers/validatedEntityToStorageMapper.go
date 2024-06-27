@@ -102,7 +102,7 @@ func isValidPhone(text string) bool {
 }
 
 func IsValidServiceName(text string) bool {
-	namePattern := `^[a-zA-Zа-яА-Я0-9,.\s+\-\(\)\/\"!]{3,50}$`
+	namePattern := `^[a-zA-Zа-яА-Я0-9,.\s+\-\(\)\/\"!]{3,35}$`
 	regex := regexp.MustCompile(namePattern)
 	var hasLetter bool
 	for _, r := range text {

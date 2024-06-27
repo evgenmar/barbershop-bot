@@ -23,6 +23,7 @@ var (
 	ErrInvalidWorkday     = m.ErrInvalidWorkday
 	ErrNonUniqueData      = st.ErrNonUniqueData
 	ErrNoSavedBarber      = st.ErrNoSavedBarber
+	ErrNoSavedService     = st.ErrNoSavedService
 )
 
 func New(storage st.Storage) Repository {
@@ -137,6 +138,19 @@ func (r Repository) GetLatestWorkDate(ctx context.Context, barberID int64) (date
 		return time.Time{}, err
 	}
 	return m.MapToEntity.Date(latestWD)
+}
+
+func (r Repository) GetServiceByID(ctx context.Context, serviceID int) (service ent.Service, err error) {
+	defer func() {
+		if errors.Is(err, st.ErrNoSavedService) {
+			err = ErrNoSavedService
+		}
+	}()
+	serv, err := r.Storage.GetServiceByID(ctx, serviceID)
+	if err != nil {
+		return ent.Service{}, err
+	}
+	return m.MapToEntity.Service(serv)
 }
 
 func (r Repository) GetServicesByBarberID(ctx context.Context, barberID int64) (services []ent.Service, err error) {

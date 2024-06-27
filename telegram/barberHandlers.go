@@ -207,18 +207,27 @@ func onSureToDelete(ctx tele.Context) error {
 }
 
 func onManageServices(ctx tele.Context) error {
-	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Edit(manageServices, markupManageServices)
+	barberID := ctx.Sender().ID
+	sess.UpdateBarberState(barberID, sess.StateStart)
+	services, err := cp.RepoWithContext.GetServicesByBarberID(barberID)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, "can't show manage services menu", err)
+	}
+	if len(services) == 0 {
+		return ctx.Edit(youHaveNoServices, markupManageServicesShort)
+	}
+	return ctx.Edit(manageServices, markupManageServicesFull)
 }
 
 func onShowMyServices(ctx tele.Context) error {
-	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	services, err := cp.RepoWithContext.GetServicesByBarberID(ctx.Sender().ID)
+	barberID := ctx.Sender().ID
+	sess.UpdateBarberState(barberID, sess.StateStart)
+	services, err := cp.RepoWithContext.GetServicesByBarberID(barberID)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, "can't show list of services", err)
 	}
 	if len(services) == 0 {
-		return ctx.Edit(youHaveNoServices, markupShowNoServices)
+		return ctx.Edit(youHaveNoServices, markupManageServicesShort)
 	}
 	servicesInfo := ""
 	for _, service := range services {
@@ -264,16 +273,16 @@ func onEnterServicePrice(ctx tele.Context) error {
 	return ctx.Edit(enterServicePrice)
 }
 
-func onSelectServiceDuration(ctx tele.Context) error {
+func onSelectServiceDurationOnEnter(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Edit(selectServiceDuration, markupSelectServiceDuration())
+	return ctx.Edit(selectServiceDuration, markupSelectServiceDuration(endpntEnterServiceDuration))
 }
 
-func markupSelectServiceDuration() *tele.ReplyMarkup {
+func markupSelectServiceDuration(endpnt string) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 	btnsDurationsToSelect := make([]tele.Btn, 4)
 	for duration := 30 * tm.Minute; duration <= 2*tm.Hour; duration += 30 * tm.Minute {
-		btnsDurationsToSelect = append(btnsDurationsToSelect, btnServiceDuration(duration))
+		btnsDurationsToSelect = append(btnsDurationsToSelect, btnServiceDuration(duration, endpnt))
 	}
 	rows := markup.Split(2, btnsDurationsToSelect)
 	rows = append(rows, markup.Row(btnBackToMainBarber))
@@ -281,10 +290,10 @@ func markupSelectServiceDuration() *tele.ReplyMarkup {
 	return markup
 }
 
-func onSelectCertainDuration(ctx tele.Context) error {
+func onSelectCertainDurationOnEnter(ctx tele.Context) error {
 	dur, err := strconv.ParseUint(ctx.Callback().Data, 10, 64)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't handle select certain service duration", err)
+		return logAndMsgErrBarber(ctx, "can't select certain service duration", err)
 	}
 	barberID := ctx.Sender().ID
 	newService := sess.GetNewService(barberID)
@@ -321,7 +330,135 @@ func onSaveNewService(ctx tele.Context) error {
 		return logAndMsgErrBarber(ctx, "can't create service", err)
 	}
 	sess.UpdateNewServiceAndState(barberID, sess.NewService{}, sess.StateStart)
-	return ctx.Edit(serviceCreated, markupManageServices)
+	return ctx.Edit(serviceCreated, markupManageServicesFull)
+}
+
+func onEditService(ctx tele.Context) error {
+	barberID := ctx.Sender().ID
+	sess.UpdateBarberState(barberID, sess.StateStart)
+	editedService := sess.GetEditedService(barberID)
+	if editedService.ID != 0 {
+		return ctx.Edit(continueEditingOrSelectService, markupContinueEditingOrSelectService)
+	}
+	return onSelectServiceToEdit(ctx)
+}
+
+func onСontinueEditingService(ctx tele.Context) error {
+	barberID := ctx.Sender().ID
+	sess.UpdateBarberState(barberID, sess.StateStart)
+	editedService := sess.GetEditedService(barberID)
+	return showEditServiceOptions(ctx, editedService)
+}
+
+func onSelectServiceToEdit(ctx tele.Context) error {
+	barberID := ctx.Sender().ID
+	sess.UpdateBarberState(barberID, sess.StateStart)
+	services, err := cp.RepoWithContext.GetServicesByBarberID(barberID)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, "can't show list of services for editing", err)
+	}
+	if len(services) == 0 {
+		return ctx.Edit(youHaveNoServices, markupManageServicesShort)
+	}
+	return ctx.Edit(selectServiceToEdit, markupSelectServiceToEdit(services))
+}
+
+func markupSelectServiceToEdit(services []ent.Service) *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{}
+	var rows []tele.Row
+	for _, service := range services {
+		row := markup.Row(btnServiceToEdit(service))
+		rows = append(rows, row)
+	}
+	rows = append(rows, markup.Row(btnBackToMainBarber))
+	markup.Inline(rows...)
+	return markup
+}
+
+func onSelectCertainServiceToEdit(ctx tele.Context) error {
+	errMsg := "can't select certain service for editing"
+	serviceID, err := strconv.Atoi(ctx.Callback().Data)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	serviceToEdit, err := cp.RepoWithContext.GetServiceByID(serviceID)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	editedService := sess.EditedService{
+		ID: serviceID,
+		OldService: sess.Service{
+			Name:       serviceToEdit.Name,
+			Desciption: serviceToEdit.Desciption,
+			Price:      serviceToEdit.Price,
+			Duration:   serviceToEdit.Duration,
+		},
+	}
+	sess.UpdateEditedServiceAndState(ctx.Sender().ID, editedService, sess.StateStart)
+	return showEditServiceOptions(ctx, editedService)
+}
+
+func onEditServiceName(ctx tele.Context) error {
+	sess.UpdateBarberState(ctx.Sender().ID, sess.StateEditServiceName)
+	return ctx.Edit(enterServiceName)
+}
+
+func onEditServiceDescription(ctx tele.Context) error {
+	sess.UpdateBarberState(ctx.Sender().ID, sess.StateEditServiceDescription)
+	return ctx.Edit(enterServiceDescription)
+}
+
+func onEditServicePrice(ctx tele.Context) error {
+	sess.UpdateBarberState(ctx.Sender().ID, sess.StateEditServicePrice)
+	return ctx.Edit(enterServicePrice)
+}
+
+func onSelectServiceDurationOnEdit(ctx tele.Context) error {
+	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
+	return ctx.Edit(selectServiceDuration, markupSelectServiceDuration(endpntEditServiceDuration))
+}
+
+func onSelectCertainDurationOnEdit(ctx tele.Context) error {
+	dur, err := strconv.ParseUint(ctx.Callback().Data, 10, 64)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, "can't select certain service duration", err)
+	}
+	barberID := ctx.Sender().ID
+	editedService := sess.GetEditedService(barberID)
+	editedService.UpdService.Duration = tm.Duration(dur)
+	sess.UpdateEditedServiceAndState(barberID, editedService, sess.StateStart)
+	return showEditServiceOptions(ctx, editedService)
+}
+
+func showEditServiceOptions(ctx tele.Context, editedService sess.EditedService) error {
+	if editedService.UpdService.Name != "" || editedService.UpdService.Desciption != "" || editedService.UpdService.Price != 0 || editedService.UpdService.Duration != 0 {
+		return ctx.Edit(enterServiceParams+"\n\n"+editedService.Info()+"\n\n"+readyToUpdateService, markupReadyToUpdateService)
+	}
+	return ctx.Edit(editServiceParams+"\n\n"+editedService.Info(), markupEditServiceParams)
+}
+
+func onUpdateService(ctx tele.Context) error {
+	barberID := ctx.Sender().ID
+	editedService := sess.GetEditedService(barberID)
+	serviceToUpdate := ent.Service{
+		ID:         editedService.ID,
+		Name:       editedService.UpdService.Name,
+		Desciption: editedService.UpdService.Desciption,
+		Price:      editedService.UpdService.Price,
+		Duration:   editedService.UpdService.Duration,
+	}
+	if err := cp.RepoWithContext.UpdateService(serviceToUpdate); err != nil {
+		sess.UpdateBarberState(barberID, sess.StateStart)
+		if errors.Is(err, rep.ErrInvalidService) {
+			return ctx.Edit(invalidService, markupBackToMainBarber)
+		}
+		if errors.Is(err, rep.ErrNonUniqueData) {
+			return ctx.Edit(nonUniqueServiceName+"\n\n"+editedService.Info(), markupEditServiceName)
+		}
+		return logAndMsgErrBarber(ctx, "can't update service", err)
+	}
+	sess.UpdateEditedServiceAndState(barberID, sess.EditedService{}, sess.StateStart)
+	return ctx.Edit(serviceUpdated, markupManageServicesFull)
 }
 
 func onManageBarbers(ctx tele.Context) error {
@@ -430,6 +567,12 @@ func onTextBarber(ctx tele.Context) error {
 		return onEnterServDescription(ctx)
 	case sess.StateEnterServicePrice:
 		return onEnterServPrice(ctx)
+	case sess.StateEditServiceName:
+		return onEditServName(ctx)
+	case sess.StateEditServiceDescription:
+		return onEditServDescription(ctx)
+	case sess.StateEditServicePrice:
+		return onEditServPrice(ctx)
 	default:
 		return ctx.Send(unknownCmdBarber)
 	}
@@ -514,6 +657,51 @@ func showNewServOptions(ctx tele.Context, newService sess.NewService) error {
 		return ctx.Send(readyToCreateService+"\n\n"+enterServiceParams+"\n\n"+newService.Info(), markupReadyToCreateService, tele.ModeMarkdown)
 	}
 	return ctx.Send(enterServiceParams+"\n\n"+newService.Info(), markupEnterServiceParams, tele.ModeMarkdown)
+}
+
+func onEditServName(ctx tele.Context) error {
+	text := ctx.Message().Text
+	if !m.IsValidServiceName(text) {
+		return ctx.Send(invalidServiceName)
+	}
+	barberID := ctx.Sender().ID
+	editedService := sess.GetEditedService(barberID)
+	editedService.UpdService.Name = text
+	sess.UpdateEditedServiceAndState(barberID, editedService, sess.StateStart)
+	return showEditServOptions(ctx, editedService)
+}
+
+func onEditServDescription(ctx tele.Context) error {
+	text := ctx.Message().Text
+	if !m.IsValidDescription(text) {
+		return ctx.Send(invalidServiceDescription)
+	}
+	barberID := ctx.Sender().ID
+	editedService := sess.GetEditedService(barberID)
+	editedService.UpdService.Desciption = text
+	sess.UpdateEditedServiceAndState(barberID, editedService, sess.StateStart)
+	return showEditServOptions(ctx, editedService)
+}
+
+func onEditServPrice(ctx tele.Context) error {
+	text := ctx.Message().Text
+	price, err := ent.NewPrice(text)
+	if err != nil {
+		log.Print(e.Wrap("invalid service price", err))
+		return ctx.Send(invalidServicePrice)
+	}
+	barberID := ctx.Sender().ID
+	editedService := sess.GetEditedService(barberID)
+	editedService.UpdService.Price = price
+	sess.UpdateEditedServiceAndState(barberID, editedService, sess.StateStart)
+	return showEditServOptions(ctx, editedService)
+}
+
+func showEditServOptions(ctx tele.Context, editedService sess.EditedService) error {
+	if editedService.UpdService.Name != "" || editedService.UpdService.Desciption != "" || editedService.UpdService.Price != 0 || editedService.UpdService.Duration != 0 {
+		return ctx.Send(enterServiceParams+"\n\n"+editedService.Info()+"\n\n"+readyToUpdateService, markupReadyToUpdateService)
+	}
+	return ctx.Send(editServiceParams+"\n\n"+editedService.Info(), markupEditServiceParams)
 }
 
 func onContactBarber(ctx tele.Context) error {

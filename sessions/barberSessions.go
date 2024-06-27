@@ -11,6 +11,7 @@ import (
 type BarberSession struct {
 	status
 	NewService
+	EditedService
 	expiresAt int64
 }
 
@@ -19,7 +20,17 @@ type BarberSessionManager struct {
 	mutex    sync.RWMutex
 }
 
+type EditedService struct {
+	ID         int
+	OldService Service
+	UpdService Service
+}
+
 type NewService struct {
+	Service
+}
+
+type Service struct {
 	Name       string
 	Desciption string
 	Price      ent.Price
@@ -89,6 +100,31 @@ func (s NewService) Info() string {
 	return fmt.Sprintf(format, name, description, price, duration)
 }
 
+func (s EditedService) Info() string {
+	serviceToDisplay := ent.Service{
+		Name:       s.OldService.Name,
+		Desciption: s.OldService.Desciption,
+		Price:      s.OldService.Price,
+		Duration:   s.OldService.Duration,
+	}
+	if s.UpdService.Name == "" && s.UpdService.Desciption == "" && s.UpdService.Price == 0 && s.UpdService.Duration == 0 {
+		return "Выбранная для редактирования услуга имеет вид:\n\n" + serviceToDisplay.Info()
+	}
+	if s.UpdService.Name != "" {
+		serviceToDisplay.Name = s.UpdService.Name
+	}
+	if s.UpdService.Desciption != "" {
+		serviceToDisplay.Desciption = s.UpdService.Desciption
+	}
+	if s.UpdService.Price != 0 {
+		serviceToDisplay.Price = s.UpdService.Price
+	}
+	if s.UpdService.Duration != 0 {
+		serviceToDisplay.Duration = s.UpdService.Duration
+	}
+	return "Редактируемая услуга с учетом внесенных изменений будет иметь вид:\n\n" + serviceToDisplay.Info()
+}
+
 func getBarberSession(id int64) BarberSession {
 	return getBarberSessionManager().get(id)
 }
@@ -103,6 +139,11 @@ func GetBarberState(id int64) State {
 	return session.state
 }
 
+func GetEditedService(id int64) EditedService {
+	session := getBarberSession(id)
+	return session.EditedService
+}
+
 func GetNewService(id int64) NewService {
 	session := getBarberSession(id)
 	return session.NewService
@@ -114,6 +155,13 @@ func updateBarberSession(id int64, session BarberSession) {
 
 func UpdateBarberState(id int64, state State) {
 	session := getBarberSession(id)
+	session.status = newStatus(state)
+	updateBarberSession(id, session)
+}
+
+func UpdateEditedServiceAndState(id int64, eservice EditedService, state State) {
+	session := getBarberSession(id)
+	session.EditedService = eservice
 	session.status = newStatus(state)
 	updateBarberSession(id, session)
 }

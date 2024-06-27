@@ -167,7 +167,7 @@ func (s *Storage) GetAllBarberIDs(ctx context.Context) (barberIDs []int64, err e
 	return barberIDs, nil
 }
 
-// GetBarberByID returns barber with barberID.
+// GetBarberByID returns barber with with specified ID.
 func (s *Storage) GetBarberByID(ctx context.Context, barberID int64) (st.Barber, error) {
 	q := `SELECT name, phone, last_workdate FROM barbers WHERE id = ?`
 	var barber st.Barber
@@ -217,6 +217,23 @@ func (s *Storage) GetLatestWorkDate(ctx context.Context, barberID int64) (string
 		return "", e.Wrap("can't get latest workdate", err)
 	}
 	return date, nil
+}
+
+// GetServiceByID returns service with specified ID.
+func (s *Storage) GetServiceByID(ctx context.Context, serviceID int) (st.Service, error) {
+	q := `SELECT barber_id, name, description, price, duration FROM services WHERE id = ?`
+	var service st.Service
+	s.rwMutex.RLock()
+	err := s.db.QueryRowContext(ctx, q, serviceID).Scan(&service.BarberID, &service.Name, &service.Desciption, &service.Price, &service.Duration)
+	s.rwMutex.RUnlock()
+	if errors.Is(err, sql.ErrNoRows) {
+		return st.Service{}, st.ErrNoSavedService
+	}
+	if err != nil {
+		return st.Service{}, e.Wrap("can't get service", err)
+	}
+	service.ID = serviceID
+	return service, nil
 }
 
 // GetServicesByBarberID returns all services provided by barber with specified ID.
