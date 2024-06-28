@@ -49,12 +49,15 @@ func actualizeBarberIDs() {
 	}
 }
 
-func getBarberIDsFromRepo() []int64 {
-	barberIDs, err := cp.RepoWithContext.GetAllBarberIDs()
+func getBarberIDsFromRepo() (barberIDs []int64) {
+	barbers, err := cp.RepoWithContext.GetAllBarbers()
 	if err != nil {
 		log.Fatal(e.Wrap("can't get barberIDs from storage", err))
 	}
-	return barberIDs
+	for _, barber := range barbers {
+		barberIDs = append(barberIDs, barber.ID)
+	}
+	return
 }
 
 func getBarberIDFromEnv() int64 {

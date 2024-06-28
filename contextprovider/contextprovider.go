@@ -77,11 +77,11 @@ func (c ContextProvider) DeleteWorkdaysByDateRange(barberID int64, dateRangeToDe
 	return c.repo.DeleteWorkdaysByDateRange(ctx, barberID, dateRangeToDelete)
 }
 
-func (c ContextProvider) GetAllBarberIDs() (barberIDs []int64, err error) {
-	defer func() { err = e.WrapIfErr("can't get barber IDs", err) }()
+func (c ContextProvider) GetAllBarbers() (barbers []ent.Barber, err error) {
+	defer func() { err = e.WrapIfErr("can't get barbers", err) }()
 	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
 	defer cancel()
-	return c.repo.GetAllBarberIDs(ctx)
+	return c.repo.GetAllBarbers(ctx)
 }
 
 func (c ContextProvider) GetBarberByID(barberID int64) (barber ent.Barber, err error) {

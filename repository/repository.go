@@ -105,8 +105,19 @@ func (r Repository) DeleteWorkdaysByDateRange(ctx context.Context, barberID int6
 	return r.Storage.DeleteWorkdaysByDateRange(ctx, barberID, dr)
 }
 
-func (r Repository) GetAllBarberIDs(ctx context.Context) ([]int64, error) {
-	return r.Storage.GetAllBarberIDs(ctx)
+func (r Repository) GetAllBarbers(ctx context.Context) (barbers []ent.Barber, err error) {
+	brs, err := r.Storage.GetAllBarbers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, br := range brs {
+		barber, err := m.MapToEntity.Barber(br)
+		if err != nil {
+			return nil, err
+		}
+		barbers = append(barbers, barber)
+	}
+	return barbers, nil
 }
 
 func (r Repository) GetBarberByID(ctx context.Context, barberID int64) (barber ent.Barber, err error) {

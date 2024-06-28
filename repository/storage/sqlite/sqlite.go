@@ -142,10 +142,10 @@ func (s *Storage) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64,
 	return nil
 }
 
-// FindAllBarberIDs return a slice of IDs of all barbers.
-func (s *Storage) GetAllBarberIDs(ctx context.Context) (barberIDs []int64, err error) {
-	defer func() { err = e.WrapIfErr("can't get barber IDs", err) }()
-	q := `SELECT id FROM barbers`
+// GetAllBarbers return a slice of all barbers.
+func (s *Storage) GetAllBarbers(ctx context.Context) (barbers []st.Barber, err error) {
+	defer func() { err = e.WrapIfErr("can't get barbers", err) }()
+	q := `SELECT id, name, phone, last_workdate FROM barbers`
 	s.rwMutex.RLock()
 	rows, err := s.db.QueryContext(ctx, q)
 	s.rwMutex.RUnlock()
@@ -155,16 +155,16 @@ func (s *Storage) GetAllBarberIDs(ctx context.Context) (barberIDs []int64, err e
 	defer rows.Close()
 
 	for rows.Next() {
-		var barberID int64
-		if err := rows.Scan(&barberID); err != nil {
+		var barber st.Barber
+		if err := rows.Scan(&barber.ID, &barber.Name, &barber.Phone, &barber.LastWorkDate); err != nil {
 			return nil, err
 		}
-		barberIDs = append(barberIDs, barberID)
+		barbers = append(barbers, barber)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	return barberIDs, nil
+	return barbers, nil
 }
 
 // GetBarberByID returns barber with with specified ID.

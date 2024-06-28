@@ -1,10 +1,8 @@
 package telegram
 
 import (
-	cp "barbershop-bot/contextprovider"
 	ent "barbershop-bot/entities"
 	cfg "barbershop-bot/lib/config"
-	"barbershop-bot/lib/e"
 	tm "barbershop-bot/lib/time"
 	"strconv"
 	"time"
@@ -352,28 +350,22 @@ func btnServiceDuration(dur tm.Duration, endpnt string) tele.Btn {
 	return markupEmpty.Data(dur.LongString(), endpnt, strconv.FormatUint(uint64(dur), 10))
 }
 
-func markupSelectBarberToDeletion(ctx tele.Context, barberIDs []int64) (*tele.ReplyMarkup, error) {
-	today := tm.Today()
+func markupSelectBarberToDeletion(senderID int64, barbers []ent.Barber) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
+	today := tm.Today()
 	var rows []tele.Row
-	for _, barberID := range barberIDs {
-		if barberID != ctx.Sender().ID {
-			barber, err := cp.RepoWithContext.GetBarberByID(barberID)
-			if err != nil {
-				return &tele.ReplyMarkup{}, e.Wrap("can't make reply markup", err)
-			}
-			if barber.LastWorkdate.Before(today) {
-				row := markup.Row(btnBarber(barber, endpntBarberToDeletion))
-				rows = append(rows, row)
-			}
+	for _, barber := range barbers {
+		if barber.ID != senderID && barber.LastWorkdate.Before(today) {
+			rows = append(rows, markup.Row(btnBarber(barber, endpntBarberToDeletion)))
 		}
 	}
 	rows = append(rows, markup.Row(btnBackToMainBarber))
 	markup.Inline(rows...)
-	return markup, nil
+	return markup
 }
 
-func markupSelectLastWorkDate(dateRange ent.DateRange, deltaMonth, maxDeltaMonth byte) (markup *tele.ReplyMarkup) {
+func markupSelectLastWorkDate(dateRange ent.DateRange, deltaMonth, maxDeltaMonth byte) *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{}
 	btnPrevMonth, btnNextMonth := btnsSwitch(deltaMonth, maxDeltaMonth, endpntSelectMonthOfLastWorkDate)
 	rowSelectMonth := markup.Row(btnPrevMonth, btnMonth(dateRange.Month()), btnNextMonth)
 	rowsSelectDate := rowsSelectAnyDate(dateRange, endpntSelectLastWorkDate)
@@ -384,7 +376,7 @@ func markupSelectLastWorkDate(dateRange ent.DateRange, deltaMonth, maxDeltaMonth
 	rows = append(rows, rowsSelectDate...)
 	rows = append(rows, rowRestoreDefaultDate, rowBackToMainBarber)
 	markup.Inline(rows...)
-	return
+	return markup
 }
 
 func markupSelectServiceDuration(endpnt string) *tele.ReplyMarkup {

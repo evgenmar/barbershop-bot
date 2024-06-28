@@ -400,13 +400,12 @@ func onManageBarbers(ctx tele.Context) error {
 
 func onShowAllBarbers(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	barberIDs := cfg.Barbers.IDs()
+	barbers, err := cp.RepoWithContext.GetAllBarbers()
+	if err != nil {
+		return logAndMsgErrBarber(ctx, "can't show all barbers", err)
+	}
 	barbersInfo := ""
-	for _, barberID := range barberIDs {
-		barber, err := cp.RepoWithContext.GetBarberByID(barberID)
-		if err != nil {
-			return logAndMsgErrBarber(ctx, "can't show all barbers", err)
-		}
+	for _, barber := range barbers {
 		barbersInfo = barbersInfo + "\n\n" + barber.PuplicInfo()
 	}
 	return ctx.Edit(listOfBarbers+barbersInfo, markupBackToMainBarber)
@@ -418,15 +417,16 @@ func onAddBarber(ctx tele.Context) error {
 }
 
 func onDeleteBarber(ctx tele.Context) error {
-	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	barberIDs := cfg.Barbers.IDs()
-	if len(barberIDs) == 1 {
-		return ctx.Edit(onlyOneBarberExists, markupBackToMainBarber)
-	}
-	markupSelectBarber, err := markupSelectBarberToDeletion(ctx, barberIDs)
+	barberID := ctx.Sender().ID
+	sess.UpdateBarberState(barberID, sess.StateStart)
+	barbers, err := cp.RepoWithContext.GetAllBarbers()
 	if err != nil {
 		return logAndMsgErrBarber(ctx, "can't suggest actions to delete barber", err)
 	}
+	if len(barbers) == 1 {
+		return ctx.Edit(onlyOneBarberExists, markupBackToMainBarber)
+	}
+	markupSelectBarber := markupSelectBarberToDeletion(barberID, barbers)
 	if len(markupSelectBarber.InlineKeyboard) == 1 {
 		return ctx.Edit(noBarbersToDelete+preDeletionBarberInstruction, markupSelectBarber)
 	}

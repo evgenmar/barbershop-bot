@@ -39,8 +39,8 @@ type Storage interface {
 	//It only removes working days for barber with specified barberID.
 	DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange DateRange) error
 
-	//FindAllBarberIDs return a slice of IDs of all barbers.
-	GetAllBarberIDs(ctx context.Context) ([]int64, error)
+	// GetAllBarbers return a slice of all barbers.
+	GetAllBarbers(ctx context.Context) ([]Barber, error)
 
 	//GetBarberByID returns barber with specified ID.
 	GetBarberByID(ctx context.Context, barberID int64) (Barber, error)
