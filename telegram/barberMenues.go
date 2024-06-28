@@ -15,6 +15,13 @@ const (
 
 	settingsBarber = "В этом меню собраны функции, обеспечивающие управление и настройки приложения."
 
+	listOfNecessarySettings = `Прежде чем клиенты получат возможность записаться к Вам на стрижку через этот бот, Вы должны произвести необходимый минимум подготовительных настроек.
+Это необходимо для того, чтобы предоставить Вашим клиентам максимально комфортный пользовательский опыт обращения с этим ботом.
+Итак, что необходимо сделать:
+
+1. Через меню управления аккаунтом введите свое имя и номер телефона для отображения клиентам.
+2. Через меню управления услугами создайте минимум одну услугу, которую вы будете предоставлять клиентам.`
+
 	manageAccountBarber = "В этом меню собраны функции для управления Вашим аккаунтом."
 	currentSettings     = `Ваши текущие настройки:
 `
@@ -152,10 +159,13 @@ var (
 	markupMainBarber  = &tele.ReplyMarkup{}
 	btnSettingsBarber = markupEmpty.Data("Настройки", "settings_barber")
 
-	markupSettingsBarber   = &tele.ReplyMarkup{}
-	btnManageAccountBarber = markupEmpty.Data("Управление аккаунтом", "manage_account_barber")
-	btnManageServices      = markupEmpty.Data("Управление услугами", "manage_services")
-	btnManageBarbers       = markupEmpty.Data("Управление барберами", "manage_barbers")
+	markupSettingsBarber       = &tele.ReplyMarkup{}
+	btnListOfNecessarySettings = markupEmpty.Data("Перечень необходимых настроек", "list_of_necessary_settings")
+	btnManageAccountBarber     = markupEmpty.Data("Управление аккаунтом", "manage_account_barber")
+	btnManageServices          = markupEmpty.Data("Управление услугами", "manage_services")
+	btnManageBarbers           = markupEmpty.Data("Управление барберами", "manage_barbers")
+
+	markupShortSettingsBarber = &tele.ReplyMarkup{}
 
 	markupManageAccountBarber    = &tele.ReplyMarkup{}
 	btnShowCurrentSettingsBarber = markupEmpty.Data("Мои текущие настройки", "show_current_settings_barber")
@@ -236,9 +246,16 @@ func init() {
 	)
 
 	markupSettingsBarber.Inline(
+		markupEmpty.Row(btnListOfNecessarySettings),
 		markupEmpty.Row(btnManageAccountBarber),
 		markupEmpty.Row(btnManageServices),
 		markupEmpty.Row(btnManageBarbers),
+		markupEmpty.Row(btnBackToMainBarber),
+	)
+
+	markupShortSettingsBarber.Inline(
+		markupEmpty.Row(btnManageAccountBarber),
+		markupEmpty.Row(btnManageServices),
 		markupEmpty.Row(btnBackToMainBarber),
 	)
 

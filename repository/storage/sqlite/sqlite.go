@@ -298,7 +298,7 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 	q := `CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY, 
 		name TEXT, 
-		phone TEXT
+		phone TEXT NOT NULL
 		)`
 	_, err = s.db.ExecContext(ctx, q)
 	if err != nil {

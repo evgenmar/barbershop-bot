@@ -29,6 +29,11 @@ func onSettingsBarber(ctx tele.Context) error {
 	return ctx.Edit(settingsBarber, markupSettingsBarber)
 }
 
+func onListOfNecessarySettings(ctx tele.Context) error {
+	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
+	return ctx.Edit(listOfNecessarySettings, markupShortSettingsBarber)
+}
+
 func onManageAccountBarber(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
 	return ctx.Edit(manageAccountBarber, markupManageAccountBarber)
