@@ -1,9 +1,13 @@
 package telegram
 
 import (
+	cp "barbershop-bot/contextprovider"
 	ent "barbershop-bot/entities"
+	cfg "barbershop-bot/lib/config"
+	"barbershop-bot/lib/e"
 	tm "barbershop-bot/lib/time"
 	"strconv"
+	"time"
 
 	tele "gopkg.in/telebot.v3"
 )
@@ -159,10 +163,11 @@ var (
 	btnUpdNameBarber     = markupEmpty.Data("Обновить имя", "upd_name_barber")
 	btnUpdPhoneBarber    = markupEmpty.Data("Обновить номер телефона", "upd_phone_barber")
 
-	markupDeleteAccount   = &tele.ReplyMarkup{}
-	btnSetLastWorkDate    = markupEmpty.Data("Установить последний рабочий день", endpntSelectMonthOfLastWorkDate, "0")
-	btnSelectLastWorkDate = markupEmpty.Data("", endpntSelectLastWorkDate)
-	btnSelfDeleteBarber   = markupEmpty.Data(`Отказаться от статуса "барбер"`, "self_delete_barber")
+	markupDeleteAccount     = &tele.ReplyMarkup{}
+	btnSetLastWorkDate      = markupEmpty.Data("Установить последний рабочий день", endpntSelectMonthOfLastWorkDate, "0")
+	btnSelectLastWorkDate   = markupEmpty.Data("", endpntSelectLastWorkDate)
+	btnInfiniteLastWorkDate = markupEmpty.Data("Установить бессрочную дату", endpntSelectLastWorkDate, cfg.InfiniteWorkDate)
+	btnSelfDeleteBarber     = markupEmpty.Data(`Отказаться от статуса "барбер"`, "self_delete_barber")
 
 	markupConfirmSelfDeletion = &tele.ReplyMarkup{}
 	btnSureToDelete           = markupEmpty.Data("Уверен, удалить!", "sure_to_delete")
@@ -347,6 +352,77 @@ func btnServiceDuration(dur tm.Duration, endpnt string) tele.Btn {
 	return markupEmpty.Data(dur.LongString(), endpnt, strconv.FormatUint(uint64(dur), 10))
 }
 
-func btnServiceToEdit(serv ent.Service) tele.Btn {
-	return markupEmpty.Data(serv.BtnSignature(), endpntServiceToEdit, strconv.Itoa(serv.ID))
+func markupSelectBarberToDeletion(ctx tele.Context, barberIDs []int64) (*tele.ReplyMarkup, error) {
+	today := tm.Today()
+	markup := &tele.ReplyMarkup{}
+	var rows []tele.Row
+	for _, barberID := range barberIDs {
+		if barberID != ctx.Sender().ID {
+			barber, err := cp.RepoWithContext.GetBarberByID(barberID)
+			if err != nil {
+				return &tele.ReplyMarkup{}, e.Wrap("can't make reply markup", err)
+			}
+			if barber.LastWorkdate.Before(today) {
+				row := markup.Row(btnBarber(barber, endpntBarberToDeletion))
+				rows = append(rows, row)
+			}
+		}
+	}
+	rows = append(rows, markup.Row(btnBackToMainBarber))
+	markup.Inline(rows...)
+	return markup, nil
+}
+
+func markupSelectLastWorkDate(dateRange ent.DateRange, deltaMonth, maxDeltaMonth byte) (markup *tele.ReplyMarkup) {
+	btnPrevMonth, btnNextMonth := btnsSwitch(deltaMonth, maxDeltaMonth, endpntSelectMonthOfLastWorkDate)
+	rowSelectMonth := markup.Row(btnPrevMonth, btnMonth(dateRange.Month()), btnNextMonth)
+	rowsSelectDate := rowsSelectAnyDate(dateRange, endpntSelectLastWorkDate)
+	rowRestoreDefaultDate := markup.Row(btnInfiniteLastWorkDate)
+	rowBackToMainBarber := markup.Row(btnBackToMainBarber)
+	var rows []tele.Row
+	rows = append(rows, rowSelectMonth, rowWeekdays)
+	rows = append(rows, rowsSelectDate...)
+	rows = append(rows, rowRestoreDefaultDate, rowBackToMainBarber)
+	markup.Inline(rows...)
+	return
+}
+
+func markupSelectServiceDuration(endpnt string) *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{}
+	btnsDurationsToSelect := make([]tele.Btn, 4)
+	for duration := 30 * tm.Minute; duration <= 2*tm.Hour; duration += 30 * tm.Minute {
+		btnsDurationsToSelect = append(btnsDurationsToSelect, btnServiceDuration(duration, endpnt))
+	}
+	rows := markup.Split(2, btnsDurationsToSelect)
+	rows = append(rows, markup.Row(btnBackToMainBarber))
+	markup.Inline(rows...)
+	return markup
+}
+
+func markupSelectServiceToEdit(services []ent.Service) *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{}
+	var rows []tele.Row
+	for _, service := range services {
+		row := markup.Row(btnService(service, endpntServiceToEdit))
+		rows = append(rows, row)
+	}
+	rows = append(rows, markup.Row(btnBackToMainBarber))
+	markup.Inline(rows...)
+	return markup
+}
+
+func rowsSelectAnyDate(dateRange ent.DateRange, endpnt string) []tele.Row {
+	markup := &tele.ReplyMarkup{}
+	var btnsDatesToSelect []tele.Btn
+	for i := 1; i < dateRange.StartWeekday(); i++ {
+		btnsDatesToSelect = append(btnsDatesToSelect, btnEmpty)
+	}
+	for date := dateRange.StartDate; date.Compare(dateRange.EndDate) <= 0; date = date.Add(24 * time.Hour) {
+		btnDateToSelect := btnDate(date, endpnt)
+		btnsDatesToSelect = append(btnsDatesToSelect, btnDateToSelect)
+	}
+	for i := 7; i > dateRange.EndWeekday(); i-- {
+		btnsDatesToSelect = append(btnsDatesToSelect, btnEmpty)
+	}
+	return markup.Split(7, btnsDatesToSelect)
 }

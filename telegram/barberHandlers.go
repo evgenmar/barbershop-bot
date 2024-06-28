@@ -71,10 +71,16 @@ func onSetLastWorkDate(ctx tele.Context) error {
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	var firstDisplayedDateRange ent.DateRange
-	relativeFirstDisplayedMonth := 0
+	delta, err := strconv.ParseUint(ctx.Callback().Data, 10, 8)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	deltaDisplayedMonth := byte(delta)
+	var firstDisplayedDateRange, displayedDateRange ent.DateRange
+	var relativeFirstDisplayedMonth byte = 0
+	var maxDeltaDisplayedMonth byte
 	for relativeFirstDisplayedMonth <= cfg.MaxAppointmentBookingMonths {
-		firstDisplayedDateRange = ent.Month(byte(relativeFirstDisplayedMonth))
+		firstDisplayedDateRange = ent.Month(relativeFirstDisplayedMonth)
 		if latestAppointmentDate.Compare(firstDisplayedDateRange.EndDate) <= 0 {
 			if latestAppointmentDate.After(firstDisplayedDateRange.StartDate) {
 				firstDisplayedDateRange.StartDate = latestAppointmentDate
@@ -83,60 +89,24 @@ func onSetLastWorkDate(ctx tele.Context) error {
 		}
 		relativeFirstDisplayedMonth++
 	}
-	deltaDisplayedMonth, err := strconv.Atoi(ctx.Callback().Data)
-	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
-	}
-	markupSelectDate := markupSelectLastWorkDate(firstDisplayedDateRange, relativeFirstDisplayedMonth, deltaDisplayedMonth)
-	return ctx.Edit(selectLastWorkDate, markupSelectDate)
-}
-
-func markupSelectLastWorkDate(firstDisplayedDateRange ent.DateRange, relativeFirstDisplayedMonth, deltaDisplayedMonth int) *tele.ReplyMarkup {
-	markup := &tele.ReplyMarkup{}
-	var btnPrevMonth, btnNextMonth tele.Btn
-	var displayedDateRange ent.DateRange
 	if deltaDisplayedMonth == 0 {
 		displayedDateRange = firstDisplayedDateRange
-		btnPrevMonth = btnEmpty
-		btnNextMonth = markup.Data(next, endpntSelectMonthOfLastWorkDate, strconv.Itoa(1))
 	} else {
-		displayedDateRange = ent.Month(byte(relativeFirstDisplayedMonth + deltaDisplayedMonth))
-		btnPrevMonth = markup.Data(prev, endpntSelectMonthOfLastWorkDate, strconv.Itoa(deltaDisplayedMonth-1))
-		relativeMaxDisplayedMonth := int(cfg.ScheduledWeeks) * 7 / 30
-		if relativeFirstDisplayedMonth+deltaDisplayedMonth == relativeMaxDisplayedMonth {
-			btnNextMonth = btnEmpty
-		} else {
-			btnNextMonth = markup.Data(next, endpntSelectMonthOfLastWorkDate, strconv.Itoa(deltaDisplayedMonth+1))
-		}
+		displayedDateRange = ent.Month(relativeFirstDisplayedMonth + deltaDisplayedMonth)
 	}
-	rowSelectMonth := markup.Row(btnPrevMonth, btnMonth(displayedDateRange.Month()), btnNextMonth)
-	var btnsDatesToSelect []tele.Btn
-	for i := 1; i < displayedDateRange.StartWeekday(); i++ {
-		btnsDatesToSelect = append(btnsDatesToSelect, btnEmpty)
+	if cfg.ScheduledWeeks*7/30 > relativeFirstDisplayedMonth {
+		maxDeltaDisplayedMonth = cfg.ScheduledWeeks*7/30 - relativeFirstDisplayedMonth
+	} else {
+		maxDeltaDisplayedMonth = 0
 	}
-	for date := displayedDateRange.StartDate; date.Compare(displayedDateRange.EndDate) <= 0; date = date.Add(24 * time.Hour) {
-		btnDateToSelect := markup.Data(strconv.Itoa(date.Day()), endpntSelectLastWorkDate, m.MapToStorage.Date(date))
-		btnsDatesToSelect = append(btnsDatesToSelect, btnDateToSelect)
-	}
-	for i := 7; i > displayedDateRange.EndWeekday(); i-- {
-		btnsDatesToSelect = append(btnsDatesToSelect, btnEmpty)
-	}
-	rowsSelectDate := markup.Split(7, btnsDatesToSelect)
-	rowRestoreDefaultDate := markup.Row(markup.Data("Установить бессрочную дату окончания работы", endpntSelectLastWorkDate, cfg.InfiniteWorkDate))
-	rowBackToMainBarber := markup.Row(btnBackToMainBarber)
-	var rows []tele.Row
-	rows = append(rows, rowSelectMonth, rowWeekdays)
-	rows = append(rows, rowsSelectDate...)
-	rows = append(rows, rowRestoreDefaultDate, rowBackToMainBarber)
-	markup.Inline(rows...)
-	return markup
+	return ctx.Edit(selectLastWorkDate, markupSelectLastWorkDate(displayedDateRange, deltaDisplayedMonth, maxDeltaDisplayedMonth))
 }
 
 func onSelectLastWorkDate(ctx tele.Context) error {
 	errMsg := "can't save last work date"
 	barberID := ctx.Sender().ID
 	sess.UpdateBarberState(barberID, sess.StateStart)
-	dateToSave, err := m.MapToEntity.Date(ctx.Callback().Data)
+	dateToSave, err := time.ParseInLocation(time.DateOnly, ctx.Callback().Data, cfg.Location)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
@@ -243,19 +213,19 @@ func onCreateService(ctx tele.Context) error {
 	if newService.Name != "" || newService.Desciption != "" || newService.Price != 0 || newService.Duration != 0 {
 		return ctx.Edit(continueOldOrMakeNewService, markupСontinueOldOrMakeNewService)
 	}
-	return showNewServiceOptions(ctx, newService)
+	return showNewServOptsWithEditMsg(ctx, newService)
 }
 
 func onСontinueOldService(ctx tele.Context) error {
 	barberID := ctx.Sender().ID
 	sess.UpdateBarberState(barberID, sess.StateStart)
 	newService := sess.GetNewService(barberID)
-	return showNewServiceOptions(ctx, newService)
+	return showNewServOptsWithEditMsg(ctx, newService)
 }
 
 func onMakeNewService(ctx tele.Context) error {
 	sess.UpdateNewServiceAndState(ctx.Sender().ID, sess.NewService{}, sess.StateStart)
-	return showNewServiceOptions(ctx, sess.NewService{})
+	return showNewServOptsWithEditMsg(ctx, sess.NewService{})
 }
 
 func onEnterServiceName(ctx tele.Context) error {
@@ -278,18 +248,6 @@ func onSelectServiceDurationOnEnter(ctx tele.Context) error {
 	return ctx.Edit(selectServiceDuration, markupSelectServiceDuration(endpntEnterServiceDuration))
 }
 
-func markupSelectServiceDuration(endpnt string) *tele.ReplyMarkup {
-	markup := &tele.ReplyMarkup{}
-	btnsDurationsToSelect := make([]tele.Btn, 4)
-	for duration := 30 * tm.Minute; duration <= 2*tm.Hour; duration += 30 * tm.Minute {
-		btnsDurationsToSelect = append(btnsDurationsToSelect, btnServiceDuration(duration, endpnt))
-	}
-	rows := markup.Split(2, btnsDurationsToSelect)
-	rows = append(rows, markup.Row(btnBackToMainBarber))
-	markup.Inline(rows...)
-	return markup
-}
-
 func onSelectCertainDurationOnEnter(ctx tele.Context) error {
 	dur, err := strconv.ParseUint(ctx.Callback().Data, 10, 64)
 	if err != nil {
@@ -299,14 +257,7 @@ func onSelectCertainDurationOnEnter(ctx tele.Context) error {
 	newService := sess.GetNewService(barberID)
 	newService.Duration = tm.Duration(dur)
 	sess.UpdateNewServiceAndState(barberID, newService, sess.StateStart)
-	return showNewServiceOptions(ctx, newService)
-}
-
-func showNewServiceOptions(ctx tele.Context, newService sess.NewService) error {
-	if newService.Name != "" && newService.Desciption != "" && newService.Price != 0 && newService.Duration != 0 {
-		return ctx.Edit(readyToCreateService+"\n\n"+enterServiceParams+"\n\n"+newService.Info(), markupReadyToCreateService, tele.ModeMarkdown)
-	}
-	return ctx.Edit(enterServiceParams+"\n\n"+newService.Info(), markupEnterServiceParams, tele.ModeMarkdown)
+	return showNewServOptsWithEditMsg(ctx, newService)
 }
 
 func onSaveNewService(ctx tele.Context) error {
@@ -347,7 +298,7 @@ func onСontinueEditingService(ctx tele.Context) error {
 	barberID := ctx.Sender().ID
 	sess.UpdateBarberState(barberID, sess.StateStart)
 	editedService := sess.GetEditedService(barberID)
-	return showEditServiceOptions(ctx, editedService)
+	return showEditServOptsWithEditMsg(ctx, editedService)
 }
 
 func onSelectServiceToEdit(ctx tele.Context) error {
@@ -361,18 +312,6 @@ func onSelectServiceToEdit(ctx tele.Context) error {
 		return ctx.Edit(youHaveNoServices, markupManageServicesShort)
 	}
 	return ctx.Edit(selectServiceToEdit, markupSelectServiceToEdit(services))
-}
-
-func markupSelectServiceToEdit(services []ent.Service) *tele.ReplyMarkup {
-	markup := &tele.ReplyMarkup{}
-	var rows []tele.Row
-	for _, service := range services {
-		row := markup.Row(btnServiceToEdit(service))
-		rows = append(rows, row)
-	}
-	rows = append(rows, markup.Row(btnBackToMainBarber))
-	markup.Inline(rows...)
-	return markup
 }
 
 func onSelectCertainServiceToEdit(ctx tele.Context) error {
@@ -395,7 +334,7 @@ func onSelectCertainServiceToEdit(ctx tele.Context) error {
 		},
 	}
 	sess.UpdateEditedServiceAndState(ctx.Sender().ID, editedService, sess.StateStart)
-	return showEditServiceOptions(ctx, editedService)
+	return showEditServOptsWithEditMsg(ctx, editedService)
 }
 
 func onEditServiceName(ctx tele.Context) error {
@@ -427,14 +366,7 @@ func onSelectCertainDurationOnEdit(ctx tele.Context) error {
 	editedService := sess.GetEditedService(barberID)
 	editedService.UpdService.Duration = tm.Duration(dur)
 	sess.UpdateEditedServiceAndState(barberID, editedService, sess.StateStart)
-	return showEditServiceOptions(ctx, editedService)
-}
-
-func showEditServiceOptions(ctx tele.Context, editedService sess.EditedService) error {
-	if editedService.UpdService.Name != "" || editedService.UpdService.Desciption != "" || editedService.UpdService.Price != 0 || editedService.UpdService.Duration != 0 {
-		return ctx.Edit(enterServiceParams+"\n\n"+editedService.Info()+"\n\n"+readyToUpdateService, markupReadyToUpdateService)
-	}
-	return ctx.Edit(editServiceParams+"\n\n"+editedService.Info(), markupEditServiceParams)
+	return showEditServOptsWithEditMsg(ctx, editedService)
 }
 
 func onUpdateService(ctx tele.Context) error {
@@ -491,37 +423,14 @@ func onDeleteBarber(ctx tele.Context) error {
 	if len(barberIDs) == 1 {
 		return ctx.Edit(onlyOneBarberExists, markupBackToMainBarber)
 	}
-	markupSelectBarber, notEmpty, err := markupSelectBarberToDeletion(ctx, barberIDs)
+	markupSelectBarber, err := markupSelectBarberToDeletion(ctx, barberIDs)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, "can't suggest actions to delete barber", err)
 	}
-	if !notEmpty {
+	if len(markupSelectBarber.InlineKeyboard) == 1 {
 		return ctx.Edit(noBarbersToDelete+preDeletionBarberInstruction, markupSelectBarber)
 	}
 	return ctx.Edit(selectBarberToDeletion+preDeletionBarberInstruction, markupSelectBarber)
-}
-
-func markupSelectBarberToDeletion(ctx tele.Context, barberIDs []int64) (*tele.ReplyMarkup, bool, error) {
-	today := tm.Today()
-	markup := &tele.ReplyMarkup{}
-	var rows []tele.Row
-	for _, barberID := range barberIDs {
-		if barberID != ctx.Sender().ID {
-			barber, err := cp.RepoWithContext.GetBarberByID(barberID)
-			if err != nil {
-				return &tele.ReplyMarkup{}, false, e.Wrap("can't make reply markup", err)
-			}
-			if barber.LastWorkdate.Before(today) {
-				barberIDString := strconv.FormatInt(barberID, 10)
-				row := markup.Row(markup.Data(barber.Name, endpntBarberToDeletion, barberIDString))
-				rows = append(rows, row)
-			}
-		}
-	}
-	notEmpty := len(rows) > 0
-	rows = append(rows, markup.Row(btnBackToMainBarber))
-	markup.Inline(rows...)
-	return markup, notEmpty, nil
 }
 
 func onDeleteCertainBarber(ctx tele.Context) error {
@@ -623,7 +532,7 @@ func onEnterServName(ctx tele.Context) error {
 	newService := sess.GetNewService(barberID)
 	newService.Name = text
 	sess.UpdateNewServiceAndState(barberID, newService, sess.StateStart)
-	return showNewServOptions(ctx, newService)
+	return showNewServOptsWithSendMsg(ctx, newService)
 }
 
 func onEnterServDescription(ctx tele.Context) error {
@@ -635,7 +544,7 @@ func onEnterServDescription(ctx tele.Context) error {
 	newService := sess.GetNewService(barberID)
 	newService.Desciption = text
 	sess.UpdateNewServiceAndState(barberID, newService, sess.StateStart)
-	return showNewServOptions(ctx, newService)
+	return showNewServOptsWithSendMsg(ctx, newService)
 }
 
 func onEnterServPrice(ctx tele.Context) error {
@@ -649,14 +558,7 @@ func onEnterServPrice(ctx tele.Context) error {
 	newService := sess.GetNewService(barberID)
 	newService.Price = price
 	sess.UpdateNewServiceAndState(barberID, newService, sess.StateStart)
-	return showNewServOptions(ctx, newService)
-}
-
-func showNewServOptions(ctx tele.Context, newService sess.NewService) error {
-	if newService.Name != "" && newService.Desciption != "" && newService.Price != 0 && newService.Duration != 0 {
-		return ctx.Send(readyToCreateService+"\n\n"+enterServiceParams+"\n\n"+newService.Info(), markupReadyToCreateService, tele.ModeMarkdown)
-	}
-	return ctx.Send(enterServiceParams+"\n\n"+newService.Info(), markupEnterServiceParams, tele.ModeMarkdown)
+	return showNewServOptsWithSendMsg(ctx, newService)
 }
 
 func onEditServName(ctx tele.Context) error {
@@ -668,7 +570,7 @@ func onEditServName(ctx tele.Context) error {
 	editedService := sess.GetEditedService(barberID)
 	editedService.UpdService.Name = text
 	sess.UpdateEditedServiceAndState(barberID, editedService, sess.StateStart)
-	return showEditServOptions(ctx, editedService)
+	return showEditServOptsWithSendMsg(ctx, editedService)
 }
 
 func onEditServDescription(ctx tele.Context) error {
@@ -680,7 +582,7 @@ func onEditServDescription(ctx tele.Context) error {
 	editedService := sess.GetEditedService(barberID)
 	editedService.UpdService.Desciption = text
 	sess.UpdateEditedServiceAndState(barberID, editedService, sess.StateStart)
-	return showEditServOptions(ctx, editedService)
+	return showEditServOptsWithSendMsg(ctx, editedService)
 }
 
 func onEditServPrice(ctx tele.Context) error {
@@ -694,14 +596,7 @@ func onEditServPrice(ctx tele.Context) error {
 	editedService := sess.GetEditedService(barberID)
 	editedService.UpdService.Price = price
 	sess.UpdateEditedServiceAndState(barberID, editedService, sess.StateStart)
-	return showEditServOptions(ctx, editedService)
-}
-
-func showEditServOptions(ctx tele.Context, editedService sess.EditedService) error {
-	if editedService.UpdService.Name != "" || editedService.UpdService.Desciption != "" || editedService.UpdService.Price != 0 || editedService.UpdService.Duration != 0 {
-		return ctx.Send(enterServiceParams+"\n\n"+editedService.Info()+"\n\n"+readyToUpdateService, markupReadyToUpdateService)
-	}
-	return ctx.Send(editServiceParams+"\n\n"+editedService.Info(), markupEditServiceParams)
+	return showEditServOptsWithSendMsg(ctx, editedService)
 }
 
 func onContactBarber(ctx tele.Context) error {
@@ -736,4 +631,32 @@ func onAddNewBarber(ctx tele.Context) error {
 func logAndMsgErrBarber(ctx tele.Context, msg string, err error) error {
 	log.Print(e.Wrap(msg, err))
 	return ctx.Send(errorBarber, markupBackToMainBarber)
+}
+
+func showEditServOptsWithEditMsg(ctx tele.Context, editedService sess.EditedService) error {
+	if editedService.UpdService.Name != "" || editedService.UpdService.Desciption != "" || editedService.UpdService.Price != 0 || editedService.UpdService.Duration != 0 {
+		return ctx.Edit(enterServiceParams+"\n\n"+editedService.Info()+"\n\n"+readyToUpdateService, markupReadyToUpdateService)
+	}
+	return ctx.Edit(editServiceParams+"\n\n"+editedService.Info(), markupEditServiceParams)
+}
+
+func showEditServOptsWithSendMsg(ctx tele.Context, editedService sess.EditedService) error {
+	if editedService.UpdService.Name != "" || editedService.UpdService.Desciption != "" || editedService.UpdService.Price != 0 || editedService.UpdService.Duration != 0 {
+		return ctx.Send(enterServiceParams+"\n\n"+editedService.Info()+"\n\n"+readyToUpdateService, markupReadyToUpdateService)
+	}
+	return ctx.Send(editServiceParams+"\n\n"+editedService.Info(), markupEditServiceParams)
+}
+
+func showNewServOptsWithEditMsg(ctx tele.Context, newService sess.NewService) error {
+	if newService.Name != "" && newService.Desciption != "" && newService.Price != 0 && newService.Duration != 0 {
+		return ctx.Edit(readyToCreateService+"\n\n"+enterServiceParams+"\n\n"+newService.Info(), markupReadyToCreateService, tele.ModeMarkdown)
+	}
+	return ctx.Edit(enterServiceParams+"\n\n"+newService.Info(), markupEnterServiceParams, tele.ModeMarkdown)
+}
+
+func showNewServOptsWithSendMsg(ctx tele.Context, newService sess.NewService) error {
+	if newService.Name != "" && newService.Desciption != "" && newService.Price != 0 && newService.Duration != 0 {
+		return ctx.Send(readyToCreateService+"\n\n"+enterServiceParams+"\n\n"+newService.Info(), markupReadyToCreateService, tele.ModeMarkdown)
+	}
+	return ctx.Send(enterServiceParams+"\n\n"+newService.Info(), markupEnterServiceParams, tele.ModeMarkdown)
 }

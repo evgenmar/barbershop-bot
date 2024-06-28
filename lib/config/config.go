@@ -13,7 +13,7 @@ type ProtectedIDs struct {
 // scheduledWeeks is the number of weeks for which the barbershop schedule is compiled.
 const ScheduledWeeks byte = 26
 const NonWorkingDay time.Weekday = time.Monday
-const MaxAppointmentBookingMonths int = 1
+const MaxAppointmentBookingMonths byte = 1
 const InfiniteWorkDate = "3000-01-01"
 
 // location is the time zone where the barbershop is located.
