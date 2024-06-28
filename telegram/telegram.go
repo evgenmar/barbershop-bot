@@ -61,7 +61,7 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	barbers.Handle(&btnSetLastWorkDate, onSetLastWorkDate)
 	barbers.Handle(&btnSelectLastWorkDate, onSelectLastWorkDate)
 	barbers.Handle(&btnSelfDeleteBarber, onSelfDeleteBarber)
-	barbers.Handle(&btnSureToDelete, onSureToDelete)
+	barbers.Handle(&btnSureToSelfDeleteBarber, onSureToSelfDeleteBarber)
 
 	barbers.Handle(&btnManageServices, onManageServices)
 	barbers.Handle(&btnShowMyServices, onShowMyServices)
@@ -86,6 +86,10 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	barbers.Handle(&btnSelectServiceDurationOnEdit, onSelectServiceDurationOnEdit)
 	barbers.Handle(&btnSelectCertainDurationOnEdit, onSelectCertainDurationOnEdit)
 	barbers.Handle(&btnUpdateService, onUpdateService)
+
+	barbers.Handle(&btnDeleteService, onDeleteService)
+	barbers.Handle(&btnSelectCertainServiceToDelete, onSelectCertainServiceToDelete)
+	barbers.Handle(&btnSureToDeleteService, onSureToDeleteService)
 
 	barbers.Handle(&btnManageBarbers, onManageBarbers)
 	barbers.Handle(&btnShowAllBurbers, onShowAllBarbers)

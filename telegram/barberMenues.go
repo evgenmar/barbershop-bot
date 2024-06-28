@@ -40,10 +40,8 @@ const (
 	notUniqueBarberPhone = `Номер телефона не сохранен. Другой барбер с таким номером уже зарегистрирован в приложении. Введите другой номер.
 При необходимости вернуться в главное меню воспользуйтесь командой /start`
 
-	deleteAccount                   = "В этом меню собраны функции, необходимые для корректного прекращения работы в качестве барбера в этом боте."
-	endpntSelectMonthOfLastWorkDate = "select_month_of_last_work_date"
-	endpntSelectLastWorkDate        = "select_last_work_date"
-	selectLastWorkDate              = `Данную функцию следует использовать, если Вы планируете прекратить использовать этот бот в своей работе и хотите, чтобы клиенты перестали использовать бот для записи к Вам на стрижку.
+	deleteAccount      = "В этом меню собраны функции, необходимые для корректного прекращения работы в качестве барбера в этом боте."
+	selectLastWorkDate = `Данную функцию следует использовать, если Вы планируете прекратить использовать этот бот в своей работе и хотите, чтобы клиенты перестали использовать бот для записи к Вам на стрижку.
 	
 Выберите дату последнего рабочего дня.
 Для выбора доступны только даты позже последней существующей записи клиента на стрижку.
@@ -89,20 +87,21 @@ const (
 	enterServicePrice   = "Введите цену услуги в рублях. Цена услуги должна быть больше нуля. Нужно ввести только число, дополнительные символы, какие-либо сокращения вводить не нужно."
 	invalidServicePrice = `Неизвестный формат цены. Введите число, равное стоимости оказания услуги в рублях. Цена услуги должна быть больше нуля. Нужно ввести только число, дополнительные символы, какие-либо сокращения вводить не нужно.
 Пожалуйста, попробуйте ввести цену услуги еще раз. При необходимости вернуться в главное меню воспользуйтесь командой /start`
-	selectServiceDuration      = "Выберите продолжительность услуги."
-	endpntEnterServiceDuration = "enter_service_duration"
-	invalidService             = "Невозможно выполнить команду. Недопустимые параметры услуги."
-	nonUniqueServiceName       = "Услуга не сохранена. У Вас уже есть другая услуга с таким же названием. Измените название услуги перед сохранением."
-	serviceCreated             = "Услуга успешно создана!"
+	selectServiceDuration = "Выберите продолжительность услуги."
+	invalidService        = "Невозможно выполнить команду. Недопустимые параметры услуги."
+	nonUniqueServiceName  = "Услуга не сохранена. У Вас уже есть другая услуга с таким же названием. Измените название услуги перед сохранением."
+	serviceCreated        = "Услуга успешно создана!"
 
 	continueEditingOrSelectService = "Ранее Вы уже начали редактировать услугу. Хотите продолжить с того места, где остановились? Или хотите заново выбрать услугу и начать ее редактировать?"
 	selectServiceToEdit            = "Выберите услугу, которую Вы хотите отредактировать."
-	endpntServiceToEdit            = "service_to_edit"
 	editServiceParams              = `Для изменения параметров услуги выберите соответствующую опцию.
 Вы также можете покинуть это меню и вернуться к редактированию услуги позднее.`
-	readyToUpdateService      = `Для того, чтобы внесенные изменения вступили в силу, нажмите на кнопку "Применить изменения".`
-	endpntEditServiceDuration = "edit_service_duration"
-	serviceUpdated            = "Услуга успешно изменена!"
+	readyToUpdateService = `Для того, чтобы внесенные изменения вступили в силу, нажмите на кнопку "Применить изменения".`
+	serviceUpdated       = "Услуга успешно изменена!"
+
+	selectServiceToDelete  = "Выберите услугу, которую Вы хотите удалить."
+	confirmServiceDeletion = "Вы выбрали для удаления следующую услугу:\n\n%s\n\nПодтвердите удаление услуги. Если передумали, просто вернитесь в главное меню."
+	serviceDeleted         = "Услуга успешно удалена!"
 
 	manageBarbers = "В этом меню собраны функции для управления барберами."
 	listOfBarbers = "Список всех барберов, зарегистрированных в приложении:"
@@ -134,13 +133,21 @@ const (
 2. Дождаться наступления следующего дня после даты установленной в прошлом пункте.
 	
 Эти действия необходимы, чтобы гарантировать, что ни один клиент, записавшийся на стрижку, не останется необслуженным в процессе удаления барбера из приложения.`
-	endpntBarberToDeletion   = "barber_to_deletion"
 	barberDeleted            = `Статус указанного пользователя изменен. Пользователь больше не имеет статуса "барбер".`
 	barberHaveActiveSchedule = `Невозможно изменить статус барбера, поскольку пока Вы выбирали барбера для удаления, выбранный барбер изменил свою дату последнего рабочего дня на более позднюю.`
 
 	unknownCmdBarber = "Неизвестная команда. Пожалуйста, выберите команду из меню. Для вызова главного меню воспользуйтесь командой /start"
 	errorBarber      = `Произошла ошибка обработки команды. Команда не была выполнена. Если ошибка будет повторяться, возможно, потребуется перезапуск сервиса.
 Пожалуйста, перейдите в главное меню и попробуйте выполнить команду заново.`
+
+	endpntSelectMonthOfLastWorkDate = "select_month_of_last_work_date"
+	endpntSelectLastWorkDate        = "select_last_work_date"
+	endpntEnterServiceDuration      = "enter_service_duration"
+	endpntServiceToEdit             = "service_to_edit"
+	endpntEditServiceDuration       = "edit_service_duration"
+	endpntServiceToDelete           = "service_to_delete"
+	endpntSureToDeleteService       = "sure_to_delete_service"
+	endpntBarberToDeletion          = "barber_to_deletion"
 )
 
 var (
@@ -168,7 +175,7 @@ var (
 	btnSelfDeleteBarber     = markupEmpty.Data(`Отказаться от статуса "барбер"`, "self_delete_barber")
 
 	markupConfirmSelfDeletion = &tele.ReplyMarkup{}
-	btnSureToDelete           = markupEmpty.Data("Уверен, удалить!", "sure_to_delete")
+	btnSureToSelfDeleteBarber = markupEmpty.Data("Уверен, удалить!", "sure_to_self_delete_barber")
 
 	markupManageServicesFull = &tele.ReplyMarkup{}
 	btnShowMyServices        = markupEmpty.Data("Список моих услуг", "show_my_services")
@@ -212,6 +219,9 @@ var (
 
 	markupEditServiceName = &tele.ReplyMarkup{}
 
+	btnSelectCertainServiceToDelete = markupEmpty.Data("", endpntServiceToDelete)
+	btnSureToDeleteService          = markupEmpty.Data("", endpntSureToDeleteService)
+
 	markupManageBarbers    = &tele.ReplyMarkup{}
 	btnShowAllBurbers      = markupEmpty.Data("Список барберов", "show_all_barbers")
 	btnAddBarber           = markupEmpty.Data("Добавить барбера", "add_barber")
@@ -254,7 +264,7 @@ func init() {
 	)
 
 	markupConfirmSelfDeletion.Inline(
-		markupEmpty.Row(btnSureToDelete),
+		markupEmpty.Row(btnSureToSelfDeleteBarber),
 		markupEmpty.Row(btnBackToMainBarber),
 	)
 
@@ -350,6 +360,15 @@ func btnServiceDuration(dur tm.Duration, endpnt string) tele.Btn {
 	return markupEmpty.Data(dur.LongString(), endpnt, strconv.FormatUint(uint64(dur), 10))
 }
 
+func markupConfirmServiceDeletion(serviceID int) *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{}
+	markup.Inline(
+		markup.Row(markup.Data("Подтвердить удаление", endpntSureToDeleteService, strconv.Itoa(serviceID))),
+		markup.Row(btnBackToMainBarber),
+	)
+	return markup
+}
+
 func markupSelectBarberToDeletion(senderID int64, barbers []ent.Barber) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 	today := tm.Today()
@@ -391,11 +410,11 @@ func markupSelectServiceDuration(endpnt string) *tele.ReplyMarkup {
 	return markup
 }
 
-func markupSelectServiceToEdit(services []ent.Service) *tele.ReplyMarkup {
+func markupSelectServiceBarber(services []ent.Service, endpnt string) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 	var rows []tele.Row
 	for _, service := range services {
-		row := markup.Row(btnService(service, endpntServiceToEdit))
+		row := markup.Row(btnService(service, endpnt))
 		rows = append(rows, row)
 	}
 	rows = append(rows, markup.Row(btnBackToMainBarber))

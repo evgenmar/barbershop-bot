@@ -11,6 +11,7 @@ import (
 	sched "barbershop-bot/scheduler"
 	sess "barbershop-bot/sessions"
 	"errors"
+	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -163,7 +164,7 @@ func onSelfDeleteBarber(ctx tele.Context) error {
 	return ctx.Edit(youHaveActiveSchedule+preDeletionBarberInstruction, markupBackToMainBarber)
 }
 
-func onSureToDelete(ctx tele.Context) error {
+func onSureToSelfDeleteBarber(ctx tele.Context) error {
 	errMsg := "can't self delete barber"
 	barberIDToDelete := ctx.Sender().ID
 	if err := cp.RepoWithContext.DeleteAppointmentsBeforeDate(barberIDToDelete, tm.Today()); err != nil {
@@ -311,7 +312,7 @@ func onSelectServiceToEdit(ctx tele.Context) error {
 	if len(services) == 0 {
 		return ctx.Edit(youHaveNoServices, markupManageServicesShort)
 	}
-	return ctx.Edit(selectServiceToEdit, markupSelectServiceToEdit(services))
+	return ctx.Edit(selectServiceToEdit, markupSelectServiceBarber(services, endpntServiceToEdit))
 }
 
 func onSelectCertainServiceToEdit(ctx tele.Context) error {
@@ -391,6 +392,44 @@ func onUpdateService(ctx tele.Context) error {
 	}
 	sess.UpdateEditedServiceAndState(barberID, sess.EditedService{}, sess.StateStart)
 	return ctx.Edit(serviceUpdated, markupManageServicesFull)
+}
+
+func onDeleteService(ctx tele.Context) error {
+	barberID := ctx.Sender().ID
+	sess.UpdateBarberState(barberID, sess.StateStart)
+	services, err := cp.RepoWithContext.GetServicesByBarberID(barberID)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, "can't show list of services for delete", err)
+	}
+	if len(services) == 0 {
+		return ctx.Edit(youHaveNoServices, markupManageServicesShort)
+	}
+	return ctx.Edit(selectServiceToDelete, markupSelectServiceBarber(services, endpntServiceToDelete))
+}
+
+func onSelectCertainServiceToDelete(ctx tele.Context) error {
+	errMsg := "can't select certain service for delete"
+	serviceID, err := strconv.Atoi(ctx.Callback().Data)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	serviceToDelete, err := cp.RepoWithContext.GetServiceByID(serviceID)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	return ctx.Edit(fmt.Sprintf(confirmServiceDeletion, serviceToDelete.Info()), markupConfirmServiceDeletion(serviceID))
+}
+
+func onSureToDeleteService(ctx tele.Context) error {
+	errMsg := "can't delete service"
+	serviceID, err := strconv.Atoi(ctx.Callback().Data)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	if err := cp.RepoWithContext.DeleteServiceByID(serviceID); err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	return ctx.Edit(serviceDeleted, markupBackToMainBarber)
 }
 
 func onManageBarbers(ctx tele.Context) error {
