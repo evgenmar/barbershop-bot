@@ -96,7 +96,7 @@ func (s NewService) Info() string {
 	if s.Duration != 0 {
 		duration = fmt.Sprintf("*%s*", s.Duration.LongString())
 	}
-	format := "На данный момент создаваемая услуга имеет вид:\nНазвание услуги: %s\nОписание услуги: %s\nЦена услуги: %s\nПродолжительность услуги: %s\n"
+	format := "На данный момент создаваемая услуга имеет вид:\nНазвание услуги: %s\nОписание услуги: %s\nЦена услуги: %s\nПродолжительность услуги: %s"
 	return fmt.Sprintf(format, name, description, price, duration)
 }
 

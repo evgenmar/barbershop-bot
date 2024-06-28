@@ -674,28 +674,28 @@ func logAndMsgErrBarber(ctx tele.Context, msg string, err error) error {
 
 func showEditServOptsWithEditMsg(ctx tele.Context, editedService sess.EditedService) error {
 	if editedService.UpdService.Name != "" || editedService.UpdService.Desciption != "" || editedService.UpdService.Price != 0 || editedService.UpdService.Duration != 0 {
-		return ctx.Edit(enterServiceParams+"\n\n"+editedService.Info()+"\n\n"+readyToUpdateService, markupReadyToUpdateService)
+		return ctx.Edit(editServiceParams+editedService.Info()+readyToUpdateService, markupReadyToUpdateService)
 	}
-	return ctx.Edit(editServiceParams+"\n\n"+editedService.Info(), markupEditServiceParams)
+	return ctx.Edit(editServiceParams+editedService.Info(), markupEditServiceParams)
 }
 
 func showEditServOptsWithSendMsg(ctx tele.Context, editedService sess.EditedService) error {
 	if editedService.UpdService.Name != "" || editedService.UpdService.Desciption != "" || editedService.UpdService.Price != 0 || editedService.UpdService.Duration != 0 {
-		return ctx.Send(enterServiceParams+"\n\n"+editedService.Info()+"\n\n"+readyToUpdateService, markupReadyToUpdateService)
+		return ctx.Send(editServiceParams+editedService.Info()+readyToUpdateService, markupReadyToUpdateService)
 	}
-	return ctx.Send(editServiceParams+"\n\n"+editedService.Info(), markupEditServiceParams)
+	return ctx.Send(editServiceParams+editedService.Info(), markupEditServiceParams)
 }
 
 func showNewServOptsWithEditMsg(ctx tele.Context, newService sess.NewService) error {
 	if newService.Name != "" && newService.Desciption != "" && newService.Price != 0 && newService.Duration != 0 {
-		return ctx.Edit(readyToCreateService+"\n\n"+enterServiceParams+"\n\n"+newService.Info(), markupReadyToCreateService, tele.ModeMarkdown)
+		return ctx.Edit(enterServiceParams+newService.Info()+readyToCreateService, markupReadyToCreateService, tele.ModeMarkdown)
 	}
-	return ctx.Edit(enterServiceParams+"\n\n"+newService.Info(), markupEnterServiceParams, tele.ModeMarkdown)
+	return ctx.Edit(enterServiceParams+newService.Info(), markupEnterServiceParams, tele.ModeMarkdown)
 }
 
 func showNewServOptsWithSendMsg(ctx tele.Context, newService sess.NewService) error {
 	if newService.Name != "" && newService.Desciption != "" && newService.Price != 0 && newService.Duration != 0 {
-		return ctx.Send(readyToCreateService+"\n\n"+enterServiceParams+"\n\n"+newService.Info(), markupReadyToCreateService, tele.ModeMarkdown)
+		return ctx.Send(enterServiceParams+newService.Info()+readyToCreateService, markupReadyToCreateService, tele.ModeMarkdown)
 	}
-	return ctx.Send(enterServiceParams+"\n\n"+newService.Info(), markupEnterServiceParams, tele.ModeMarkdown)
+	return ctx.Send(enterServiceParams+newService.Info(), markupEnterServiceParams, tele.ModeMarkdown)
 }
