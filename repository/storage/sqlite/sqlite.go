@@ -67,6 +67,36 @@ func (s *Storage) CreateService(ctx context.Context, service st.Service) (err er
 	return nil
 }
 
+// CreateUser saves new user to storage.
+func (s *Storage) CreateUser(ctx context.Context, user st.User) (err error) {
+	defer func() { err = e.WrapIfErr("can't save user", err) }()
+	columns := ""
+	placeholders := ""
+	args := make([]interface{}, 0, 3)
+	args = append(args, user.ID)
+	if user.Name.Valid {
+		columns += ", name"
+		placeholders += ", ?"
+		args = append(args, user.Name)
+	}
+	if user.Phone.Valid {
+		columns += ", phone"
+		placeholders += ", ?"
+		args = append(args, user.Phone)
+	}
+	q := fmt.Sprintf(`INSERT INTO users (id%s) VALUES (?%s)`, columns, placeholders)
+	s.rwMutex.Lock()
+	_, err = s.db.ExecContext(ctx, q, args...)
+	s.rwMutex.Unlock()
+	if err != nil {
+		if errors.Is(err, sqlite3.CONSTRAINT) {
+			err = st.ErrAlreadyExists
+		}
+		return err
+	}
+	return nil
+}
+
 // CreateWorkdays saves new Workdays to storage.
 func (s *Storage) CreateWorkdays(ctx context.Context, workdays ...st.Workday) error {
 	placeholders := make([]string, 0, len(workdays))
@@ -167,7 +197,7 @@ func (s *Storage) GetAllBarbers(ctx context.Context) (barbers []st.Barber, err e
 	return barbers, nil
 }
 
-// GetBarberByID returns barber with with specified ID.
+// GetBarberByID returns barber with specified ID.
 func (s *Storage) GetBarberByID(ctx context.Context, barberID int64) (st.Barber, error) {
 	q := `SELECT name, phone, last_workdate FROM barbers WHERE id = ?`
 	var barber st.Barber
@@ -262,6 +292,23 @@ func (s *Storage) GetServicesByBarberID(ctx context.Context, barberID int64) (se
 	return services, nil
 }
 
+// GetUserByID returns user with specified ID.
+func (s *Storage) GetUserByID(ctx context.Context, userID int64) (st.User, error) {
+	q := `SELECT name, phone FROM users WHERE id = ?`
+	var user st.User
+	s.rwMutex.RLock()
+	err := s.db.QueryRowContext(ctx, q, userID).Scan(&user.Name, &user.Phone)
+	s.rwMutex.RUnlock()
+	if errors.Is(err, sql.ErrNoRows) {
+		return st.User{}, st.ErrNoSavedUser
+	}
+	if err != nil {
+		return st.User{}, e.Wrap("can't get user", err)
+	}
+	user.ID = userID
+	return user, nil
+}
+
 // GetWorkdaysByDateRange returns working days that fall within the date range.
 // It only returns working days for barber with specified ID.
 // Returned working days are sorted by date in ascending order.
@@ -298,7 +345,7 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 	q := `CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY, 
 		name TEXT, 
-		phone TEXT NOT NULL
+		phone TEXT
 		)`
 	_, err = s.db.ExecContext(ctx, q)
 	if err != nil {
@@ -361,7 +408,7 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 	return nil
 }
 
-// UpdateBarber updates valid  and non-niladic fields of Barber. ID field must be non-niladic and remains not updated.
+// UpdateBarber updates valid and non-niladic fields of Barber. ID field must be non-niladic and remains not updated.
 func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) error {
 	query := make([]string, 0, 3)
 	args := make([]interface{}, 0, 3)
@@ -426,6 +473,29 @@ func (s *Storage) UpdateService(ctx context.Context, service st.Service) (err er
 			err = st.ErrNonUniqueData
 		}
 		return err
+	}
+	return nil
+}
+
+// UpdateUser updates valid fields of Barber. ID field must be non-niladic and remains not updated.
+func (s *Storage) UpdateUser(ctx context.Context, user st.User) error {
+	query := make([]string, 0, 2)
+	args := make([]interface{}, 0, 2)
+	if user.Name.Valid {
+		query = append(query, "name = ?")
+		args = append(args, user.Name)
+	}
+	if user.Phone.Valid {
+		query = append(query, "phone = ?")
+		args = append(args, user.Phone)
+	}
+	args = append(args, user.ID)
+	q := fmt.Sprintf(`UPDATE users SET %s WHERE id = ?`, strings.Join(query, " , "))
+	s.rwMutex.Lock()
+	_, err := s.db.ExecContext(ctx, q, args...)
+	s.rwMutex.Unlock()
+	if err != nil {
+		return e.Wrap("can't update user", err)
 	}
 	return nil
 }

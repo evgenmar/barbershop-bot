@@ -17,8 +17,8 @@ var MapToEntity StorageToEntityMapper
 func (s StorageToEntityMapper) Barber(barber st.Barber) (ent.Barber, error) {
 	var br ent.Barber
 	br.ID = barber.ID
-	br.Name = mapBarberNameToEntity(barber.Name)
-	br.Phone = mapBarberPhoneToEntity(barber.Phone)
+	br.Name = mapNameToEntity(barber.Name)
+	br.Phone = mapPhoneToEntity(barber.Phone)
 
 	//st.Barber.LastWorkDate is always valid because default is not null.
 	lastWorkDate, err := s.Date(barber.LastWorkDate)
@@ -48,6 +48,14 @@ func (s StorageToEntityMapper) Service(service st.Service) (ent.Service, error) 
 	}, nil
 }
 
+func (s StorageToEntityMapper) User(user st.User) ent.User {
+	return ent.User{
+		ID:    user.ID,
+		Name:  mapNameToEntity(user.Name),
+		Phone: mapPhoneToEntity(user.Phone),
+	}
+}
+
 func (s StorageToEntityMapper) Workday(workday st.Workday) (ent.Workday, error) {
 	date, err := s.Date(workday.Date)
 	if err != nil {
@@ -70,16 +78,16 @@ func (s StorageToEntityMapper) Workday(workday st.Workday) (ent.Workday, error) 
 	}, nil
 }
 
-func mapBarberNameToEntity(name sql.NullString) string {
+func mapNameToEntity(name sql.NullString) string {
 	if !name.Valid {
-		return ent.NoNameBarber
+		return ent.NoName
 	}
 	return name.String
 }
 
-func mapBarberPhoneToEntity(phone sql.NullString) string {
+func mapPhoneToEntity(phone sql.NullString) string {
 	if !phone.Valid {
-		return ent.NoPhoneBarber
+		return ent.NoPhone
 	}
 	return phone.String
 }

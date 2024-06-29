@@ -11,14 +11,12 @@ import (
 type EntityToStorageMapper struct{}
 
 func (e EntityToStorageMapper) Barber(barber ent.Barber) st.Barber {
-	var br st.Barber
-	br.ID = barber.ID
-	br.Name = nullString(barber.Name)
-	br.Phone = nullString(normalizePhone(barber.Phone))
-	if !barber.LastWorkdate.Equal(time.Time{}) {
-		br.LastWorkDate = e.Date(barber.LastWorkdate)
+	return st.Barber{
+		ID:           barber.ID,
+		Name:         nullString(barber.Name),
+		Phone:        nullString(normalizePhone(barber.Phone)),
+		LastWorkDate: nullDate(barber.LastWorkdate),
 	}
-	return br
 }
 
 func (e EntityToStorageMapper) Date(date time.Time) string {
@@ -43,6 +41,14 @@ func (e EntityToStorageMapper) Service(service ent.Service) st.Service {
 	}
 }
 
+func (e EntityToStorageMapper) User(user ent.User) st.User {
+	return st.User{
+		ID:    user.ID,
+		Name:  nullString(user.Name),
+		Phone: nullString(normalizePhone(user.Phone)),
+	}
+}
+
 func (e EntityToStorageMapper) Workday(workday ent.Workday) st.Workday {
 	return st.Workday{
 		BarberID:  workday.BarberID,
@@ -62,6 +68,13 @@ func normalizePhone(phone string) (normalized string) {
 		}
 	}
 	return "+7" + normalized[1:]
+}
+
+func nullDate(date time.Time) (nullDt string) {
+	if !date.Equal(time.Time{}) {
+		nullDt = date.Format(time.DateOnly)
+	}
+	return
 }
 
 func nullString(str string) (nullStr sql.NullString) {

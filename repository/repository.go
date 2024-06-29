@@ -20,10 +20,12 @@ var (
 	ErrInvalidBarber      = m.ErrInvalidBarber
 	ErrInvalidDateRange   = m.ErrInvalidDateRange
 	ErrInvalidService     = m.ErrInvalidService
+	ErrInvalidUser        = m.ErrInvalidUser
 	ErrInvalidWorkday     = m.ErrInvalidWorkday
 	ErrNonUniqueData      = st.ErrNonUniqueData
 	ErrNoSavedBarber      = st.ErrNoSavedBarber
 	ErrNoSavedService     = st.ErrNoSavedService
+	ErrNoSavedUser        = st.ErrNoSavedUser
 )
 
 func New(storage st.Storage) Repository {
@@ -55,6 +57,22 @@ func (r Repository) CreateService(ctx context.Context, service ent.Service) (err
 		return err
 	}
 	return r.Storage.CreateService(ctx, serv)
+}
+
+func (r Repository) CreateUser(ctx context.Context, user ent.User) (err error) {
+	defer func() {
+		if errors.Is(err, st.ErrAlreadyExists) {
+			err = ErrAlreadyExists
+		}
+		if errors.Is(err, m.ErrInvalidUser) {
+			err = ErrInvalidUser
+		}
+	}()
+	ur, err := m.MapToStorage.User(user)
+	if err != nil {
+		return err
+	}
+	return r.Storage.CreateUser(ctx, ur)
 }
 
 func (r Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (err error) {
@@ -180,6 +198,19 @@ func (r Repository) GetServicesByBarberID(ctx context.Context, barberID int64) (
 	return services, nil
 }
 
+func (r Repository) GetUserByID(ctx context.Context, userID int64) (user ent.User, err error) {
+	defer func() {
+		if errors.Is(err, st.ErrNoSavedUser) {
+			err = ErrNoSavedUser
+		}
+	}()
+	ur, err := r.Storage.GetUserByID(ctx, userID)
+	if err != nil {
+		return ent.User{}, err
+	}
+	return m.MapToEntity.User(ur), nil
+}
+
 func (r Repository) GetWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (workdays []ent.Workday, err error) {
 	defer func() { err = e.WrapIfErr("can't get workdays", err) }()
 	dr, err := m.MapToStorage.DateRange(dateRange)
@@ -238,4 +269,18 @@ func (r Repository) UpdateService(ctx context.Context, service ent.Service) (err
 		return err
 	}
 	return r.Storage.UpdateService(ctx, serv)
+}
+
+// UpdateUser updates only non-empty fields of User
+func (r Repository) UpdateUser(ctx context.Context, user ent.User) (err error) {
+	defer func() {
+		if errors.Is(err, m.ErrInvalidUser) {
+			err = ErrInvalidUser
+		}
+	}()
+	ur, err := m.MapToStorage.User(user)
+	if err != nil {
+		return err
+	}
+	return r.Storage.UpdateUser(ctx, ur)
 }

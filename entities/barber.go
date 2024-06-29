@@ -19,8 +19,8 @@ type Barber struct {
 }
 
 const (
-	NoNameBarber  = "Барбер без имени"
-	NoPhoneBarber = "Номер не указан"
+	NoName  = "Без имени"
+	NoPhone = "Номер не указан"
 )
 
 var infiniteWorkDate time.Time
@@ -33,18 +33,12 @@ func init() {
 	infiniteWorkDate = infWorkDate
 }
 
-func (b Barber) PuplicInfo() string {
+func (b Barber) Info() string {
 	var lastWorkDate string
 	if b.LastWorkdate.Equal(infiniteWorkDate) {
 		lastWorkDate = "бессрочно"
 	} else {
 		lastWorkDate = "до " + b.LastWorkdate.Format("02.01.2006")
 	}
-	return fmt.Sprintf(`Имя: %s
-Tел.: %s
-Работает %s`, b.Name, b.Phone, lastWorkDate)
-}
-
-func (b Barber) PersonalInfo() string {
-	return b.PuplicInfo()
+	return fmt.Sprintf("Имя: %s\nTел.: %s\nРаботает %s", b.Name, b.Phone, lastWorkDate)
 }

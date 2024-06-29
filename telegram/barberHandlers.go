@@ -46,7 +46,7 @@ func onShowCurrentSettingsBarber(ctx tele.Context) error {
 	if err != nil {
 		return logAndMsgErrBarber(ctx, "can't show current barber settings", err)
 	}
-	return ctx.Edit(currentSettings+barber.PersonalInfo(), markupBackToMainBarber)
+	return ctx.Edit(currentSettings+barber.Info(), markupBackToMainBarber)
 }
 
 func onUpdPersonalBarber(ctx tele.Context) error {
@@ -450,7 +450,7 @@ func onShowAllBarbers(ctx tele.Context) error {
 	}
 	barbersInfo := ""
 	for _, barber := range barbers {
-		barbersInfo = barbersInfo + "\n\n" + barber.PuplicInfo()
+		barbersInfo = barbersInfo + "\n\n" + barber.Info()
 	}
 	return ctx.Edit(listOfBarbers+barbersInfo, markupBackToMainBarber)
 }

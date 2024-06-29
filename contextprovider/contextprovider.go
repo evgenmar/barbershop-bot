@@ -42,6 +42,13 @@ func (c ContextProvider) CreateService(service ent.Service) (err error) {
 	return c.repo.CreateService(ctx, service)
 }
 
+// func (c ContextProvider) CreateUser(user ent.User) (err error) {
+// 	defer func() { err = e.WrapIfErr("can't save new user", err) }()
+// 	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
+// 	defer cancel()
+// 	return c.repo.CreateUser(ctx, user)
+// }
+
 func (c ContextProvider) CreateWorkdays(wds ...ent.Workday) (err error) {
 	defer func() { err = e.WrapIfErr("can't create workdays", err) }()
 	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
@@ -119,6 +126,13 @@ func (c ContextProvider) GetServicesByBarberID(barberID int64) (services []ent.S
 	return c.repo.GetServicesByBarberID(ctx, barberID)
 }
 
+// func (c ContextProvider) GetUserByID(userID int64) (user ent.User, err error) {
+// 	defer func() { err = e.WrapIfErr("can't get user", err) }()
+// 	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
+// 	defer cancel()
+// 	return c.repo.GetUserByID(ctx, userID)
+// }
+
 // func (c ContextProvider) GetWorkdaysByDateRange(barberID int64, dateRange ent.DateRange) (workdays []ent.Workday, err error) {
 // 	defer func() { err = e.WrapIfErr("can't get workdays", err) }()
 // 	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
@@ -139,3 +153,10 @@ func (c ContextProvider) UpdateService(service ent.Service) (err error) {
 	defer cancel()
 	return c.repo.UpdateService(ctx, service)
 }
+
+// func (c ContextProvider) UpdateUser(user ent.User) (err error) {
+// 	defer func() { err = e.WrapIfErr("can't update user", err) }()
+// 	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
+// 	defer cancel()
+// 	return c.repo.UpdateUser(ctx, user)
+// }

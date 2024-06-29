@@ -19,6 +19,7 @@ var (
 	ErrInvalidBarber    = errors.New("invalid barber")
 	ErrInvalidDateRange = errors.New("invalid date range")
 	ErrInvalidService   = errors.New("invalid service")
+	ErrInvalidUser      = errors.New("invalid user")
 	ErrInvalidWorkday   = errors.New("invalid workday")
 )
 
@@ -29,10 +30,8 @@ func (v ValidatedEntityToStorageMapper) Barber(barber ent.Barber) (st.Barber, er
 	if barber.Name != "" && !isValidName(barber.Name) {
 		return st.Barber{}, ErrInvalidBarber
 	}
-	if barber.Phone != "" {
-		if !isValidPhone(barber.Phone) {
-			return st.Barber{}, ErrInvalidBarber
-		}
+	if barber.Phone != "" && !isValidPhone(barber.Phone) {
+		return st.Barber{}, ErrInvalidBarber
 	}
 	return v.EntityToStorageMapper.Barber(barber), nil
 }
@@ -56,6 +55,19 @@ func (v ValidatedEntityToStorageMapper) Service(service ent.Service) (st.Service
 		return st.Service{}, ErrInvalidService
 	}
 	return v.EntityToStorageMapper.Service(service), nil
+}
+
+func (v ValidatedEntityToStorageMapper) User(user ent.User) (st.User, error) {
+	if user.ID == 0 {
+		return st.User{}, ErrInvalidUser
+	}
+	if user.Name != "" && !isValidName(user.Name) {
+		return st.User{}, ErrInvalidUser
+	}
+	if user.Phone != "" && !isValidPhone(user.Phone) {
+		return st.User{}, ErrInvalidUser
+	}
+	return v.EntityToStorageMapper.User(user), nil
 }
 
 func (v ValidatedEntityToStorageMapper) Workday(workday ent.Workday) (st.Workday, error) {
@@ -92,7 +104,7 @@ func isValidName(text string) bool {
 			break
 		}
 	}
-	return regex.MatchString(text) && hasLetter && text != ent.NoNameBarber
+	return regex.MatchString(text) && hasLetter && text != ent.NoName
 }
 
 func isValidPhone(text string) bool {
@@ -111,5 +123,5 @@ func IsValidServiceName(text string) bool {
 			break
 		}
 	}
-	return regex.MatchString(text) && hasLetter && text != ent.NoNameBarber
+	return regex.MatchString(text) && hasLetter && text != ent.NoName
 }

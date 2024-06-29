@@ -13,6 +13,7 @@ var (
 	ErrNonUniqueData        = errors.New("data to save must be unique")
 	ErrNoSavedBarber        = errors.New("no saved barber with specified ID")
 	ErrNoSavedService       = errors.New("no saved service with specified ID")
+	ErrNoSavedUser          = errors.New("no saved user with specified ID")
 	ErrUnspecifiedServiceID = errors.New("unspecified serviceID")
 )
 
@@ -22,6 +23,9 @@ type Storage interface {
 
 	//CreateService saves new service to storage.
 	CreateService(ctx context.Context, service Service) error
+
+	// CreateUser saves new user to storage.
+	CreateUser(ctx context.Context, user User) error
 
 	//CreateWorkdays saves new Workdays to storage.
 	CreateWorkdays(ctx context.Context, workdays ...Workday) error
@@ -59,6 +63,9 @@ type Storage interface {
 	// GetServicesByBarberID returns all services provided by barber with specified ID.
 	GetServicesByBarberID(ctx context.Context, barberID int64) ([]Service, error)
 
+	// GetUserByID returns user with specified ID.
+	GetUserByID(ctx context.Context, userID int64) (User, error)
+
 	// GetWorkdaysByDateRange returns working days that fall within the date range.
 	// It only returns working days for barber with specified ID.
 	// Returned working days are sorted by date in ascending order.
@@ -67,12 +74,15 @@ type Storage interface {
 	// Init prepares the storage for use. It creates the necessary tables if not exists.
 	Init(ctx context.Context) error
 
-	// UpdateBarber updates valid  and non-niladic fields of Barber. ID field must be non-niladic and remains not updated.
+	// UpdateBarber updates valid and non-niladic fields of Barber. ID field must be non-niladic and remains not updated.
 	UpdateBarber(ctx context.Context, barber Barber) error
 
 	// UpdateService updates non-niladic fields of Service. ID field must be non-niladic and remains not updated.
 	// UpdateService also doesn't updates barber_id field even if it's non-niladic.
 	UpdateService(ctx context.Context, service Service) error
+
+	// UpdateUser updates valid fields of Barber. ID field must be non-niladic and remains not updated.
+	UpdateUser(ctx context.Context, user User) error
 }
 
 type Barber struct {
@@ -99,6 +109,14 @@ type Service struct {
 	Desciption string `db:"description"`
 	Price      uint   `db:"price"`
 	Duration   string `db:"duration"`
+}
+
+type User struct {
+	ID   int64          `db:"id"`
+	Name sql.NullString `db:"name"`
+
+	//Format of phone number is +71234567890.
+	Phone sql.NullString `db:"phone"`
 }
 
 type Workday struct {
