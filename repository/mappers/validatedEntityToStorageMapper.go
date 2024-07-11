@@ -78,7 +78,7 @@ func (v ValidatedEntityToStorageMapper) Workday(workday ent.Workday) (st.Workday
 }
 
 func IsValidDescription(text string) bool {
-	namePattern := `^[a-zA-Zа-яА-Я0-9,.\s+\-\(\)\/\"!]{10,400}$`
+	namePattern := `^[\p{L}\p{M}\p{N}\p{P}\p{Z}+\-]{10,400}$`
 	regex := regexp.MustCompile(namePattern)
 	var has7Letters bool
 	nLetters := 0
@@ -114,7 +114,7 @@ func isValidPhone(text string) bool {
 }
 
 func IsValidServiceName(text string) bool {
-	namePattern := `^[a-zA-Zа-яА-Я0-9,.\s+\-\(\)\/\"!]{3,35}$`
+	namePattern := `^[\p{L}\p{M}\p{N}\p{P}\p{Z}+\-]{3,35}$`
 	regex := regexp.MustCompile(namePattern)
 	var hasLetter bool
 	for _, r := range text {

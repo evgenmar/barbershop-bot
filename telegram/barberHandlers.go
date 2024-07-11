@@ -51,6 +51,19 @@ func onShowCurrentSettingsBarber(ctx tele.Context) error {
 
 func onUpdPersonalBarber(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
+	barberID := ctx.Sender().ID
+	barber, err := cp.RepoWithContext.GetBarberByID(barberID)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, "can't show update personal data options for barber", err)
+	}
+	if barber.Name == ent.NoName && barber.Phone == ent.NoPhone {
+		return ctx.Edit(privacyBarber, markupPrivacyBarber)
+	}
+	return ctx.Edit(personalBarber, markupPersonalBarber)
+}
+
+func onBarberAgreeWithPrivacy(ctx tele.Context) error {
+	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
 	return ctx.Edit(personalBarber, markupPersonalBarber)
 }
 
