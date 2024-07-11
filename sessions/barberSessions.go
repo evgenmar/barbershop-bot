@@ -8,15 +8,15 @@ import (
 	"time"
 )
 
-type BarberSession struct {
+type barberSession struct {
 	status
-	NewService
-	EditedService
-	expiresAt int64
+	newService    NewService
+	editedService EditedService
+	expiresAt     int64
 }
 
-type BarberSessionManager struct {
-	sessions map[int64]BarberSession
+type barberSessionManager struct {
+	sessions map[int64]barberSession
 	mutex    sync.RWMutex
 }
 
@@ -38,46 +38,9 @@ type Service struct {
 }
 
 var (
-	barberSessionManager *BarberSessionManager
-	once                 sync.Once
+	barberSessManager *barberSessionManager
+	once              sync.Once
 )
-
-func getBarberSessionManager() *BarberSessionManager {
-	once.Do(func() {
-		barberSessionManager = &BarberSessionManager{
-			sessions: make(map[int64]BarberSession),
-		}
-	})
-	return barberSessionManager
-}
-
-func (m *BarberSessionManager) get(id int64) BarberSession {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
-	session, ok := m.sessions[id]
-	if !ok {
-		return BarberSession{}
-	}
-	return session
-}
-
-func (m *BarberSessionManager) update(id int64, session BarberSession) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	session.expiresAt = time.Now().Add(time.Hour * 72).Unix()
-	m.sessions[id] = session
-}
-
-func (m *BarberSessionManager) cleanupBarberSessions() {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	now := time.Now().Unix()
-	for id, session := range m.sessions {
-		if session.expiresAt < now {
-			delete(m.sessions, id)
-		}
-	}
-}
 
 func (s NewService) Info() string {
 	name := "не указано"
@@ -125,50 +88,79 @@ func (s EditedService) Info() string {
 	return "Редактируемая услуга с учетом внесенных изменений будет иметь вид:\n\n" + serviceToDisplay.Info()
 }
 
-func getBarberSession(id int64) BarberSession {
-	return getBarberSessionManager().get(id)
-}
-
 func GetBarberState(id int64) State {
-	session := getBarberSession(id)
+	session := getBarberSessionManager().getSession(id)
 	if !session.status.isValid() {
 		session.status = newStatus(StateStart)
-		updateBarberSession(id, session)
+		getBarberSessionManager().updateSession(id, session)
 		return StateStart
 	}
 	return session.state
 }
 
 func GetEditedService(id int64) EditedService {
-	session := getBarberSession(id)
-	return session.EditedService
+	session := getBarberSessionManager().getSession(id)
+	return session.editedService
 }
 
 func GetNewService(id int64) NewService {
-	session := getBarberSession(id)
-	return session.NewService
-}
-
-func updateBarberSession(id int64, session BarberSession) {
-	getBarberSessionManager().update(id, session)
+	session := getBarberSessionManager().getSession(id)
+	return session.newService
 }
 
 func UpdateBarberState(id int64, state State) {
-	session := getBarberSession(id)
+	session := getBarberSessionManager().getSession(id)
 	session.status = newStatus(state)
-	updateBarberSession(id, session)
+	getBarberSessionManager().updateSession(id, session)
 }
 
 func UpdateEditedServiceAndState(id int64, eservice EditedService, state State) {
-	session := getBarberSession(id)
-	session.EditedService = eservice
+	session := getBarberSessionManager().getSession(id)
+	session.editedService = eservice
 	session.status = newStatus(state)
-	updateBarberSession(id, session)
+	getBarberSessionManager().updateSession(id, session)
 }
 
 func UpdateNewServiceAndState(id int64, nservice NewService, state State) {
-	session := getBarberSession(id)
-	session.NewService = nservice
+	session := getBarberSessionManager().getSession(id)
+	session.newService = nservice
 	session.status = newStatus(state)
-	updateBarberSession(id, session)
+	getBarberSessionManager().updateSession(id, session)
+}
+
+func getBarberSessionManager() *barberSessionManager {
+	once.Do(func() {
+		barberSessManager = &barberSessionManager{
+			sessions: make(map[int64]barberSession),
+		}
+	})
+	return barberSessManager
+}
+
+func (m *barberSessionManager) getSession(id int64) barberSession {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	session, ok := m.sessions[id]
+	if !ok {
+		return barberSession{}
+	}
+	return session
+}
+
+func (m *barberSessionManager) updateSession(id int64, session barberSession) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	session.expiresAt = time.Now().Add(time.Hour * 72).Unix()
+	m.sessions[id] = session
+}
+
+func (m *barberSessionManager) cleanupBarberSessions() {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	now := time.Now().Unix()
+	for id, session := range m.sessions {
+		if session.expiresAt < now {
+			delete(m.sessions, id)
+		}
+	}
 }
