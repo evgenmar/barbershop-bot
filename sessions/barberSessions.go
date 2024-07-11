@@ -39,7 +39,7 @@ type Service struct {
 
 var (
 	barberSessManager *barberSessionManager
-	once              sync.Once
+	onceBarber        sync.Once
 )
 
 func (s NewService) Info() string {
@@ -91,8 +91,6 @@ func (s EditedService) Info() string {
 func GetBarberState(id int64) State {
 	session := getBarberSessionManager().getSession(id)
 	if !session.status.isValid() {
-		session.status = newStatus(StateStart)
-		getBarberSessionManager().updateSession(id, session)
 		return StateStart
 	}
 	return session.state
@@ -129,7 +127,7 @@ func UpdateNewServiceAndState(id int64, nservice NewService, state State) {
 }
 
 func getBarberSessionManager() *barberSessionManager {
-	once.Do(func() {
+	onceBarber.Do(func() {
 		barberSessManager = &barberSessionManager{
 			sessions: make(map[int64]barberSession),
 		}
