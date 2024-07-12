@@ -179,7 +179,7 @@ func (r Repository) GetServiceByID(ctx context.Context, serviceID int) (service 
 	if err != nil {
 		return ent.Service{}, err
 	}
-	return m.MapToEntity.Service(serv)
+	return m.MapToEntity.Service(serv), nil
 }
 
 func (r Repository) GetServicesByBarberID(ctx context.Context, barberID int64) (services []ent.Service, err error) {
@@ -189,11 +189,7 @@ func (r Repository) GetServicesByBarberID(ctx context.Context, barberID int64) (
 		return nil, err
 	}
 	for _, serv := range servs {
-		service, err := m.MapToEntity.Service(serv)
-		if err != nil {
-			return nil, err
-		}
-		services = append(services, service)
+		services = append(services, m.MapToEntity.Service(serv))
 	}
 	return services, nil
 }

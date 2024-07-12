@@ -30,15 +30,6 @@ func (d Duration) LongString() string {
 	return fmt.Sprintf("%01d ч %02d мин", hours, minutes)
 }
 
-func ParseDuration(str string) (Duration, error) {
-	var hours, minutes int16
-	_, err := fmt.Sscanf(str, "%d:%d", &hours, &minutes)
-	if err != nil {
-		return 0, err
-	}
-	return Duration(hours*60 + minutes), nil
-}
-
 func (d Duration) ShortString() string {
 	if d == 0 {
 		return ""

@@ -380,7 +380,7 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 		name TEXT NOT NULL, 
 		description TEXT NOT NULL, 
 		price INTEGER NOT NULL, 
-		duration TEXT NOT NULL,
+		duration INTEGER NOT NULL,
 		UNIQUE (barber_id, name),
 		FOREIGN KEY (barber_id) REFERENCES barbers(id) ON DELETE CASCADE
 		)`
@@ -392,8 +392,8 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 		id INTEGER PRIMARY KEY, 
 		barber_id INTEGER NOT NULL, 
 		date TEXT NOT NULL, 
-		start_time TEXT NOT NULL, 
-		end_time TEXT NOT NULL,
+		start_time INTEGER NOT NULL, 
+		end_time INTEGER NOT NULL,
 		UNIQUE (barber_id, date),
 		FOREIGN KEY (barber_id) REFERENCES barbers(id) ON DELETE CASCADE
 		)`
@@ -406,8 +406,8 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 		user_id INTEGER NOT NULL,
 		workday_id INTEGER NOT NULL,
 		service_id INTEGER,
-		time TEXT NOT NULL,
-		duration TEXT NOT NULL,
+		time INTEGER NOT NULL,
+		duration INTEGER NOT NULL,
 		created_at INTEGER NOT NULL,
 		UNIQUE (workday_id, time),
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -469,7 +469,7 @@ func (s *Storage) UpdateService(ctx context.Context, service st.Service) (err er
 		query = append(query, "price = ?")
 		args = append(args, service.Price)
 	}
-	if service.Duration != "" {
+	if service.Duration != 0 {
 		query = append(query, "duration = ?")
 		args = append(args, service.Duration)
 	}

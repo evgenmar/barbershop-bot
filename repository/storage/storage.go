@@ -86,8 +86,8 @@ type Appointment struct {
 	UserID    int64         `db:"user_id"`
 	WorkdayID int           `db:"workday_id"`
 	ServiceID sql.NullInt32 `db:"service_id"`
-	Time      string        `db:"time"`
-	Duration  string        `db:"duration"`
+	Time      int16         `db:"time"`
+	Duration  int16         `db:"duration"`
 
 	//CreatedAt has a format of Unix time
 	CreatedAt int64 `db:"created_at"`
@@ -116,7 +116,7 @@ type Service struct {
 	Name       string `db:"name"`
 	Desciption string `db:"description"`
 	Price      uint   `db:"price"`
-	Duration   string `db:"duration"`
+	Duration   int16  `db:"duration"`
 }
 
 type User struct {
@@ -136,8 +136,8 @@ type Workday struct {
 	Date string `db:"date"`
 
 	//Beginning of the working day in HH:MM in local time zone.
-	StartTime string `db:"start_time"`
+	StartTime int16 `db:"start_time"`
 
 	//End of the working day in HH:MM in local time zone.
-	EndTime string `db:"end_time"`
+	EndTime int16 `db:"end_time"`
 }

@@ -37,7 +37,7 @@ func (e EntityToStorageMapper) Service(service ent.Service) st.Service {
 		Name:       service.Name,
 		Desciption: service.Desciption,
 		Price:      uint(service.Price),
-		Duration:   service.Duration.ShortString(),
+		Duration:   int16(service.Duration),
 	}
 }
 
@@ -53,8 +53,8 @@ func (e EntityToStorageMapper) Workday(workday ent.Workday) st.Workday {
 	return st.Workday{
 		BarberID:  workday.BarberID,
 		Date:      e.Date(workday.Date),
-		StartTime: workday.StartTime.ShortString(),
-		EndTime:   workday.EndTime.ShortString(),
+		StartTime: int16(workday.StartTime),
+		EndTime:   int16(workday.EndTime),
 	}
 }
 

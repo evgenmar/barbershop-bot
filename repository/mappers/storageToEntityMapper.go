@@ -33,19 +33,15 @@ func (s StorageToEntityMapper) Date(date string) (time.Time, error) {
 	return time.ParseInLocation(time.DateOnly, date, cfg.Location)
 }
 
-func (s StorageToEntityMapper) Service(service st.Service) (ent.Service, error) {
-	duration, err := tm.ParseDuration(service.Duration)
-	if err != nil {
-		return ent.Service{}, e.Wrap("can't map duration to entity", err)
-	}
+func (s StorageToEntityMapper) Service(service st.Service) ent.Service {
 	return ent.Service{
 		ID:         service.ID,
 		BarberID:   service.BarberID,
 		Name:       service.Name,
 		Desciption: service.Desciption,
 		Price:      ent.Price(service.Price),
-		Duration:   duration,
-	}, nil
+		Duration:   tm.Duration(service.Duration),
+	}
 }
 
 func (s StorageToEntityMapper) User(user st.User) ent.User {
@@ -59,22 +55,14 @@ func (s StorageToEntityMapper) User(user st.User) ent.User {
 func (s StorageToEntityMapper) Workday(workday st.Workday) (ent.Workday, error) {
 	date, err := s.Date(workday.Date)
 	if err != nil {
-		return ent.Workday{}, e.Wrap("can't map date to entity", err)
-	}
-	startTime, err := tm.ParseDuration(workday.StartTime)
-	if err != nil {
-		return ent.Workday{}, e.Wrap("can't map start time to entity", err)
-	}
-	endTime, err := tm.ParseDuration(workday.EndTime)
-	if err != nil {
-		return ent.Workday{}, e.Wrap("can't map end time to entity", err)
+		return ent.Workday{}, e.Wrap("can't map workday to entity", err)
 	}
 	return ent.Workday{
 		ID:        workday.ID,
 		BarberID:  workday.BarberID,
 		Date:      date,
-		StartTime: startTime,
-		EndTime:   endTime,
+		StartTime: tm.Duration(workday.StartTime),
+		EndTime:   tm.Duration(workday.EndTime),
 	}, nil
 }
 
