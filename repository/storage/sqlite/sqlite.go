@@ -33,6 +33,22 @@ func New(path string) (*Storage, error) {
 	return &Storage{db: db}, nil
 }
 
+// CreateAppointment saves new appointment to storage.
+func (s *Storage) CreateAppointment(ctx context.Context, appt st.Appointment) (err error) {
+	defer func() { err = e.WrapIfErr("can't save appointment", err) }()
+	q := `INSERT INTO appointments (user_id, workday_id, service_id, time, duration, created_at) VALUES (?, ?, ?, ?, ?, ?)`
+	s.rwMutex.Lock()
+	_, err = s.db.ExecContext(ctx, q, appt.UserID, appt.WorkdayID, appt.ServiceID, appt.Time, appt.Duration, appt.CreatedAt)
+	s.rwMutex.Unlock()
+	if err != nil {
+		if errors.Is(err, sqlite3.CONSTRAINT) {
+			err = st.ErrAlreadyExists
+		}
+		return err
+	}
+	return nil
+}
+
 // CreateBarber saves new BarberID to storage.
 func (s *Storage) CreateBarber(ctx context.Context, barberID int64) error {
 	q := `INSERT INTO barbers (id) VALUES (?)`
@@ -392,7 +408,7 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 		service_id INTEGER,
 		time TEXT NOT NULL,
 		duration TEXT NOT NULL,
-		created_at TEXT NOT NULL,
+		created_at INTEGER NOT NULL,
 		UNIQUE (workday_id, time),
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 		FOREIGN KEY (workday_id) REFERENCES workdays(id) ON DELETE RESTRICT,
