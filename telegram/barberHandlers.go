@@ -21,12 +21,12 @@ import (
 
 func onStartBarber(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Send(mainBarber, markupMainBarber)
+	return ctx.Send(mainMenu, markupMainBarber)
 }
 
 func onSettingsBarber(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Edit(settingsBarber, markupSettingsBarber)
+	return ctx.Edit(settingsMenu, markupSettingsBarber)
 }
 
 func onListOfNecessarySettings(ctx tele.Context) error {
@@ -59,22 +59,22 @@ func onUpdPersonalBarber(ctx tele.Context) error {
 	if barber.Name == ent.NoName && barber.Phone == ent.NoPhone {
 		return ctx.Edit(privacyBarber, markupPrivacyBarber)
 	}
-	return ctx.Edit(personalBarber, markupPersonalBarber)
+	return ctx.Edit(selectPersonalData, markupPersonalBarber)
 }
 
 func onBarberAgreeWithPrivacy(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Edit(personalBarber, markupPersonalBarber)
+	return ctx.Edit(selectPersonalData, markupPersonalBarber)
 }
 
 func onUpdNameBarber(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateUpdName)
-	return ctx.Edit(updNameBarber)
+	return ctx.Edit(updName)
 }
 
 func onUpdPhoneBarber(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateUpdPhone)
-	return ctx.Edit(updPhoneBarber)
+	return ctx.Edit(updPhone)
 }
 
 func onDeleteAccount(ctx tele.Context) error {
@@ -517,7 +517,7 @@ func onDeleteCertainBarber(ctx tele.Context) error {
 
 func onBackToMainBarber(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Edit(mainBarber, markupMainBarber)
+	return ctx.Edit(mainMenu, markupMainBarber)
 }
 
 func onTextBarber(ctx tele.Context) error {
@@ -540,7 +540,7 @@ func onTextBarber(ctx tele.Context) error {
 	case sess.StateEditServicePrice:
 		return onEditServPrice(ctx)
 	default:
-		return ctx.Send(unknownCmdBarber)
+		return ctx.Send(unknownCommand)
 	}
 }
 
@@ -549,7 +549,7 @@ func onUpdateBarberName(ctx tele.Context) error {
 	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, Name: ctx.Message().Text}); err != nil {
 		if errors.Is(err, rep.ErrInvalidBarber) {
 			log.Print(e.Wrap("invalid barber name", err))
-			return ctx.Send(invalidBarberName)
+			return ctx.Send(invalidName)
 		}
 		if errors.Is(err, rep.ErrNonUniqueData) {
 			log.Print(e.Wrap("barber's name must be unique", err))
@@ -559,7 +559,7 @@ func onUpdateBarberName(ctx tele.Context) error {
 		return logAndMsgErrBarber(ctx, "can't update barber's name", err)
 	}
 	sess.UpdateBarberState(barberID, sess.StateStart)
-	return ctx.Send(updNameSuccessBarber, markupPersonalBarber)
+	return ctx.Send(updNameSuccess, markupPersonalBarber)
 }
 
 func onUpdateBarberPhone(ctx tele.Context) error {
@@ -567,7 +567,7 @@ func onUpdateBarberPhone(ctx tele.Context) error {
 	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, Phone: ctx.Message().Text}); err != nil {
 		if errors.Is(err, rep.ErrInvalidBarber) {
 			log.Print(e.Wrap("invalid barber phone", err))
-			return ctx.Send(invalidBarberPhone)
+			return ctx.Send(invalidPhone)
 		}
 		if errors.Is(err, rep.ErrNonUniqueData) {
 			log.Print(e.Wrap("barber's phone must be unique", err))
@@ -577,7 +577,7 @@ func onUpdateBarberPhone(ctx tele.Context) error {
 		return logAndMsgErrBarber(ctx, "can't update barber's phone", err)
 	}
 	sess.UpdateBarberState(barberID, sess.StateStart)
-	return ctx.Send(updPhoneSuccessBarber, markupPersonalBarber)
+	return ctx.Send(updPhoneSuccess, markupPersonalBarber)
 }
 
 func onEnterServName(ctx tele.Context) error {
@@ -662,7 +662,7 @@ func onContactBarber(ctx tele.Context) error {
 	case sess.StateAddBarber:
 		return onAddNewBarber(ctx)
 	default:
-		return ctx.Send(unknownCmdBarber)
+		return ctx.Send(unknownCommand)
 	}
 }
 

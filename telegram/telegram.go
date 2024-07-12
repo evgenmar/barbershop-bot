@@ -45,7 +45,6 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 
 	bot.Handle("/start", noAction, onStartRestrict())
 	bot.Handle(tele.OnText, noAction, onTextRestrict())
-	// TODO sameCommandHandlers
 
 	barbers.Handle(&btnSettingsBarber, onSettingsBarber)
 
@@ -105,6 +104,14 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	barbers.Handle(tele.OnContact, onContactBarber)
 	//TODO barberHandlers
 
+	users.Handle(&btnSettingsUser, onSettingsUser)
+	users.Handle(&btnUpdPersonalUser, onUpdPersonalUser)
+	users.Handle(&btnPrivacyUser, onPrivacyUser)
+	users.Handle(&btnUserAgreeWithPrivacy, onUserAgreeWithPrivacy)
+	users.Handle(&btnUpdNameUser, onUpdNameUser)
+	users.Handle(&btnUpdPhoneUser, onUpdPhoneUser)
+
+	users.Handle(&btnBackToMainUser, onBackToMainUser)
 	//TODO userHandlers
 
 	return bot

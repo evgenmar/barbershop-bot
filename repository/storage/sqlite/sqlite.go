@@ -477,7 +477,7 @@ func (s *Storage) UpdateService(ctx context.Context, service st.Service) (err er
 	return nil
 }
 
-// UpdateUser updates valid fields of Barber. ID field must be non-niladic and remains not updated.
+// UpdateUser updates valid fields of User. ID field must be non-niladic and remains not updated.
 func (s *Storage) UpdateUser(ctx context.Context, user st.User) error {
 	query := make([]string, 0, 2)
 	args := make([]interface{}, 0, 2)

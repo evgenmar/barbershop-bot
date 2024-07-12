@@ -81,7 +81,7 @@ type Storage interface {
 	// UpdateService also doesn't updates barber_id field even if it's non-niladic.
 	UpdateService(ctx context.Context, service Service) error
 
-	// UpdateUser updates valid fields of Barber. ID field must be non-niladic and remains not updated.
+	// UpdateUser updates valid fields of User. ID field must be non-niladic and remains not updated.
 	UpdateUser(ctx context.Context, user User) error
 }
 
