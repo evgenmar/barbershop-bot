@@ -202,7 +202,7 @@ func (s *Storage) GetBarberByID(ctx context.Context, barberID int64) (st.Barber,
 	err := s.db.QueryRowContext(ctx, q, barberID).Scan(&barber.Name, &barber.Phone, &barber.LastWorkDate)
 	s.rwMutex.RUnlock()
 	if errors.Is(err, sql.ErrNoRows) {
-		return st.Barber{}, st.ErrNoSavedBarber
+		return st.Barber{}, st.ErrNoSavedObject
 	}
 	if err != nil {
 		return st.Barber{}, e.Wrap("can't get barber", err)
@@ -254,7 +254,7 @@ func (s *Storage) GetServiceByID(ctx context.Context, serviceID int) (st.Service
 	err := s.db.QueryRowContext(ctx, q, serviceID).Scan(&service.BarberID, &service.Name, &service.Desciption, &service.Price, &service.Duration)
 	s.rwMutex.RUnlock()
 	if errors.Is(err, sql.ErrNoRows) {
-		return st.Service{}, st.ErrNoSavedService
+		return st.Service{}, st.ErrNoSavedObject
 	}
 	if err != nil {
 		return st.Service{}, e.Wrap("can't get service", err)
@@ -297,7 +297,7 @@ func (s *Storage) GetUserByID(ctx context.Context, userID int64) (st.User, error
 	err := s.db.QueryRowContext(ctx, q, userID).Scan(&user.Name, &user.Phone)
 	s.rwMutex.RUnlock()
 	if errors.Is(err, sql.ErrNoRows) {
-		return st.User{}, st.ErrNoSavedUser
+		return st.User{}, st.ErrNoSavedObject
 	}
 	if err != nil {
 		return st.User{}, e.Wrap("can't get user", err)

@@ -16,22 +16,18 @@ type ValidatedEntityToStorageMapper struct {
 var MapToStorage ValidatedEntityToStorageMapper
 
 var (
-	ErrInvalidBarber    = errors.New("invalid barber")
-	ErrInvalidDateRange = errors.New("invalid date range")
-	ErrInvalidService   = errors.New("invalid service")
-	ErrInvalidUser      = errors.New("invalid user")
-	ErrInvalidWorkday   = errors.New("invalid workday")
+	ErrInvalidEntity = errors.New("invalid entity")
 )
 
 func (v ValidatedEntityToStorageMapper) Barber(barber ent.Barber) (st.Barber, error) {
 	if barber.ID == 0 {
-		return st.Barber{}, ErrInvalidBarber
+		return st.Barber{}, ErrInvalidEntity
 	}
 	if barber.Name != "" && !isValidName(barber.Name) {
-		return st.Barber{}, ErrInvalidBarber
+		return st.Barber{}, ErrInvalidEntity
 	}
 	if barber.Phone != "" && !isValidPhone(barber.Phone) {
-		return st.Barber{}, ErrInvalidBarber
+		return st.Barber{}, ErrInvalidEntity
 	}
 	return v.EntityToStorageMapper.Barber(barber), nil
 }
@@ -42,53 +38,53 @@ func (v ValidatedEntityToStorageMapper) Date(date time.Time) string {
 
 func (v ValidatedEntityToStorageMapper) DateRange(dateRange ent.DateRange) (st.DateRange, error) {
 	if dateRange.StartDate.After(dateRange.EndDate) {
-		return st.DateRange{}, ErrInvalidDateRange
+		return st.DateRange{}, ErrInvalidEntity
 	}
 	return v.EntityToStorageMapper.DateRange(dateRange), nil
 }
 
 func (v ValidatedEntityToStorageMapper) NewService(service ent.Service) (st.Service, error) {
 	if service.BarberID < 1 || service.Name == "" || service.Desciption == "" || service.Duration <= 0 {
-		return st.Service{}, ErrInvalidService
+		return st.Service{}, ErrInvalidEntity
 	}
 	if service.Name != "" && !IsValidServiceName(service.Name) {
-		return st.Service{}, ErrInvalidService
+		return st.Service{}, ErrInvalidEntity
 	}
 	if service.Desciption != "" && !IsValidDescription(service.Desciption) {
-		return st.Service{}, ErrInvalidService
+		return st.Service{}, ErrInvalidEntity
 	}
 	return v.EntityToStorageMapper.Service(service), nil
 }
 
 func (v ValidatedEntityToStorageMapper) UpdService(service ent.Service) (st.Service, error) {
 	if service.ID < 1 {
-		return st.Service{}, ErrInvalidService
+		return st.Service{}, ErrInvalidEntity
 	}
 	if service.Name != "" && !IsValidServiceName(service.Name) {
-		return st.Service{}, ErrInvalidService
+		return st.Service{}, ErrInvalidEntity
 	}
 	if service.Desciption != "" && !IsValidDescription(service.Desciption) {
-		return st.Service{}, ErrInvalidService
+		return st.Service{}, ErrInvalidEntity
 	}
 	return v.EntityToStorageMapper.Service(service), nil
 }
 
 func (v ValidatedEntityToStorageMapper) User(user ent.User) (st.User, error) {
 	if user.ID == 0 {
-		return st.User{}, ErrInvalidUser
+		return st.User{}, ErrInvalidEntity
 	}
 	if user.Name != "" && !isValidName(user.Name) {
-		return st.User{}, ErrInvalidUser
+		return st.User{}, ErrInvalidEntity
 	}
 	if user.Phone != "" && !isValidPhone(user.Phone) {
-		return st.User{}, ErrInvalidUser
+		return st.User{}, ErrInvalidEntity
 	}
 	return v.EntityToStorageMapper.User(user), nil
 }
 
 func (v ValidatedEntityToStorageMapper) Workday(workday ent.Workday) (st.Workday, error) {
 	if workday.BarberID == 0 || workday.Date.Equal(time.Time{}) || workday.StartTime < 0 || workday.EndTime <= workday.StartTime {
-		return st.Workday{}, ErrInvalidWorkday
+		return st.Workday{}, ErrInvalidEntity
 	}
 	return v.EntityToStorageMapper.Workday(workday), nil
 }
