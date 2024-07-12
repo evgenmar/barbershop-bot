@@ -7,14 +7,12 @@ import (
 )
 
 var (
-	ErrAlreadyExists        = errors.New("the object being saved already exists")
-	ErrAppointmentsExists   = errors.New("there are active appointments for the period being deleted")
-	ErrInvalidService       = errors.New("invalid service")
-	ErrNonUniqueData        = errors.New("data to save must be unique")
-	ErrNoSavedBarber        = errors.New("no saved barber with specified ID")
-	ErrNoSavedService       = errors.New("no saved service with specified ID")
-	ErrNoSavedUser          = errors.New("no saved user with specified ID")
-	ErrUnspecifiedServiceID = errors.New("unspecified serviceID")
+	ErrAlreadyExists      = errors.New("the object being saved already exists")
+	ErrAppointmentsExists = errors.New("there are active appointments for the period being deleted")
+	ErrNonUniqueData      = errors.New("data to save must be unique")
+	ErrNoSavedBarber      = errors.New("no saved barber with specified ID")
+	ErrNoSavedService     = errors.New("no saved service with specified ID")
+	ErrNoSavedUser        = errors.New("no saved user with specified ID")
 )
 
 type Storage interface {
@@ -83,6 +81,18 @@ type Storage interface {
 
 	// UpdateUser updates valid fields of User. ID field must be non-niladic and remains not updated.
 	UpdateUser(ctx context.Context, user User) error
+}
+
+type Appointment struct {
+	ID        int           `db:"id"`
+	UserID    int64         `db:"user_id"`
+	WorkdayID int           `db:"workday_id"`
+	ServiceID sql.NullInt32 `db:"service_id"`
+	Time      string        `db:"time"`
+	Duration  string        `db:"duration"`
+
+	//CreatedAt has a format of Unix time
+	CreatedAt int64 `db:"created_at"`
 }
 
 type Barber struct {

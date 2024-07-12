@@ -51,9 +51,6 @@ func (s *Storage) CreateBarber(ctx context.Context, barberID int64) error {
 // CreateService saves new service to storage.
 func (s *Storage) CreateService(ctx context.Context, service st.Service) (err error) {
 	defer func() { err = e.WrapIfErr("can't save service", err) }()
-	if service.BarberID < 1 || service.Name == "" || service.Desciption == "" || service.Price < 1 || service.Duration == "" {
-		return st.ErrInvalidService
-	}
 	q := `INSERT INTO services (barber_id, name, description, price, duration) VALUES (?, ?, ?, ?, ?)`
 	s.rwMutex.Lock()
 	_, err = s.db.ExecContext(ctx, q, service.BarberID, service.Name, service.Desciption, service.Price, service.Duration)
@@ -395,7 +392,7 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 		service_id INTEGER,
 		time TEXT NOT NULL,
 		duration TEXT NOT NULL,
-		cteated_at TEXT NOT NULL,
+		created_at TEXT NOT NULL,
 		UNIQUE (workday_id, time),
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 		FOREIGN KEY (workday_id) REFERENCES workdays(id) ON DELETE RESTRICT,
@@ -442,9 +439,6 @@ func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) error {
 // UpdateService also doesn't updates barber_id field even if it's non-niladic.
 func (s *Storage) UpdateService(ctx context.Context, service st.Service) (err error) {
 	defer func() { err = e.WrapIfErr("can't update service", err) }()
-	if service.ID < 1 {
-		return st.ErrUnspecifiedServiceID
-	}
 	query := make([]string, 0, 4)
 	args := make([]interface{}, 0, 4)
 	if service.Name != "" {

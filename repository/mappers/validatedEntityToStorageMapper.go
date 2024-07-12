@@ -47,7 +47,23 @@ func (v ValidatedEntityToStorageMapper) DateRange(dateRange ent.DateRange) (st.D
 	return v.EntityToStorageMapper.DateRange(dateRange), nil
 }
 
-func (v ValidatedEntityToStorageMapper) Service(service ent.Service) (st.Service, error) {
+func (v ValidatedEntityToStorageMapper) NewService(service ent.Service) (st.Service, error) {
+	if service.BarberID < 1 || service.Name == "" || service.Desciption == "" || service.Duration <= 0 {
+		return st.Service{}, ErrInvalidService
+	}
+	if service.Name != "" && !IsValidServiceName(service.Name) {
+		return st.Service{}, ErrInvalidService
+	}
+	if service.Desciption != "" && !IsValidDescription(service.Desciption) {
+		return st.Service{}, ErrInvalidService
+	}
+	return v.EntityToStorageMapper.Service(service), nil
+}
+
+func (v ValidatedEntityToStorageMapper) UpdService(service ent.Service) (st.Service, error) {
+	if service.ID < 1 {
+		return st.Service{}, ErrInvalidService
+	}
 	if service.Name != "" && !IsValidServiceName(service.Name) {
 		return st.Service{}, ErrInvalidService
 	}

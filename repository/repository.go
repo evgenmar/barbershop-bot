@@ -48,11 +48,11 @@ func (r Repository) CreateService(ctx context.Context, service ent.Service) (err
 		if errors.Is(err, st.ErrAlreadyExists) {
 			err = ErrAlreadyExists
 		}
-		if errors.Is(err, st.ErrInvalidService) || errors.Is(err, m.ErrInvalidService) {
+		if errors.Is(err, m.ErrInvalidService) {
 			err = ErrInvalidService
 		}
 	}()
-	serv, err := m.MapToStorage.Service(service)
+	serv, err := m.MapToStorage.NewService(service)
 	if err != nil {
 		return err
 	}
@@ -257,11 +257,11 @@ func (r Repository) UpdateService(ctx context.Context, service ent.Service) (err
 		if errors.Is(err, st.ErrNonUniqueData) {
 			err = ErrNonUniqueData
 		}
-		if errors.Is(err, st.ErrUnspecifiedServiceID) {
+		if errors.Is(err, m.ErrInvalidService) {
 			err = ErrInvalidService
 		}
 	}()
-	serv, err := m.MapToStorage.Service(service)
+	serv, err := m.MapToStorage.UpdService(service)
 	if err != nil {
 		if errors.Is(err, m.ErrInvalidService) {
 			err = ErrInvalidService
