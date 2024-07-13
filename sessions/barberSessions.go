@@ -88,42 +88,42 @@ func (s EditedService) Info() string {
 	return "Редактируемая услуга с учетом внесенных изменений будет иметь вид:\n\n" + serviceToDisplay.Info()
 }
 
-func GetBarberState(id int64) State {
-	session := getBarberSessionManager().getSession(id)
+func GetBarberState(barberID int64) State {
+	session := getBarberSessionManager().getSession(barberID)
 	if !session.status.isValid() {
 		return StateStart
 	}
 	return session.state
 }
 
-func GetEditedService(id int64) EditedService {
-	session := getBarberSessionManager().getSession(id)
+func GetEditedService(barberID int64) EditedService {
+	session := getBarberSessionManager().getSession(barberID)
 	return session.editedService
 }
 
-func GetNewService(id int64) NewService {
-	session := getBarberSessionManager().getSession(id)
+func GetNewService(barberID int64) NewService {
+	session := getBarberSessionManager().getSession(barberID)
 	return session.newService
 }
 
-func UpdateBarberState(id int64, state State) {
-	session := getBarberSessionManager().getSession(id)
+func UpdateBarberState(barberID int64, state State) {
+	session := getBarberSessionManager().getSession(barberID)
 	session.status = newStatus(state)
-	getBarberSessionManager().updateSession(id, session)
+	getBarberSessionManager().updateSession(barberID, session)
 }
 
-func UpdateEditedServiceAndState(id int64, eservice EditedService, state State) {
-	session := getBarberSessionManager().getSession(id)
+func UpdateEditedServiceAndState(barberID int64, eservice EditedService, state State) {
+	session := getBarberSessionManager().getSession(barberID)
 	session.editedService = eservice
 	session.status = newStatus(state)
-	getBarberSessionManager().updateSession(id, session)
+	getBarberSessionManager().updateSession(barberID, session)
 }
 
-func UpdateNewServiceAndState(id int64, nservice NewService, state State) {
-	session := getBarberSessionManager().getSession(id)
+func UpdateNewServiceAndState(barberID int64, nservice NewService, state State) {
+	session := getBarberSessionManager().getSession(barberID)
 	session.newService = nservice
 	session.status = newStatus(state)
-	getBarberSessionManager().updateSession(id, session)
+	getBarberSessionManager().updateSession(barberID, session)
 }
 
 func getBarberSessionManager() *barberSessionManager {
@@ -135,30 +135,30 @@ func getBarberSessionManager() *barberSessionManager {
 	return barberSessManager
 }
 
-func (m *barberSessionManager) getSession(id int64) barberSession {
+func (m *barberSessionManager) getSession(barberID int64) barberSession {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
-	session, ok := m.sessions[id]
+	session, ok := m.sessions[barberID]
 	if !ok {
 		return barberSession{}
 	}
 	return session
 }
 
-func (m *barberSessionManager) updateSession(id int64, session barberSession) {
+func (m *barberSessionManager) updateSession(barberID int64, session barberSession) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	session.expiresAt = time.Now().Add(time.Hour * 72).Unix()
-	m.sessions[id] = session
+	m.sessions[barberID] = session
 }
 
 func (m *barberSessionManager) cleanupBarberSessions() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	now := time.Now().Unix()
-	for id, session := range m.sessions {
+	for barberID, session := range m.sessions {
 		if session.expiresAt < now {
-			delete(m.sessions, id)
+			delete(m.sessions, barberID)
 		}
 	}
 }

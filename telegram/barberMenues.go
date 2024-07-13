@@ -360,6 +360,10 @@ func init() {
 	)
 }
 
+func btnDate(date time.Time, endpnt string) tele.Btn {
+	return markupEmpty.Data(strconv.Itoa(date.Day()), endpnt, date.Format(time.DateOnly))
+}
+
 func btnServiceDuration(dur tm.Duration, endpnt string) tele.Btn {
 	return markupEmpty.Data(dur.LongString(), endpnt, strconv.FormatUint(uint64(dur), 10))
 }

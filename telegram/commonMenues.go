@@ -69,10 +69,6 @@ func btnBarber(barb ent.Barber, endpnt string) tele.Btn {
 	return markupEmpty.Data(barb.Name, endpnt, strconv.FormatInt(barb.ID, 10))
 }
 
-func btnDate(date time.Time, endpnt string) tele.Btn {
-	return markupEmpty.Data(strconv.Itoa(date.Day()), endpnt, date.Format(time.DateOnly))
-}
-
 func btnMonth(month time.Month) tele.Btn {
 	return markupEmpty.Data(monthNames[month-1], endpntNoAction)
 }
