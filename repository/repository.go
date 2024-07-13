@@ -3,6 +3,7 @@ package repository
 import (
 	ent "barbershop-bot/entities"
 	"barbershop-bot/lib/e"
+	tm "barbershop-bot/lib/time"
 	m "barbershop-bot/repository/mappers"
 	st "barbershop-bot/repository/storage"
 	"context"
@@ -17,12 +18,14 @@ type Repository struct {
 var (
 	ErrAlreadyExists      = st.ErrAlreadyExists
 	ErrAppointmentsExists = st.ErrAppointmentsExists
+	ErrInvalidAppointment = errors.New("invalid appointment")
 	ErrInvalidBarber      = errors.New("invalid barber")
 	ErrInvalidDateRange   = errors.New("invalid date range")
 	ErrInvalidService     = errors.New("invalid service")
 	ErrInvalidUser        = errors.New("invalid user")
 	ErrInvalidWorkday     = errors.New("invalid workday")
 	ErrNonUniqueData      = st.ErrNonUniqueData
+	ErrNoSavedAppointment = errors.New("no saved appointment")
 	ErrNoSavedBarber      = errors.New("no saved barber with specified ID")
 	ErrNoSavedService     = errors.New("no saved service with specified ID")
 	ErrNoSavedUser        = errors.New("no saved user with specified ID")
@@ -32,6 +35,22 @@ func New(storage st.Storage) Repository {
 	return Repository{
 		Storage: storage,
 	}
+}
+
+func (r Repository) CreateAppointment(ctx context.Context, appt ent.Appointment) (err error) {
+	defer func() {
+		if errors.Is(err, st.ErrAlreadyExists) {
+			err = ErrAlreadyExists
+		}
+	}()
+	appointment, err := m.MapToStorage.Appointment(appt)
+	if err != nil {
+		if errors.Is(err, m.ErrInvalidEntity) {
+			return ErrInvalidAppointment
+		}
+		return err
+	}
+	return r.Storage.CreateAppointment(ctx, appointment)
 }
 
 func (r Repository) CreateBarber(ctx context.Context, barberID int64) (err error) {
@@ -49,10 +68,10 @@ func (r Repository) CreateService(ctx context.Context, service ent.Service) (err
 			err = ErrAlreadyExists
 		}
 	}()
-	serv, err := m.MapToStorage.NewService(service)
+	serv, err := m.MapToStorage.ServiceForCreate(service)
 	if err != nil {
 		if errors.Is(err, m.ErrInvalidEntity) {
-			err = ErrInvalidService
+			return ErrInvalidService
 		}
 		return err
 	}
@@ -68,7 +87,7 @@ func (r Repository) CreateUser(ctx context.Context, user ent.User) (err error) {
 	ur, err := m.MapToStorage.User(user)
 	if err != nil {
 		if errors.Is(err, m.ErrInvalidEntity) {
-			err = ErrInvalidUser
+			return ErrInvalidUser
 		}
 		return err
 	}
@@ -86,7 +105,7 @@ func (r Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (err
 		wd, err := m.MapToStorage.Workday(workday)
 		if err != nil {
 			if errors.Is(err, m.ErrInvalidEntity) {
-				err = ErrInvalidWorkday
+				return ErrInvalidWorkday
 			}
 			return err
 		}
@@ -95,12 +114,16 @@ func (r Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (err
 	return r.Storage.CreateWorkdays(ctx, workdays...)
 }
 
-func (r Repository) DeleteAppointmentsBeforeDate(ctx context.Context, barberID int64, date time.Time) error {
-	return r.Storage.DeleteAppointmentsBeforeDate(ctx, barberID, m.MapToStorage.Date(date))
+func (r Repository) DeleteAppointmentByID(ctx context.Context, appointmentID int) error {
+	return r.Storage.DeleteAppointmentByID(ctx, appointmentID)
 }
 
 func (r Repository) DeleteBarberByID(ctx context.Context, barberID int64) error {
 	return r.Storage.DeleteBarberByID(ctx, barberID)
+}
+
+func (r Repository) DeletePastAppointments(ctx context.Context, barberID int64) error {
+	return r.Storage.DeletePastAppointments(ctx, barberID)
 }
 
 func (r Repository) DeleteServiceByID(ctx context.Context, serviceID int) error {
@@ -116,7 +139,7 @@ func (r Repository) DeleteWorkdaysByDateRange(ctx context.Context, barberID int6
 	dr, err := m.MapToStorage.DateRange(dateRange)
 	if err != nil {
 		if errors.Is(err, m.ErrInvalidEntity) {
-			err = ErrInvalidDateRange
+			return ErrInvalidDateRange
 		}
 		return err
 	}
@@ -136,6 +159,25 @@ func (r Repository) GetAllBarbers(ctx context.Context) (barbers []ent.Barber, er
 		barbers = append(barbers, barber)
 	}
 	return barbers, nil
+}
+
+func (r Repository) GetAppointmentsByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (appointments []ent.Appointment, err error) {
+	defer func() { err = e.WrapIfErr("can't get appointments", err) }()
+	dr, err := m.MapToStorage.DateRange(dateRange)
+	if err != nil {
+		if errors.Is(err, m.ErrInvalidEntity) {
+			return nil, ErrInvalidDateRange
+		}
+		return nil, err
+	}
+	appts, err := r.Storage.GetAppointmentsByDateRange(ctx, barberID, dr)
+	if err != nil {
+		return nil, err
+	}
+	for _, appt := range appts {
+		appointments = append(appointments, m.MapToEntity.Appointment(appt))
+	}
+	return appointments, nil
 }
 
 func (r Repository) GetBarberByID(ctx context.Context, barberID int64) (barber ent.Barber, err error) {
@@ -194,6 +236,19 @@ func (r Repository) GetServicesByBarberID(ctx context.Context, barberID int64) (
 	return services, nil
 }
 
+func (r Repository) GetUpcomingAppointment(ctx context.Context, userID int64) (appointment ent.Appointment, err error) {
+	defer func() {
+		if errors.Is(err, st.ErrNoSavedObject) {
+			err = ErrNoSavedAppointment
+		}
+	}()
+	appt, err := r.Storage.GetUpcomingAppointment(ctx, userID)
+	if err != nil {
+		return ent.Appointment{}, err
+	}
+	return m.MapToEntity.Appointment(appt), nil
+}
+
 func (r Repository) GetUserByID(ctx context.Context, userID int64) (user ent.User, err error) {
 	defer func() {
 		if errors.Is(err, st.ErrNoSavedObject) {
@@ -212,7 +267,7 @@ func (r Repository) GetWorkdaysByDateRange(ctx context.Context, barberID int64, 
 	dr, err := m.MapToStorage.DateRange(dateRange)
 	if err != nil {
 		if errors.Is(err, m.ErrInvalidEntity) {
-			err = ErrInvalidDateRange
+			return nil, ErrInvalidDateRange
 		}
 		return nil, err
 	}
@@ -230,6 +285,15 @@ func (r Repository) GetWorkdaysByDateRange(ctx context.Context, barberID int64, 
 	return workdays, nil
 }
 
+func (r Repository) UpdateAppointmentTime(ctx context.Context, appointmentID, workdayID int, time tm.Duration) (err error) {
+	defer func() {
+		if errors.Is(err, st.ErrNonUniqueData) {
+			err = ErrNonUniqueData
+		}
+	}()
+	return r.Storage.UpdateAppointmentTime(ctx, appointmentID, workdayID, int16(time))
+}
+
 // UpdateBarber updates only non-empty fields of Barber
 func (r Repository) UpdateBarber(ctx context.Context, barber ent.Barber) (err error) {
 	defer func() {
@@ -240,7 +304,7 @@ func (r Repository) UpdateBarber(ctx context.Context, barber ent.Barber) (err er
 	br, err := m.MapToStorage.Barber(barber)
 	if err != nil {
 		if errors.Is(err, m.ErrInvalidEntity) {
-			err = ErrInvalidBarber
+			return ErrInvalidBarber
 		}
 		return err
 	}
@@ -254,10 +318,10 @@ func (r Repository) UpdateService(ctx context.Context, service ent.Service) (err
 			err = ErrNonUniqueData
 		}
 	}()
-	serv, err := m.MapToStorage.UpdService(service)
+	serv, err := m.MapToStorage.ServiceForUpdate(service)
 	if err != nil {
 		if errors.Is(err, m.ErrInvalidEntity) {
-			err = ErrInvalidService
+			return ErrInvalidService
 		}
 		return err
 	}
@@ -269,7 +333,7 @@ func (r Repository) UpdateUser(ctx context.Context, user ent.User) (err error) {
 	ur, err := m.MapToStorage.User(user)
 	if err != nil {
 		if errors.Is(err, m.ErrInvalidEntity) {
-			err = ErrInvalidUser
+			return ErrInvalidUser
 		}
 		return err
 	}

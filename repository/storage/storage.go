@@ -14,6 +14,9 @@ var (
 )
 
 type Storage interface {
+	// CreateAppointment saves new appointment to storage.
+	CreateAppointment(ctx context.Context, appt Appointment) error
+
 	//CreateBarber saves new BarberID to storage.
 	CreateBarber(ctx context.Context, barberID int64) error
 
@@ -26,11 +29,14 @@ type Storage interface {
 	//CreateWorkdays saves new Workdays to storage.
 	CreateWorkdays(ctx context.Context, workdays ...Workday) error
 
-	// DeleteAppointmentsBeforeDate removes all appointments till the specified date for barber with specified ID.
-	DeleteAppointmentsBeforeDate(ctx context.Context, barberID int64, date string) error
+	// DeleteAppointmentByID removes appointment with specified ID.
+	DeleteAppointmentByID(ctx context.Context, appointmentID int) error
 
 	// DeleteBarberByID removes barber with specified ID. It also removes all serviced, workdays and appointments associated with barber.
 	DeleteBarberByID(ctx context.Context, barberID int64) error
+
+	// DeletePastAppointments removes all past appointments for barber with specified ID.
+	DeletePastAppointments(ctx context.Context, barberID int64) error
 
 	// DeleteServiceByID removes service with specified ID.
 	DeleteServiceByID(ctx context.Context, serviceID int) error
@@ -41,6 +47,11 @@ type Storage interface {
 
 	// GetAllBarbers return a slice of all barbers.
 	GetAllBarbers(ctx context.Context) ([]Barber, error)
+
+	// GetAppointmentsByDateRange returns appointments that fall within the date range.
+	// It only returns appointments for barber with specified ID.
+	// Returned appointments are sorted by date and time in ascending order.
+	GetAppointmentsByDateRange(ctx context.Context, barberID int64, dateRange DateRange) ([]Appointment, error)
 
 	//GetBarberByID returns barber with specified ID.
 	GetBarberByID(ctx context.Context, barberID int64) (Barber, error)
@@ -59,6 +70,9 @@ type Storage interface {
 	// GetServicesByBarberID returns all services provided by barber with specified ID.
 	GetServicesByBarberID(ctx context.Context, barberID int64) ([]Service, error)
 
+	// GetUpcomingAppointment returns an upcoming appointment for user with specified ID.
+	GetUpcomingAppointment(ctx context.Context, userID int64) (Appointment, error)
+
 	// GetUserByID returns user with specified ID.
 	GetUserByID(ctx context.Context, userID int64) (User, error)
 
@@ -69,6 +83,9 @@ type Storage interface {
 
 	// Init prepares the storage for use. It creates the necessary tables if not exists.
 	Init(ctx context.Context) error
+
+	// UpdateAppointmentTime updates WorkdayID and Time fields of Appointment with specified ID.
+	UpdateAppointmentTime(ctx context.Context, appointmentID, workdayID int, time int16) error
 
 	// UpdateBarber updates valid and non-niladic fields of Barber. ID field must be non-niladic and remains not updated.
 	UpdateBarber(ctx context.Context, barber Barber) error

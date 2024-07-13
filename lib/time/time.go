@@ -39,6 +39,11 @@ func (d Duration) ShortString() string {
 	return fmt.Sprintf("%02d:%02d", hours, minutes)
 }
 
+func CurrentDayTime() Duration {
+	now := time.Now().In(cfg.Location)
+	return Hour*Duration(now.Hour()) + Minute*Duration(now.Minute())
+}
+
 func Today() time.Time {
 	now := time.Now().In(cfg.Location)
 	year, month, day := now.Date()

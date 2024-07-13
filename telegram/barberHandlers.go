@@ -185,7 +185,7 @@ func onSelfDeleteBarber(ctx tele.Context) error {
 func onSureToSelfDeleteBarber(ctx tele.Context) error {
 	errMsg := "can't self delete barber"
 	barberIDToDelete := ctx.Sender().ID
-	if err := cp.RepoWithContext.DeleteAppointmentsBeforeDate(barberIDToDelete, tm.Today()); err != nil {
+	if err := cp.RepoWithContext.DeletePastAppointments(barberIDToDelete); err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
 	if err := cp.RepoWithContext.DeleteBarberByID(barberIDToDelete); err != nil {
@@ -501,9 +501,8 @@ func onDeleteCertainBarber(ctx tele.Context) error {
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	today := tm.Today()
-	if barberToDelete.LastWorkdate.Before(today) {
-		if err := cp.RepoWithContext.DeleteAppointmentsBeforeDate(barberIDToDelete, today); err != nil {
+	if barberToDelete.LastWorkdate.Before(tm.Today()) {
+		if err := cp.RepoWithContext.DeletePastAppointments(barberIDToDelete); err != nil {
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
 		if err := cp.RepoWithContext.DeleteBarberByID(barberIDToDelete); err != nil {

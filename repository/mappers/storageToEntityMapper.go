@@ -14,6 +14,18 @@ type StorageToEntityMapper struct{}
 
 var MapToEntity StorageToEntityMapper
 
+func (s StorageToEntityMapper) Appointment(appointment st.Appointment) ent.Appointment {
+	return ent.Appointment{
+		ID:        appointment.ID,
+		UserID:    appointment.UserID,
+		WorkdayID: appointment.WorkdayID,
+		ServiceID: mapNullInt32ToInt(appointment.ServiceID),
+		Time:      tm.Duration(appointment.Time),
+		Duration:  tm.Duration(appointment.Duration),
+		CreatedAt: appointment.CreatedAt,
+	}
+}
+
 func (s StorageToEntityMapper) Barber(barber st.Barber) (ent.Barber, error) {
 	var br ent.Barber
 	br.ID = barber.ID
@@ -71,6 +83,13 @@ func mapNameToEntity(name sql.NullString) string {
 		return ent.NoName
 	}
 	return name.String
+}
+
+func mapNullInt32ToInt(nullint32 sql.NullInt32) int {
+	if !nullint32.Valid {
+		return 0
+	}
+	return int(nullint32.Int32)
 }
 
 func mapPhoneToEntity(phone sql.NullString) string {

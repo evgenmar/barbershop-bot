@@ -19,6 +19,13 @@ var (
 	ErrInvalidEntity = errors.New("invalid entity")
 )
 
+func (v ValidatedEntityToStorageMapper) Appointment(appt ent.Appointment) (st.Appointment, error) {
+	if appt.ID < 1 || appt.UserID < 1 || appt.WorkdayID < 1 || appt.ServiceID < 1 || appt.Time < 0 || appt.Duration < 1 || appt.CreatedAt < 1 {
+		return st.Appointment{}, ErrInvalidEntity
+	}
+	return v.EntityToStorageMapper.Appointment(appt), nil
+}
+
 func (v ValidatedEntityToStorageMapper) Barber(barber ent.Barber) (st.Barber, error) {
 	if barber.ID == 0 {
 		return st.Barber{}, ErrInvalidEntity
@@ -43,8 +50,8 @@ func (v ValidatedEntityToStorageMapper) DateRange(dateRange ent.DateRange) (st.D
 	return v.EntityToStorageMapper.DateRange(dateRange), nil
 }
 
-func (v ValidatedEntityToStorageMapper) NewService(service ent.Service) (st.Service, error) {
-	if service.BarberID < 1 || service.Name == "" || service.Desciption == "" || service.Duration <= 0 {
+func (v ValidatedEntityToStorageMapper) ServiceForCreate(service ent.Service) (st.Service, error) {
+	if service.BarberID < 1 || service.Name == "" || service.Desciption == "" || service.Duration < 1 {
 		return st.Service{}, ErrInvalidEntity
 	}
 	if service.Name != "" && !IsValidServiceName(service.Name) {
@@ -56,7 +63,7 @@ func (v ValidatedEntityToStorageMapper) NewService(service ent.Service) (st.Serv
 	return v.EntityToStorageMapper.Service(service), nil
 }
 
-func (v ValidatedEntityToStorageMapper) UpdService(service ent.Service) (st.Service, error) {
+func (v ValidatedEntityToStorageMapper) ServiceForUpdate(service ent.Service) (st.Service, error) {
 	if service.ID < 1 {
 		return st.Service{}, ErrInvalidEntity
 	}
