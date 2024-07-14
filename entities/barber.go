@@ -42,3 +42,7 @@ func (b Barber) Info() string {
 	}
 	return fmt.Sprintf("Имя: %s\nTел.: %s\nРаботает %s", b.Name, b.Phone, lastWorkDate)
 }
+
+func (b Barber) PublicInfo() string {
+	return fmt.Sprintf("%s\n[Ссылка на профиль](tg://user?id=%d)", b.Info(), b.ID)
+}

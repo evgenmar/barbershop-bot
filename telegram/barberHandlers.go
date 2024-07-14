@@ -463,9 +463,9 @@ func onShowAllBarbers(ctx tele.Context) error {
 	}
 	barbersInfo := ""
 	for _, barber := range barbers {
-		barbersInfo = barbersInfo + "\n\n" + barber.Info()
+		barbersInfo = barbersInfo + "\n\n" + barber.PublicInfo()
 	}
-	return ctx.Edit(listOfBarbers+barbersInfo, markupBackToMainBarber)
+	return ctx.Edit(listOfBarbers+barbersInfo, markupBackToMainBarber, tele.ModeMarkdown)
 }
 
 func onAddBarber(ctx tele.Context) error {
