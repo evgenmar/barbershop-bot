@@ -108,9 +108,9 @@ func markupSelectBarberForAppointment(barbers []ent.Barber) *tele.ReplyMarkup {
 	return markup
 }
 
-func markupSelectWorkdayForAppointment(dateRange ent.DateRange, deltaMonth, maxDeltaMonth byte, newAppointment sess.NewAppointment) (*tele.ReplyMarkup, error) {
+func markupSelectWorkdayForAppointment(dateRange ent.DateRange, firstMonthEnd, lastMonthEnd time.Time, newAppointment sess.NewAppointment) (*tele.ReplyMarkup, error) {
 	markup := &tele.ReplyMarkup{}
-	btnPrevMonth, btnNextMonth := btnsSwitch(deltaMonth, maxDeltaMonth, endpntMonthForAppointment)
+	btnPrevMonth, btnNextMonth := btnsSwitchMonth(dateRange.EndDate, firstMonthEnd, lastMonthEnd, endpntMonthForAppointment)
 	rowSelectMonth := markup.Row(btnPrevMonth, btnMonth(dateRange.Month()), btnNextMonth)
 	rowsSelectWorkday, err := rowsSelectWorkdayForAppointment(dateRange, newAppointment)
 	if err != nil {

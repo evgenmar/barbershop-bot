@@ -90,35 +90,40 @@ func onSetLastWorkDate(ctx tele.Context) error {
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	delta, err := strconv.ParseUint(ctx.Callback().Data, 10, 8)
+	delta, err := strconv.ParseInt(ctx.Callback().Data, 10, 8)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	deltaDisplayedMonth := byte(delta)
-	var firstDisplayedDateRange, displayedDateRange ent.DateRange
+	deltaDisplayedMonth := int8(delta)
+	lastWorkDate := sess.GetLastWorkDate(barberID)
 	var relativeFirstDisplayedMonth byte = 0
-	var maxDeltaDisplayedMonth byte
+	var displayedDateRange ent.DateRange
 	for relativeFirstDisplayedMonth <= cfg.MaxAppointmentBookingMonths {
-		firstDisplayedDateRange = ent.Month(relativeFirstDisplayedMonth)
-		if latestAppointmentDate.Compare(firstDisplayedDateRange.EndDate) <= 0 {
-			if latestAppointmentDate.After(firstDisplayedDateRange.StartDate) {
-				firstDisplayedDateRange.StartDate = latestAppointmentDate
+		displayedDateRange = ent.MonthFromNow(relativeFirstDisplayedMonth)
+		if latestAppointmentDate.Compare(displayedDateRange.EndDate) <= 0 {
+			if latestAppointmentDate.After(displayedDateRange.StartDate) {
+				displayedDateRange.StartDate = latestAppointmentDate
 			}
 			break
 		}
 		relativeFirstDisplayedMonth++
 	}
-	if deltaDisplayedMonth == 0 {
-		displayedDateRange = firstDisplayedDateRange
-	} else {
-		displayedDateRange = ent.Month(relativeFirstDisplayedMonth + deltaDisplayedMonth)
+	firstDisplayedMonth := displayedDateRange
+	lastDisplayedMonth := ent.MonthFromNow(cfg.ScheduledWeeks * 7 / 30)
+	if deltaDisplayedMonth != 0 {
+		newDateRange := ent.MonthFromBase(lastWorkDate.LastShownDate, deltaDisplayedMonth)
+		if newDateRange.EndDate.After(lastDisplayedMonth.EndDate) || newDateRange.EndDate.Before(firstDisplayedMonth.EndDate) {
+			if lastWorkDate.LastShownDate.After(displayedDateRange.EndDate) {
+				displayedDateRange = ent.MonthFromBase(lastWorkDate.LastShownDate, 0)
+			}
+		}
+		if newDateRange.EndDate.After(displayedDateRange.EndDate) {
+			displayedDateRange = newDateRange
+		}
 	}
-	if cfg.ScheduledWeeks*7/30 > relativeFirstDisplayedMonth {
-		maxDeltaDisplayedMonth = cfg.ScheduledWeeks*7/30 - relativeFirstDisplayedMonth
-	} else {
-		maxDeltaDisplayedMonth = 0
-	}
-	return ctx.Edit(selectLastWorkDate, markupSelectLastWorkDate(displayedDateRange, deltaDisplayedMonth, maxDeltaDisplayedMonth))
+	lastWorkDate.LastShownDate = displayedDateRange.EndDate
+	sess.UpdateLastWorkDateAndState(barberID, lastWorkDate, sess.StateStart)
+	return ctx.Edit(selectLastWorkDate, markupSelectLastWorkDate(displayedDateRange, firstDisplayedMonth.EndDate, lastDisplayedMonth.EndDate))
 }
 
 func onSelectLastWorkDate(ctx tele.Context) error {

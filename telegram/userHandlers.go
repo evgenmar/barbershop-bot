@@ -91,20 +91,17 @@ func onSelectServiceForAppointment(ctx tele.Context) error {
 	newAppointment := sess.GetNewAppointment(userID)
 	newAppointment.ServiceID = service.ID
 	newAppointment.Duration = service.Duration
-	sess.UpdateNewAppointmentAndState(userID, newAppointment, sess.StateStart)
 	return showFreeWorkdaysForAppointment(ctx, 0, newAppointment, errMsg)
 }
 
 func onSelectMonthForAppointment(ctx tele.Context) error {
 	errMsg := "can't show free workdays for appointment"
-	delta, err := strconv.ParseUint(ctx.Callback().Data, 10, 8)
+	delta, err := strconv.ParseInt(ctx.Callback().Data, 10, 8)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	userID := ctx.Sender().ID
-	newAppointment := sess.GetNewAppointment(userID)
-	sess.UpdateUserState(userID, sess.StateStart)
-	return showFreeWorkdaysForAppointment(ctx, byte(delta), newAppointment, errMsg)
+	newAppointment := sess.GetNewAppointment(ctx.Sender().ID)
+	return showFreeWorkdaysForAppointment(ctx, int8(delta), newAppointment, errMsg)
 }
 
 func onSettingsUser(ctx tele.Context) error {
@@ -231,14 +228,7 @@ func earlestDateWithFreeTime(newAppointment sess.NewAppointment, dateRange ent.D
 		appointments[appt.WorkdayID] = append(appointments[appt.WorkdayID], appt)
 	}
 	for _, workday := range workdays {
-		analyzedTime := workday.StartTime
-		for _, appointment := range appointments[workday.ID] {
-			if (appointment.Time - analyzedTime) >= newAppointment.Duration {
-				return workday.Date, true, nil
-			}
-			analyzedTime = appointment.Time + appointment.Duration
-		}
-		if (workday.EndTime - analyzedTime) >= newAppointment.Duration {
+		if haveFreeTimeForAppointment(workday, appointments[workday.ID], newAppointment.Duration) {
 			return workday.Date, true, nil
 		}
 	}
@@ -250,19 +240,18 @@ func logAndMsgErrUser(ctx tele.Context, msg string, err error) error {
 	return ctx.Send(errorUser, markupBackToMainUser)
 }
 
-func showFreeWorkdaysForAppointment(ctx tele.Context, deltaDisplayedMonth byte, newAppointment sess.NewAppointment, errMsg string) error {
+func showFreeWorkdaysForAppointment(ctx tele.Context, deltaDisplayedMonth int8, newAppointment sess.NewAppointment, errMsg string) error {
 	var relativeFirstDisplayedMonth byte = 0
-	var firstDisplayedDateRange, displayedDateRange ent.DateRange
-	var maxDeltaDisplayedMonth byte
+	var displayedDateRange ent.DateRange
 	for relativeFirstDisplayedMonth <= cfg.MaxAppointmentBookingMonths {
-		firstDisplayedDateRange = ent.Month(relativeFirstDisplayedMonth)
-		earlestFreeDate, ok, err := earlestDateWithFreeTime(newAppointment, firstDisplayedDateRange)
+		displayedDateRange = ent.MonthFromNow(relativeFirstDisplayedMonth)
+		earlestFreeDate, ok, err := earlestDateWithFreeTime(newAppointment, displayedDateRange)
 		if err != nil {
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
 		if ok {
-			if earlestFreeDate.After(firstDisplayedDateRange.StartDate) {
-				firstDisplayedDateRange.StartDate = earlestFreeDate
+			if earlestFreeDate.After(displayedDateRange.StartDate) {
+				displayedDateRange.StartDate = earlestFreeDate
 			}
 			break
 		}
@@ -275,17 +264,22 @@ func showFreeWorkdaysForAppointment(ctx tele.Context, deltaDisplayedMonth byte, 
 		}
 		return ctx.Edit(fmt.Sprintf(noFreeTimeForAppointment, barber.Phone, barber.ID), markupBackToMainUser)
 	}
-	if deltaDisplayedMonth == 0 {
-		displayedDateRange = firstDisplayedDateRange
-	} else {
-		displayedDateRange = ent.Month(relativeFirstDisplayedMonth + deltaDisplayedMonth)
+	firstDisplayedMonth := displayedDateRange
+	lastDisplayedMonth := ent.MonthFromNow(cfg.MaxAppointmentBookingMonths)
+	if deltaDisplayedMonth != 0 {
+		newDateRange := ent.MonthFromBase(newAppointment.LastShownDate, deltaDisplayedMonth)
+		if newDateRange.EndDate.After(lastDisplayedMonth.EndDate) || newDateRange.EndDate.Before(firstDisplayedMonth.EndDate) {
+			if newAppointment.LastShownDate.After(displayedDateRange.EndDate) {
+				displayedDateRange = ent.MonthFromBase(newAppointment.LastShownDate, 0)
+			}
+		}
+		if newDateRange.EndDate.After(displayedDateRange.EndDate) {
+			displayedDateRange = newDateRange
+		}
 	}
-	if cfg.MaxAppointmentBookingMonths > relativeFirstDisplayedMonth {
-		maxDeltaDisplayedMonth = cfg.MaxAppointmentBookingMonths - relativeFirstDisplayedMonth
-	} else {
-		maxDeltaDisplayedMonth = 0
-	}
-	markupSelectWorkday, err := markupSelectWorkdayForAppointment(displayedDateRange, deltaDisplayedMonth, maxDeltaDisplayedMonth, newAppointment)
+	newAppointment.LastShownDate = displayedDateRange.EndDate
+	sess.UpdateNewAppointmentAndState(ctx.Sender().ID, newAppointment, sess.StateStart)
+	markupSelectWorkday, err := markupSelectWorkdayForAppointment(displayedDateRange, firstDisplayedMonth.EndDate, lastDisplayedMonth.EndDate, newAppointment)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}

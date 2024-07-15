@@ -391,9 +391,9 @@ func markupSelectBarberToDeletion(senderID int64, barbers []ent.Barber) *tele.Re
 	return markup
 }
 
-func markupSelectLastWorkDate(dateRange ent.DateRange, deltaMonth, maxDeltaMonth byte) *tele.ReplyMarkup {
+func markupSelectLastWorkDate(dateRange ent.DateRange, firstMonthEnd, lastMonthEnd time.Time) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
-	btnPrevMonth, btnNextMonth := btnsSwitch(deltaMonth, maxDeltaMonth, endpntSelectMonthOfLastWorkDate)
+	btnPrevMonth, btnNextMonth := btnsSwitchMonth(dateRange.EndDate, firstMonthEnd, lastMonthEnd, endpntSelectMonthOfLastWorkDate)
 	rowSelectMonth := markup.Row(btnPrevMonth, btnMonth(dateRange.Month()), btnNextMonth)
 	rowsSelectDate := rowsSelectLastWorkDate(dateRange)
 	rowRestoreDefaultDate := markup.Row(btnInfiniteLastWorkDate)

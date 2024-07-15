@@ -12,6 +12,7 @@ type barberSession struct {
 	status
 	newService    NewService
 	editedService EditedService
+	lastWorkDate  LastWorkDate
 	expiresAt     int64
 }
 
@@ -24,6 +25,10 @@ type EditedService struct {
 	ID         int
 	OldService Service
 	UpdService Service
+}
+
+type LastWorkDate struct {
+	LastShownDate time.Time
 }
 
 type NewService struct {
@@ -101,6 +106,11 @@ func GetEditedService(barberID int64) EditedService {
 	return session.editedService
 }
 
+func GetLastWorkDate(barberID int64) LastWorkDate {
+	session := getBarberSessionManager().getSession(barberID)
+	return session.lastWorkDate
+}
+
 func GetNewService(barberID int64) NewService {
 	session := getBarberSessionManager().getSession(barberID)
 	return session.newService
@@ -112,16 +122,23 @@ func UpdateBarberState(barberID int64, state State) {
 	getBarberSessionManager().updateSession(barberID, session)
 }
 
-func UpdateEditedServiceAndState(barberID int64, eservice EditedService, state State) {
+func UpdateEditedServiceAndState(barberID int64, editedService EditedService, state State) {
 	session := getBarberSessionManager().getSession(barberID)
-	session.editedService = eservice
+	session.editedService = editedService
 	session.status = newStatus(state)
 	getBarberSessionManager().updateSession(barberID, session)
 }
 
-func UpdateNewServiceAndState(barberID int64, nservice NewService, state State) {
+func UpdateLastWorkDateAndState(barberID int64, lastWorkDate LastWorkDate, state State) {
 	session := getBarberSessionManager().getSession(barberID)
-	session.newService = nservice
+	session.lastWorkDate = lastWorkDate
+	session.status = newStatus(state)
+	getBarberSessionManager().updateSession(barberID, session)
+}
+
+func UpdateNewServiceAndState(barberID int64, newService NewService, state State) {
+	session := getBarberSessionManager().getSession(barberID)
+	session.newService = newService
 	session.status = newStatus(state)
 	getBarberSessionManager().updateSession(barberID, session)
 }

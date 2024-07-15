@@ -10,22 +10,32 @@ type DateRange struct {
 	EndDate   time.Time
 }
 
-// Month returns the date range for the month defined relative to the current date (0 corresponds to the current month, 1 to the next month, and so on).
+// MonthFromNow returns the date range for the month defined relative to the current date (0 corresponds to the current month, 1 to the next month, and so on).
 // StartDate sets to current date for current month and to first day of month for the rest cases.
 // EndDate always sets to last day of month.
-func Month(m byte) DateRange {
+func MonthFromNow(deltaMonth byte) DateRange {
 	now := time.Now().In(cfg.Location)
 	year, month, day := now.Date()
 	var startDate, endDate time.Time
-	if m == 0 {
+	if deltaMonth == 0 {
 		startDate = time.Date(year, month, day, 0, 0, 0, 0, cfg.Location)
 	} else {
-		startDate = time.Date(year, month+time.Month(m), 1, 0, 0, 0, 0, cfg.Location)
+		startDate = time.Date(year, month+time.Month(deltaMonth), 1, 0, 0, 0, 0, cfg.Location)
 	}
-	endDate = time.Date(year, month+time.Month(m)+1, 0, 0, 0, 0, 0, cfg.Location)
+	endDate = time.Date(year, month+time.Month(deltaMonth)+1, 0, 0, 0, 0, 0, cfg.Location)
 	return DateRange{
 		StartDate: startDate,
 		EndDate:   endDate,
+	}
+}
+
+// MonthFromBase returns the date range for the month defined relative to the base date (0 corresponds month with a base date).
+// StartDate and EndDate always sets to first and last days of month correspondingly.
+func MonthFromBase(base time.Time, deltaMonth int8) DateRange {
+	year, month, _ := base.Date()
+	return DateRange{
+		StartDate: time.Date(year, month+time.Month(deltaMonth), 1, 0, 0, 0, 0, cfg.Location),
+		EndDate:   time.Date(year, month+time.Month(deltaMonth)+1, 0, 0, 0, 0, 0, cfg.Location),
 	}
 }
 

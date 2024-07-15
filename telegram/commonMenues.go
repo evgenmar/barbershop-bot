@@ -73,35 +73,34 @@ func btnMonth(month time.Month) tele.Btn {
 	return markupEmpty.Data(monthNames[month-1], endpntNoAction)
 }
 
-func btnNext(switchTo byte, endpnt string) tele.Btn {
-	return markupEmpty.Data("➡", endpnt, strconv.FormatUint(uint64(switchTo), 10))
+func btnNext(endpnt string) tele.Btn {
+	return markupEmpty.Data("➡", endpnt, strconv.FormatInt(1, 10))
 }
 
-func btnPrev(switchTo byte, endpnt string) tele.Btn {
-	return markupEmpty.Data("⬅", endpnt, strconv.FormatUint(uint64(switchTo), 10))
+func btnPrev(endpnt string) tele.Btn {
+	return markupEmpty.Data("⬅", endpnt, strconv.FormatInt(-1, 10))
 }
 
 func btnService(serv ent.Service, endpnt string) tele.Btn {
 	return markupEmpty.Data(serv.BtnSignature(), endpnt, strconv.Itoa(serv.ID))
 }
 
-// btnsSwitch returns prev and next buttons for switching in range from 0 to maxDelta.
-func btnsSwitch(delta, maxDelta byte, endpnt string) (prev, next tele.Btn) {
-	if maxDelta == 0 {
+func btnsSwitchMonth(current, min, max time.Time, endpnt string) (prev, next tele.Btn) {
+	if min.Equal(max) {
 		prev = btnEmpty
 		next = btnEmpty
 		return
 	}
-	switch delta {
-	case 0:
+	switch current {
+	case min:
 		prev = btnEmpty
-		next = btnNext(1, endpnt)
-	case maxDelta:
-		prev = btnPrev(delta-1, endpnt)
+		next = btnNext(endpnt)
+	case max:
+		prev = btnPrev(endpnt)
 		next = btnEmpty
 	default:
-		prev = btnPrev(delta-1, endpnt)
-		next = btnNext(delta+1, endpnt)
+		prev = btnPrev(endpnt)
+		next = btnNext(endpnt)
 	}
 	return
 }
