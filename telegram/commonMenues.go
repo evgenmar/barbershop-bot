@@ -85,6 +85,7 @@ func btnService(serv ent.Service, endpnt string) tele.Btn {
 	return markupEmpty.Data(serv.BtnSignature(), endpnt, strconv.Itoa(serv.ID))
 }
 
+// btnsSwitch returns prev and next buttons for switching in range from 0 to maxDelta.
 func btnsSwitch(delta, maxDelta byte, endpnt string) (prev, next tele.Btn) {
 	if maxDelta == 0 {
 		prev = btnEmpty

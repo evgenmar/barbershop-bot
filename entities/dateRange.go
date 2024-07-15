@@ -29,7 +29,7 @@ func Month(m byte) DateRange {
 	}
 }
 
-// Month returns month for the StartDate
+// Month returns month for the StartDate of DateRange.
 func (d DateRange) Month() time.Month {
 	return d.StartDate.Month()
 }

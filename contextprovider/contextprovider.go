@@ -107,12 +107,12 @@ func (c ContextProvider) GetAllBarbers() (barbers []ent.Barber, err error) {
 	return c.repo.GetAllBarbers(ctx)
 }
 
-// func (c ContextProvider) GetAppointmentsByDateRange(barberID int64, dateRange ent.DateRange) (appointments []ent.Appointment, err error) {
-// 	defer func() { err = e.WrapIfErr("can't get appointments", err) }()
-// 	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
-// 	defer cancel()
-// 	return c.repo.GetAppointmentsByDateRange(ctx, barberID, dateRange)
-// }
+func (c ContextProvider) GetAppointmentsByDateRange(barberID int64, dateRange ent.DateRange) (appointments []ent.Appointment, err error) {
+	defer func() { err = e.WrapIfErr("can't get appointments", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
+	defer cancel()
+	return c.repo.GetAppointmentsByDateRange(ctx, barberID, dateRange)
+}
 
 func (c ContextProvider) GetBarberByID(barberID int64) (barber ent.Barber, err error) {
 	defer func() { err = e.WrapIfErr("can't get barber", err) }()
@@ -163,12 +163,12 @@ func (c ContextProvider) GetUserByID(userID int64) (user ent.User, err error) {
 	return c.repo.GetUserByID(ctx, userID)
 }
 
-// func (c ContextProvider) GetWorkdaysByDateRange(barberID int64, dateRange ent.DateRange) (workdays []ent.Workday, err error) {
-// 	defer func() { err = e.WrapIfErr("can't get workdays", err) }()
-// 	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
-// 	defer cancel()
-// 	return c.repo.GetWorkdaysByDateRange(ctx, barberID, dateRange)
-// }
+func (c ContextProvider) GetWorkdaysByDateRange(barberID int64, dateRange ent.DateRange) (workdays []ent.Workday, err error) {
+	defer func() { err = e.WrapIfErr("can't get workdays", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
+	defer cancel()
+	return c.repo.GetWorkdaysByDateRange(ctx, barberID, dateRange)
+}
 
 // func (c ContextProvider) UpdateAppointmentTime(appointmentID, workdayID int, time tm.Duration) (err error) {
 // 	defer func() { err = e.WrapIfErr("can't update appointment", err) }()

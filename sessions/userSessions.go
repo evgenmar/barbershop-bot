@@ -7,11 +7,12 @@ import (
 )
 
 type NewAppointment struct {
-	WorkdayID int
-	ServiceID int
-	Time      tm.Duration
-	Duration  tm.Duration
-	BarberID  int64
+	WorkdayID  int
+	ServiceID  int
+	Time       tm.Duration
+	Duration   tm.Duration
+	BarberID   int64
+	ShownMonth time.Month
 }
 
 type userSession struct {

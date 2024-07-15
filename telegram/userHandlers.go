@@ -3,11 +3,16 @@ package telegram
 import (
 	cp "barbershop-bot/contextprovider"
 	ent "barbershop-bot/entities"
+	cfg "barbershop-bot/lib/config"
 	"barbershop-bot/lib/e"
+	tm "barbershop-bot/lib/time"
 	rep "barbershop-bot/repository"
 	sess "barbershop-bot/sessions"
 	"errors"
+	"fmt"
 	"log"
+	"strconv"
+	"time"
 
 	tele "gopkg.in/telebot.v3"
 )
@@ -15,6 +20,91 @@ import (
 func onStartUser(ctx tele.Context) error {
 	sess.UpdateUserState(ctx.Sender().ID, sess.StateStart)
 	return ctx.Send(mainMenu, markupMainUser)
+}
+
+func onSignUpForAppointment(ctx tele.Context) error {
+	errMsg := "can't handle sign up for appointment"
+	barbers, err := cp.RepoWithContext.GetAllBarbers()
+	if err != nil {
+		return logAndMsgErrUser(ctx, errMsg, err)
+	}
+	var workingBarbers []ent.Barber
+	today := tm.Today()
+	for _, barber := range barbers {
+		if barber.Name == ent.NoName || barber.LastWorkdate.Before(today) {
+			continue
+		}
+		services, err := cp.RepoWithContext.GetServicesByBarberID(barber.ID)
+		if err != nil {
+			return logAndMsgErrUser(ctx, errMsg, err)
+		}
+		if len(services) > 0 {
+			workingBarbers = append(workingBarbers, barber)
+		}
+	}
+	switch len(workingBarbers) {
+	case 0:
+		sess.UpdateUserState(ctx.Sender().ID, sess.StateStart)
+		return ctx.Send(noWorkingBarbers, markupBackToMainUser)
+	case 1:
+		sess.UpdateNewAppointmentAndState(ctx.Sender().ID, sess.NewAppointment{BarberID: workingBarbers[0].ID}, sess.StateStart)
+		services, err := cp.RepoWithContext.GetServicesByBarberID(workingBarbers[0].ID)
+		if err != nil {
+			return logAndMsgErrUser(ctx, errMsg, err)
+		}
+		return ctx.Send(fmt.Sprintf(selectServiceForAppointment, workingBarbers[0].Name), markupSelectServiceForAppointment(services))
+	default:
+		sess.UpdateUserState(ctx.Sender().ID, sess.StateStart)
+		return ctx.Send(selectBarberForAppointment, markupSelectBarberForAppointment(workingBarbers))
+	}
+}
+
+func onSelectBarberForAppointment(ctx tele.Context) error {
+	errMsg := "can't show barber's services for appointment"
+	barberID, err := strconv.ParseInt(ctx.Callback().Data, 10, 64)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	sess.UpdateNewAppointmentAndState(ctx.Sender().ID, sess.NewAppointment{BarberID: barberID}, sess.StateStart)
+	barber, err := cp.RepoWithContext.GetBarberByID(barberID)
+	if err != nil {
+		return logAndMsgErrUser(ctx, errMsg, err)
+	}
+	services, err := cp.RepoWithContext.GetServicesByBarberID(barberID)
+	if err != nil {
+		return logAndMsgErrUser(ctx, errMsg, err)
+	}
+	return ctx.Send(fmt.Sprintf(selectServiceForAppointment, barber.Name), markupSelectServiceForAppointment(services))
+}
+
+func onSelectServiceForAppointment(ctx tele.Context) error {
+	errMsg := "can't show free workdays for appointment"
+	serviceID, err := strconv.Atoi(ctx.Callback().Data)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	service, err := cp.RepoWithContext.GetServiceByID(serviceID)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	userID := ctx.Sender().ID
+	newAppointment := sess.GetNewAppointment(userID)
+	newAppointment.ServiceID = service.ID
+	newAppointment.Duration = service.Duration
+	sess.UpdateNewAppointmentAndState(userID, newAppointment, sess.StateStart)
+	return showFreeWorkdaysForAppointment(ctx, 0, newAppointment, errMsg)
+}
+
+func onSelectMonthForAppointment(ctx tele.Context) error {
+	errMsg := "can't show free workdays for appointment"
+	delta, err := strconv.ParseUint(ctx.Callback().Data, 10, 8)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	userID := ctx.Sender().ID
+	newAppointment := sess.GetNewAppointment(userID)
+	sess.UpdateUserState(userID, sess.StateStart)
+	return showFreeWorkdaysForAppointment(ctx, byte(delta), newAppointment, errMsg)
 }
 
 func onSettingsUser(ctx tele.Context) error {
@@ -127,7 +217,81 @@ func onUpdateUserPhone(ctx tele.Context) error {
 	return ctx.Send(updPhoneSuccess, markupPersonalUser)
 }
 
+func earlestDateWithFreeTime(newAppointment sess.NewAppointment, dateRange ent.DateRange) (earlestFreeDate time.Time, ok bool, err error) {
+	workdays, err := cp.RepoWithContext.GetWorkdaysByDateRange(newAppointment.BarberID, dateRange)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	appts, err := cp.RepoWithContext.GetAppointmentsByDateRange(newAppointment.BarberID, dateRange)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	appointments := make(map[int][]ent.Appointment)
+	for _, appt := range appts {
+		appointments[appt.WorkdayID] = append(appointments[appt.WorkdayID], appt)
+	}
+	for _, workday := range workdays {
+		analyzedTime := workday.StartTime
+		for _, appointment := range appointments[workday.ID] {
+			if (appointment.Time - analyzedTime) >= newAppointment.Duration {
+				return workday.Date, true, nil
+			}
+			analyzedTime = appointment.Time + appointment.Duration
+		}
+		if (workday.EndTime - analyzedTime) >= newAppointment.Duration {
+			return workday.Date, true, nil
+		}
+	}
+	return time.Time{}, false, nil
+}
+
 func logAndMsgErrUser(ctx tele.Context, msg string, err error) error {
 	log.Print(e.Wrap(msg, err))
 	return ctx.Send(errorUser, markupBackToMainUser)
+}
+
+func showFreeWorkdaysForAppointment(ctx tele.Context, deltaDisplayedMonth byte, newAppointment sess.NewAppointment, errMsg string) error {
+	var relativeFirstDisplayedMonth byte = 0
+	var firstDisplayedDateRange, displayedDateRange ent.DateRange
+	var maxDeltaDisplayedMonth byte
+	for relativeFirstDisplayedMonth <= cfg.MaxAppointmentBookingMonths {
+		firstDisplayedDateRange = ent.Month(relativeFirstDisplayedMonth)
+		earlestFreeDate, ok, err := earlestDateWithFreeTime(newAppointment, firstDisplayedDateRange)
+		if err != nil {
+			return logAndMsgErrBarber(ctx, errMsg, err)
+		}
+		if ok {
+			if earlestFreeDate.After(firstDisplayedDateRange.StartDate) {
+				firstDisplayedDateRange.StartDate = earlestFreeDate
+			}
+			break
+		}
+		relativeFirstDisplayedMonth++
+	}
+	if relativeFirstDisplayedMonth > cfg.MaxAppointmentBookingMonths {
+		barber, err := cp.RepoWithContext.GetBarberByID(newAppointment.BarberID)
+		if err != nil {
+			return logAndMsgErrBarber(ctx, errMsg, err)
+		}
+		return ctx.Edit(fmt.Sprintf(noFreeTimeForAppointment, barber.Phone, barber.ID), markupBackToMainUser)
+	}
+	if deltaDisplayedMonth == 0 {
+		displayedDateRange = firstDisplayedDateRange
+	} else {
+		displayedDateRange = ent.Month(relativeFirstDisplayedMonth + deltaDisplayedMonth)
+	}
+	if cfg.MaxAppointmentBookingMonths > relativeFirstDisplayedMonth {
+		maxDeltaDisplayedMonth = cfg.MaxAppointmentBookingMonths - relativeFirstDisplayedMonth
+	} else {
+		maxDeltaDisplayedMonth = 0
+	}
+	markupSelectWorkday, err := markupSelectWorkdayForAppointment(displayedDateRange, deltaDisplayedMonth, maxDeltaDisplayedMonth, newAppointment)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	service, err := cp.RepoWithContext.GetServiceByID(newAppointment.ServiceID)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	return ctx.Edit(fmt.Sprintf(selectDateForAppointment, service.Info()), markupSelectWorkday)
 }

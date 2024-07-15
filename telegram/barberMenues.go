@@ -395,7 +395,7 @@ func markupSelectLastWorkDate(dateRange ent.DateRange, deltaMonth, maxDeltaMonth
 	markup := &tele.ReplyMarkup{}
 	btnPrevMonth, btnNextMonth := btnsSwitch(deltaMonth, maxDeltaMonth, endpntSelectMonthOfLastWorkDate)
 	rowSelectMonth := markup.Row(btnPrevMonth, btnMonth(dateRange.Month()), btnNextMonth)
-	rowsSelectDate := rowsSelectAnyDate(dateRange, endpntSelectLastWorkDate)
+	rowsSelectDate := rowsSelectLastWorkDate(dateRange)
 	rowRestoreDefaultDate := markup.Row(btnInfiniteLastWorkDate)
 	rowBackToMainBarber := markup.Row(btnBackToMainBarber)
 	var rows []tele.Row
@@ -430,15 +430,14 @@ func markupSelectServiceBarber(services []ent.Service, endpnt string) *tele.Repl
 	return markup
 }
 
-func rowsSelectAnyDate(dateRange ent.DateRange, endpnt string) []tele.Row {
+func rowsSelectLastWorkDate(dateRange ent.DateRange) []tele.Row {
 	markup := &tele.ReplyMarkup{}
 	var btnsDatesToSelect []tele.Btn
 	for i := 1; i < dateRange.StartWeekday(); i++ {
 		btnsDatesToSelect = append(btnsDatesToSelect, btnEmpty)
 	}
 	for date := dateRange.StartDate; date.Compare(dateRange.EndDate) <= 0; date = date.Add(24 * time.Hour) {
-		btnDateToSelect := btnDate(date, endpnt)
-		btnsDatesToSelect = append(btnsDatesToSelect, btnDateToSelect)
+		btnsDatesToSelect = append(btnsDatesToSelect, btnDate(date, endpntSelectLastWorkDate))
 	}
 	for i := 7; i > dateRange.EndWeekday(); i-- {
 		btnsDatesToSelect = append(btnsDatesToSelect, btnEmpty)

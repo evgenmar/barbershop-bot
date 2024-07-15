@@ -104,6 +104,11 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	barbers.Handle(tele.OnContact, onContactBarber)
 	//TODO barberHandlers
 
+	users.Handle(&btnSignUpForAppointment, onSignUpForAppointment)
+	users.Handle(&btnSelectBarberForAppointment, onSelectBarberForAppointment)
+	users.Handle(&btnSelectServiceForAppointment, onSelectServiceForAppointment)
+	users.Handle(&btnSelectMonthForAppointment, onSelectMonthForAppointment)
+
 	users.Handle(&btnSettingsUser, onSettingsUser)
 	users.Handle(&btnUpdPersonalUser, onUpdPersonalUser)
 	users.Handle(&btnPrivacyUser, onPrivacyUser)
