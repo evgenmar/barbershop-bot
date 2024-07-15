@@ -43,6 +43,7 @@ var (
 	btnSelectBarberForAppointment  = markupEmpty.Data("", endpntBarberForAppointment)
 	btnSelectServiceForAppointment = markupEmpty.Data("", endpntServiceForAppointment)
 	btnSelectMonthForAppointment   = markupEmpty.Data("", endpntMonthForAppointment)
+	btnSelectWorkdayForAppointment = markupEmpty.Data("", endpntWorkdayForAppointment)
 
 	markupSettingsUser = &tele.ReplyMarkup{}
 	btnUpdPersonalUser = markupEmpty.Data("Обновить персональные данные", "upd_personal_data_user")

@@ -76,6 +76,9 @@ type Storage interface {
 	// GetUserByID returns user with specified ID.
 	GetUserByID(ctx context.Context, userID int64) (User, error)
 
+	// GetWorkdayByID returns workday with specified ID.
+	GetWorkdayByID(ctx context.Context, workdayID int) (Workday, error)
+
 	// GetWorkdaysByDateRange returns working days that fall within the date range.
 	// It only returns working days for barber with specified ID.
 	// Returned working days are sorted by date in ascending order.

@@ -29,6 +29,7 @@ var (
 	ErrNoSavedBarber      = errors.New("no saved barber with specified ID")
 	ErrNoSavedService     = errors.New("no saved service with specified ID")
 	ErrNoSavedUser        = errors.New("no saved user with specified ID")
+	ErrNoSavedWorkday     = errors.New("no saved workday with specified ID")
 )
 
 func New(storage st.Storage) Repository {
@@ -260,6 +261,19 @@ func (r Repository) GetUserByID(ctx context.Context, userID int64) (user ent.Use
 		return ent.User{}, err
 	}
 	return m.MapToEntity.User(ur), nil
+}
+
+func (r Repository) GetWorkdayByID(ctx context.Context, workdayID int) (workday ent.Workday, err error) {
+	defer func() {
+		if errors.Is(err, st.ErrNoSavedObject) {
+			err = ErrNoSavedWorkday
+		}
+	}()
+	wd, err := r.Storage.GetWorkdayByID(ctx, workdayID)
+	if err != nil {
+		return ent.Workday{}, err
+	}
+	return m.MapToEntity.Workday(wd)
 }
 
 func (r Repository) GetWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (workdays []ent.Workday, err error) {

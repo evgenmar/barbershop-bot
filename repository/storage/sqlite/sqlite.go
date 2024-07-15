@@ -400,6 +400,23 @@ func (s *Storage) GetUserByID(ctx context.Context, userID int64) (user st.User, 
 	return user, nil
 }
 
+// GetWorkdayByID returns workday with specified ID.
+func (s *Storage) GetWorkdayByID(ctx context.Context, workdayID int) (workday st.Workday, err error) {
+	defer func() { err = e.WrapIfErr("can't get workday", err) }()
+	q := `SELECT barber_id, date, start_time, end_time FROM workdays WHERE id = ?`
+	s.rwMutex.RLock()
+	err = s.db.QueryRowContext(ctx, q, workdayID).Scan(&workday.BarberID, &workday.Date, &workday.StartTime, &workday.EndTime)
+	s.rwMutex.RUnlock()
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return st.Workday{}, st.ErrNoSavedObject
+		}
+		return st.Workday{}, err
+	}
+	workday.ID = workdayID
+	return workday, nil
+}
+
 // GetWorkdaysByDateRange returns working days that fall within the date range.
 // It only returns working days for barber with specified ID.
 // Returned working days are sorted by date in ascending order.
