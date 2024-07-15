@@ -85,7 +85,6 @@ func onDeleteAccount(ctx tele.Context) error {
 func onSetLastWorkDate(ctx tele.Context) error {
 	errMsg := "can't open select last work date menu"
 	barberID := ctx.Sender().ID
-	sess.UpdateBarberState(barberID, sess.StateStart)
 	latestAppointmentDate, err := cp.RepoWithContext.GetLatestAppointmentDate(barberID)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
@@ -129,7 +128,7 @@ func onSetLastWorkDate(ctx tele.Context) error {
 func onSelectLastWorkDate(ctx tele.Context) error {
 	errMsg := "can't save last work date"
 	barberID := ctx.Sender().ID
-	sess.UpdateBarberState(barberID, sess.StateStart)
+	sess.UpdateLastWorkDateAndState(barberID, sess.LastWorkDate{}, sess.StateStart)
 	dateToSave, err := time.ParseInLocation(time.DateOnly, ctx.Callback().Data, cfg.Location)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
