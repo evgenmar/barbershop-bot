@@ -106,9 +106,9 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 
 	users.Handle(&btnSignUpForAppointment, onSignUpForAppointment)
 	users.Handle(&btnSelectBarberForAppointment, onSelectBarberForAppointment)
-	users.Handle(&btnSelectServiceForAppointment, onSelectServiceForAppointment)
-	users.Handle(&btnSelectMonthForAppointment, onSelectMonthForAppointment)
-	//users.Handle(&btnSelectWorkdayForAppointment, onSelectWorkdayForAppointment)
+	users.Handle(&btnSelectServiceForAppointmentUser, onSelectServiceForAppointmentUser)
+	users.Handle(&btnSelectMonthForNewAppointmentUser, onSelectMonthForNewAppointmentUser)
+	users.Handle(&btnSelectWorkdayForNewAppointmentUser, onSelectWorkdayForNewAppointmentUser)
 
 	users.Handle(&btnSettingsUser, onSettingsUser)
 	users.Handle(&btnUpdPersonalUser, onUpdPersonalUser)

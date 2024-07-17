@@ -134,6 +134,7 @@ const (
 	endpntServiceToDelete           = "service_to_delete"
 	endpntSureToDeleteService       = "sure_to_delete_service"
 	endpntBarberToDeletion          = "barber_to_deletion"
+	endpntBackToMainBarber          = "back_to_main_barber"
 )
 
 var (
@@ -221,7 +222,7 @@ var (
 	btnDeleteCertainBarber = markupEmpty.Data("", endpntBarberToDeletion)
 
 	markupBackToMainBarber = &tele.ReplyMarkup{}
-	btnBackToMainBarber    = markupEmpty.Data("Вернуться в главное меню", "back_to_main_barber")
+	btnBackToMainBarber    = markupEmpty.Data(backToMain, endpntBackToMainBarber)
 )
 
 func init() {
@@ -391,9 +392,9 @@ func markupSelectBarberToDeletion(senderID int64, barbers []ent.Barber) *tele.Re
 	return markup
 }
 
-func markupSelectLastWorkDate(dateRange ent.DateRange, firstMonthEnd, lastMonthEnd time.Time) *tele.ReplyMarkup {
+func markupSelectLastWorkDate(dateRange, monthRange ent.DateRange) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
-	btnPrevMonth, btnNextMonth := btnsSwitchMonth(dateRange.EndDate, firstMonthEnd, lastMonthEnd, endpntSelectMonthOfLastWorkDate)
+	btnPrevMonth, btnNextMonth := btnsSwitchMonth(dateRange.EndDate, monthRange, endpntSelectMonthOfLastWorkDate)
 	rowSelectMonth := markup.Row(btnPrevMonth, btnMonth(dateRange.Month()), btnNextMonth)
 	rowsSelectDate := rowsSelectLastWorkDate(dateRange)
 	rowRestoreDefaultDate := markup.Row(btnInfiniteLastWorkDate)
@@ -418,20 +419,7 @@ func markupSelectServiceDuration(endpnt string) *tele.ReplyMarkup {
 	return markup
 }
 
-func markupSelectServiceBarber(services []ent.Service, endpnt string) *tele.ReplyMarkup {
-	markup := &tele.ReplyMarkup{}
-	var rows []tele.Row
-	for _, service := range services {
-		row := markup.Row(btnService(service, endpnt))
-		rows = append(rows, row)
-	}
-	rows = append(rows, markup.Row(btnBackToMainBarber))
-	markup.Inline(rows...)
-	return markup
-}
-
 func rowsSelectLastWorkDate(dateRange ent.DateRange) []tele.Row {
-	markup := &tele.ReplyMarkup{}
 	var btnsDatesToSelect []tele.Btn
 	for i := 1; i < dateRange.StartWeekday(); i++ {
 		btnsDatesToSelect = append(btnsDatesToSelect, btnEmpty)
@@ -442,5 +430,5 @@ func rowsSelectLastWorkDate(dateRange ent.DateRange) []tele.Row {
 	for i := 7; i > dateRange.EndWeekday(); i-- {
 		btnsDatesToSelect = append(btnsDatesToSelect, btnEmpty)
 	}
-	return markup.Split(7, btnsDatesToSelect)
+	return markupEmpty.Split(7, btnsDatesToSelect)
 }

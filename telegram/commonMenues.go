@@ -31,6 +31,9 @@ const (
 Номер должен начинаться с "+7" или с "8". Региональный код можно по желанию заключить в скобки, также допустимо разделять пробелами или тире группы цифр.
 Пожалуйста, попробуйте ввести номер телефона еще раз. При необходимости вернуться в главное меню воспользуйтесь командой /start`
 
+	backToSelectWorkday = "Назад к выбору даты"
+	backToMain          = "Вернуться в главное меню"
+
 	unknownCommand = "Неизвестная команда. Пожалуйста, выберите команду из меню. Для вызова главного меню воспользуйтесь командой /start"
 
 	endpntNoAction = "no_action"
@@ -85,17 +88,17 @@ func btnService(serv ent.Service, endpnt string) tele.Btn {
 	return markupEmpty.Data(serv.BtnSignature(), endpnt, strconv.Itoa(serv.ID))
 }
 
-func btnsSwitchMonth(current, min, max time.Time, endpnt string) (prev, next tele.Btn) {
-	if min.Equal(max) {
+func btnsSwitchMonth(current time.Time, period ent.DateRange, endpnt string) (prev, next tele.Btn) {
+	if period.StartDate.Equal(period.EndDate) {
 		prev = btnEmpty
 		next = btnEmpty
 		return
 	}
 	switch current {
-	case min:
+	case period.StartDate:
 		prev = btnEmpty
 		next = btnNext(endpnt)
-	case max:
+	case period.EndDate:
 		prev = btnPrev(endpnt)
 		next = btnEmpty
 	default:
@@ -105,4 +108,14 @@ func btnsSwitchMonth(current, min, max time.Time, endpnt string) (prev, next tel
 	return
 }
 
-func noAction(tele.Context) error { return nil }
+func markupSelectService(services []ent.Service, endpntService, endpntBackToMain string) *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{}
+	var rows []tele.Row
+	for _, service := range services {
+		row := markup.Row(btnService(service, endpntService))
+		rows = append(rows, row)
+	}
+	rows = append(rows, markup.Row(markup.Data(backToMain, endpntBackToMain)))
+	markup.Inline(rows...)
+	return markup
+}

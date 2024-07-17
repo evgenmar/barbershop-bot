@@ -2,6 +2,7 @@ package entities
 
 import (
 	cfg "barbershop-bot/lib/config"
+	tm "barbershop-bot/lib/time"
 	"fmt"
 	"log"
 	"time"
@@ -38,7 +39,7 @@ func (b Barber) Info() string {
 	if b.LastWorkdate.Equal(infiniteWorkDate) {
 		lastWorkDate = "бессрочно"
 	} else {
-		lastWorkDate = "до " + b.LastWorkdate.Format("02.01.2006")
+		lastWorkDate = "до " + tm.ShowDate(b.LastWorkdate)
 	}
 	return fmt.Sprintf("Имя: %s\nTел.: %s\nРаботает %s", b.Name, b.Phone, lastWorkDate)
 }

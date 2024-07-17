@@ -30,6 +30,13 @@ func (d Duration) LongString() string {
 	return fmt.Sprintf("%01d ч %02d мин", hours, minutes)
 }
 
+func (d Duration) RoundUpToMultipleOf30() Duration {
+	if d%30 == 0 {
+		return d
+	}
+	return (d/30 + 1) * 30
+}
+
 func (d Duration) ShortString() string {
 	if d == 0 {
 		return ""
@@ -42,6 +49,10 @@ func (d Duration) ShortString() string {
 func CurrentDayTime() Duration {
 	now := time.Now().In(cfg.Location)
 	return Hour*Duration(now.Hour()) + Minute*Duration(now.Minute())
+}
+
+func ShowDate(date time.Time) string {
+	return date.Format("02.01.2006")
 }
 
 func Today() time.Time {

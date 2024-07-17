@@ -93,36 +93,21 @@ func onSetLastWorkDate(ctx tele.Context) error {
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	deltaDisplayedMonth := int8(delta)
+	firstDisplayedDateRange := defineFirstDisplayedDateRangeForLastWorkDate(latestAppointmentDate)
+	displayedMonthRange := ent.DateRange{
+		StartDate: firstDisplayedDateRange.EndDate,
+		EndDate:   ent.MonthFromNow(cfg.ScheduledWeeks * 7 / 30).EndDate,
+	}
 	lastWorkDate := sess.GetLastWorkDate(barberID)
-	var relativeFirstDisplayedMonth byte = 0
-	var displayedDateRange ent.DateRange
-	for relativeFirstDisplayedMonth <= cfg.MaxAppointmentBookingMonths {
-		displayedDateRange = ent.MonthFromNow(relativeFirstDisplayedMonth)
-		if latestAppointmentDate.Compare(displayedDateRange.EndDate) <= 0 {
-			if latestAppointmentDate.After(displayedDateRange.StartDate) {
-				displayedDateRange.StartDate = latestAppointmentDate
-			}
-			break
-		}
-		relativeFirstDisplayedMonth++
-	}
-	firstDisplayedMonth := displayedDateRange
-	lastDisplayedMonth := ent.MonthFromNow(cfg.ScheduledWeeks * 7 / 30)
-	if deltaDisplayedMonth != 0 {
-		newDateRange := ent.MonthFromBase(lastWorkDate.LastShownDate, deltaDisplayedMonth)
-		if newDateRange.EndDate.After(lastDisplayedMonth.EndDate) || newDateRange.EndDate.Before(firstDisplayedMonth.EndDate) {
-			if lastWorkDate.LastShownDate.After(displayedDateRange.EndDate) {
-				displayedDateRange = ent.MonthFromBase(lastWorkDate.LastShownDate, 0)
-			}
-		}
-		if newDateRange.EndDate.After(displayedDateRange.EndDate) {
-			displayedDateRange = newDateRange
-		}
-	}
+	displayedDateRange := defineDisplayedDateRangeForLastWorkDate(
+		firstDisplayedDateRange,
+		displayedMonthRange,
+		int8(delta),
+		lastWorkDate,
+	)
 	lastWorkDate.LastShownDate = displayedDateRange.EndDate
 	sess.UpdateLastWorkDateAndState(barberID, lastWorkDate, sess.StateStart)
-	return ctx.Edit(selectLastWorkDate, markupSelectLastWorkDate(displayedDateRange, firstDisplayedMonth.EndDate, lastDisplayedMonth.EndDate))
+	return ctx.Edit(selectLastWorkDate, markupSelectLastWorkDate(displayedDateRange, displayedMonthRange))
 }
 
 func onSelectLastWorkDate(ctx tele.Context) error {
@@ -334,7 +319,10 @@ func onSelectServiceToEdit(ctx tele.Context) error {
 	if len(services) == 0 {
 		return ctx.Edit(youHaveNoServices, markupManageServicesShort)
 	}
-	return ctx.Edit(selectServiceToEdit, markupSelectServiceBarber(services, endpntServiceToEdit))
+	return ctx.Edit(
+		selectServiceToEdit,
+		markupSelectService(services, endpntServiceToEdit, endpntBackToMainBarber),
+	)
 }
 
 func onSelectCertainServiceToEdit(ctx tele.Context) error {
@@ -426,7 +414,10 @@ func onDeleteService(ctx tele.Context) error {
 	if len(services) == 0 {
 		return ctx.Edit(youHaveNoServices, markupManageServicesShort)
 	}
-	return ctx.Edit(selectServiceToDelete, markupSelectServiceBarber(services, endpntServiceToDelete))
+	return ctx.Edit(
+		selectServiceToDelete,
+		markupSelectService(services, endpntServiceToDelete, endpntBackToMainBarber),
+	)
 }
 
 func onSelectCertainServiceToDelete(ctx tele.Context) error {
@@ -688,20 +679,62 @@ func onAddNewBarber(ctx tele.Context) error {
 	return ctx.Send(addedNewBarberWithSсhedule, markupBackToMainBarber)
 }
 
+func defineDisplayedDateRangeForLastWorkDate(
+	firstDisplayedDateRange ent.DateRange,
+	displayedMonthRange ent.DateRange,
+	deltaDisplayedMonth int8,
+	lastWorkDate sess.LastWorkDate,
+) ent.DateRange {
+	displayedDateRange := firstDisplayedDateRange
+	if deltaDisplayedMonth != 0 {
+		newDateRange := ent.MonthFromBase(lastWorkDate.LastShownDate, deltaDisplayedMonth)
+		if newDateRange.EndDate.After(displayedMonthRange.EndDate) || newDateRange.EndDate.Before(displayedMonthRange.StartDate) {
+			if lastWorkDate.LastShownDate.After(displayedDateRange.EndDate) {
+				displayedDateRange = ent.MonthFromBase(lastWorkDate.LastShownDate, 0)
+			}
+		}
+		if newDateRange.EndDate.After(displayedDateRange.EndDate) {
+			displayedDateRange = newDateRange
+		}
+	}
+	return displayedDateRange
+}
+
+func defineFirstDisplayedDateRangeForLastWorkDate(latestAppointmentDate time.Time) (firstDisplayedDateRange ent.DateRange) {
+	var relativeFirstDisplayedMonth byte = 0
+	for relativeFirstDisplayedMonth <= cfg.MaxAppointmentBookingMonths {
+		firstDisplayedDateRange = ent.MonthFromNow(relativeFirstDisplayedMonth)
+		if latestAppointmentDate.Compare(firstDisplayedDateRange.EndDate) <= 0 {
+			if latestAppointmentDate.After(firstDisplayedDateRange.StartDate) {
+				firstDisplayedDateRange.StartDate = latestAppointmentDate
+			}
+			break
+		}
+		relativeFirstDisplayedMonth++
+	}
+	return
+}
+
 func logAndMsgErrBarber(ctx tele.Context, msg string, err error) error {
 	log.Print(e.Wrap(msg, err))
 	return ctx.Send(errorBarber, markupBackToMainBarber)
 }
 
 func showEditServOptsWithEditMsg(ctx tele.Context, editedService sess.EditedService) error {
-	if editedService.UpdService.Name != "" || editedService.UpdService.Desciption != "" || editedService.UpdService.Price != 0 || editedService.UpdService.Duration != 0 {
+	if editedService.UpdService.Name != "" ||
+		editedService.UpdService.Desciption != "" ||
+		editedService.UpdService.Price != 0 ||
+		editedService.UpdService.Duration != 0 {
 		return ctx.Edit(editServiceParams+editedService.Info()+readyToUpdateService, markupReadyToUpdateService)
 	}
 	return ctx.Edit(editServiceParams+editedService.Info(), markupEditServiceParams)
 }
 
 func showEditServOptsWithSendMsg(ctx tele.Context, editedService sess.EditedService) error {
-	if editedService.UpdService.Name != "" || editedService.UpdService.Desciption != "" || editedService.UpdService.Price != 0 || editedService.UpdService.Duration != 0 {
+	if editedService.UpdService.Name != "" ||
+		editedService.UpdService.Desciption != "" ||
+		editedService.UpdService.Price != 0 ||
+		editedService.UpdService.Duration != 0 {
 		return ctx.Send(editServiceParams+editedService.Info()+readyToUpdateService, markupReadyToUpdateService)
 	}
 	return ctx.Send(editServiceParams+editedService.Info(), markupEditServiceParams)
