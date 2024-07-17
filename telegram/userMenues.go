@@ -25,8 +25,11 @@ const (
 Контакты для связи:
 Телефон: %s
 [Ссылка на профиль](tg://user?id=%d)`
-	selectDateForAppointment = "Информация о выбранной услуге:\n\n%s\n\nВыберите удобную для Вас дату. Отображены только даты, на которые возможна запись."
-	selectTimeForAppointment = "Информация о выбранной услуге:\n\n%s\n\nВыбранная Вами дата: %s\n\nВыберите удобное для Вас время. Отображено только время, на которое возможна запись."
+	selectDateForAppointment  = "Информация о выбранной услуге:\n\n%s\n\nВыберите удобную для Вас дату. Отображены только даты, на которые возможна запись."
+	selectTimeForAppointment  = "Информация о выбранной услуге:\n\n%s\n\nВыбранная Вами дата: %s\n\nВыберите удобное для Вас время. Отображено только время, на которое возможна запись."
+	confirmNewAppointment     = "Информация о выбранной услуге:\n\n%s\n\nВыбранная Вами дата: %s\nВыбранное время: %s\n\nПодтвердите создание записи или вернитесь в главное меню."
+	newAppointmentFailed      = "К сожалению указанное время уже занято. Не удалось создать запись."
+	newAppointmentSavedByUser = "Вы записались на услугу:\n\n%s\n\nБарбер %s ждет Вас %s в %s."
 
 	errorUser = `Произошла ошибка обработки команды. Команда не была выполнена. Приносим извинения.
 Пожалуйста, перейдите в главное меню и попробуйте выполнить команду заново.`
@@ -47,6 +50,13 @@ var (
 	btnSelectServiceForAppointmentUser    = markupEmpty.Data("", endpntServiceForAppointmentUser)
 	btnSelectMonthForNewAppointmentUser   = markupEmpty.Data("", endpntMonthForNewAppointmentUser)
 	btnSelectWorkdayForNewAppointmentUser = markupEmpty.Data("", endpntWorkdayForNewAppointmentUser)
+	btnSelectTimeForNewAppointmentUser    = markupEmpty.Data("", endpntTimeForNewAppointmentUser)
+
+	markupConfirmNewAppointmentUser = &tele.ReplyMarkup{}
+	btnConfirmNewAppointmentUser    = markupEmpty.Data("Подтвердить запись", "confirm_new_appointment_user")
+
+	markupNewAppointmentFailedUser            = &tele.ReplyMarkup{}
+	btnSelectAnotherTimeForNewAppointmentUser = markupEmpty.Data("Выбрать другое время", "select_another_time_for_new_appointment_user")
 
 	markupSettingsUser = &tele.ReplyMarkup{}
 	btnUpdPersonalUser = markupEmpty.Data("Обновить персональные данные", "upd_personal_data_user")
@@ -63,12 +73,25 @@ var (
 
 	markupBackToMainUser = &tele.ReplyMarkup{}
 	btnBackToMainUser    = markupEmpty.Data(backToMain, endpntBackToMainUser)
+
+	markupBackToMainUserSend = &tele.ReplyMarkup{}
+	btnBackToMainUserSend    = markupEmpty.Data(backToMain, "back_to_main_user_send")
 )
 
 func init() {
 	markupMainUser.Inline(
 		markupEmpty.Row(btnSignUpForAppointment),
 		markupEmpty.Row(btnSettingsUser),
+	)
+
+	markupConfirmNewAppointmentUser.Inline(
+		markupEmpty.Row(btnConfirmNewAppointmentUser),
+		markupEmpty.Row(btnBackToMainUser),
+	)
+
+	markupNewAppointmentFailedUser.Inline(
+		markupEmpty.Row(btnSelectAnotherTimeForNewAppointmentUser),
+		markupEmpty.Row(btnBackToMainUser),
 	)
 
 	markupSettingsUser.Inline(
@@ -95,9 +118,13 @@ func init() {
 	markupBackToMainUser.Inline(
 		markupEmpty.Row(btnBackToMainUser),
 	)
+
+	markupBackToMainUserSend.Inline(
+		markupEmpty.Row(btnBackToMainUserSend),
+	)
 }
 
-func btnTimeForAppointment(dur tm.Duration, endpnt string) tele.Btn {
+func btnTime(dur tm.Duration, endpnt string) tele.Btn {
 	return markupEmpty.Data(dur.ShortString(), endpnt, strconv.FormatUint(uint64(dur), 10))
 }
 
@@ -176,7 +203,7 @@ func haveFreeTimeForAppointment(workday ent.Workday, appointments []ent.Appointm
 func rowsSelectTimeForAppointment(freeTimes []tm.Duration, endpnt string) []tele.Row {
 	var btnsTimesToSelect []tele.Btn
 	for _, freeTime := range freeTimes {
-		btnsTimesToSelect = append(btnsTimesToSelect, btnTimeForAppointment(freeTime, endpnt))
+		btnsTimesToSelect = append(btnsTimesToSelect, btnTime(freeTime, endpnt))
 	}
 	for i := 1; i <= (4-len(freeTimes)%4)%4; i++ {
 		btnsTimesToSelect = append(btnsTimesToSelect, btnEmpty)

@@ -365,7 +365,7 @@ func btnDate(date time.Time, endpnt string) tele.Btn {
 	return markupEmpty.Data(strconv.Itoa(date.Day()), endpnt, date.Format(time.DateOnly))
 }
 
-func btnServiceDuration(dur tm.Duration, endpnt string) tele.Btn {
+func btnDuration(dur tm.Duration, endpnt string) tele.Btn {
 	return markupEmpty.Data(dur.LongString(), endpnt, strconv.FormatUint(uint64(dur), 10))
 }
 
@@ -411,7 +411,7 @@ func markupSelectServiceDuration(endpnt string) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 	btnsDurationsToSelect := make([]tele.Btn, 4)
 	for duration := 30 * tm.Minute; duration <= 2*tm.Hour; duration += 30 * tm.Minute {
-		btnsDurationsToSelect = append(btnsDurationsToSelect, btnServiceDuration(duration, endpnt))
+		btnsDurationsToSelect = append(btnsDurationsToSelect, btnDuration(duration, endpnt))
 	}
 	rows := markup.Split(2, btnsDurationsToSelect)
 	rows = append(rows, markup.Row(btnBackToMainBarber))

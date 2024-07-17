@@ -113,4 +113,47 @@ func freeTimesForAppointment(workday ent.Workday, appointments []ent.Appointment
 	return
 }
 
+func getWorkdayAndAppointments(workdayID int) (ent.Workday, []ent.Appointment, error) {
+	workday, err := cp.RepoWithContext.GetWorkdayByID(workdayID)
+	if err != nil {
+		return ent.Workday{}, nil, err
+	}
+	appointments, err := cp.RepoWithContext.GetAppointmentsByDateRange(
+		workday.BarberID,
+		ent.DateRange{StartDate: workday.Date, EndDate: workday.Date},
+	)
+	if err != nil {
+		return ent.Workday{}, nil, err
+	}
+	return workday, appointments, nil
+}
+
+func isTimeForAppointmentAvailable(appointmentTime, appointmentDuration tm.Duration, workday ent.Workday, appointments []ent.Appointment) bool {
+	if workday.Date.Equal(tm.Today()) && appointmentTime < tm.CurrentDayTime() {
+		return false
+	}
+	var timeSlotStart, timeSlotEnd tm.Duration
+	timeSlotStart = workday.StartTime
+	if len(appointments) == 0 {
+		timeSlotEnd = workday.EndTime
+	} else {
+		timeSlotEnd = appointments[0].Time
+	}
+	if appointmentTime >= timeSlotStart && (appointmentTime+appointmentDuration) <= timeSlotEnd {
+		return true
+	}
+	for i, appointment := range appointments {
+		timeSlotStart = appointment.Time + appointment.Duration
+		if i < (len(appointments) - 1) {
+			timeSlotEnd = appointments[i+1].Time
+		} else {
+			timeSlotEnd = workday.EndTime
+		}
+		if appointmentTime >= timeSlotStart && (appointmentTime+appointmentDuration) <= timeSlotEnd {
+			return true
+		}
+	}
+	return false
+}
+
 func noAction(tele.Context) error { return nil }

@@ -3,11 +3,14 @@ package telegram
 import (
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	tele "gopkg.in/telebot.v3"
 	mw "gopkg.in/telebot.v3/middleware"
 )
+
+var appointmentsMutex sync.Mutex
 
 var Bot *tele.Bot
 
@@ -109,6 +112,9 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	users.Handle(&btnSelectServiceForAppointmentUser, onSelectServiceForAppointmentUser)
 	users.Handle(&btnSelectMonthForNewAppointmentUser, onSelectMonthForNewAppointmentUser)
 	users.Handle(&btnSelectWorkdayForNewAppointmentUser, onSelectWorkdayForNewAppointmentUser)
+	users.Handle(&btnSelectTimeForNewAppointmentUser, onSelectTimeForNewAppointmentUser)
+	users.Handle(&btnConfirmNewAppointmentUser, onConfirmNewAppointmentUser)
+	users.Handle(&btnSelectAnotherTimeForNewAppointmentUser, onSelectAnotherTimeForNewAppointmentUser)
 
 	users.Handle(&btnSettingsUser, onSettingsUser)
 	users.Handle(&btnUpdPersonalUser, onUpdPersonalUser)
@@ -118,6 +124,7 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	users.Handle(&btnUpdPhoneUser, onUpdPhoneUser)
 
 	users.Handle(&btnBackToMainUser, onBackToMainUser)
+	users.Handle(&btnBackToMainUserSend, onBackToMainUserSend)
 	//TODO userHandlers
 
 	return bot

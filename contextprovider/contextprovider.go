@@ -30,12 +30,12 @@ func NewContextProvider(repository rep.Repository) ContextProvider {
 	return ContextProvider{repo: repository}
 }
 
-// func (c ContextProvider) CreateAppointment(appt ent.Appointment) (err error) {
-// 	defer func() { err = e.WrapIfErr("can't save new appointment", err) }()
-// 	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
-// 	defer cancel()
-// 	return c.repo.CreateAppointment(ctx, appt)
-// }
+func (c ContextProvider) CreateAppointment(appt ent.Appointment) (err error) {
+	defer func() { err = e.WrapIfErr("can't save new appointment", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
+	defer cancel()
+	return c.repo.CreateAppointment(ctx, appt)
+}
 
 func (c ContextProvider) CreateBarber(barberID int64) (err error) {
 	defer func() { err = e.WrapIfErr("can't save new barber ID", err) }()

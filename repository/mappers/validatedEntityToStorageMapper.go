@@ -20,7 +20,7 @@ var (
 )
 
 func (v ValidatedEntityToStorageMapper) Appointment(appt ent.Appointment) (st.Appointment, error) {
-	if appt.ID < 1 || appt.UserID < 1 || appt.WorkdayID < 1 || appt.ServiceID < 1 || appt.Time < 0 || appt.Duration < 1 || appt.CreatedAt < 1 {
+	if appt.UserID < 1 || appt.WorkdayID < 1 || appt.ServiceID < 1 || appt.Time < 0 || appt.Duration < 1 || appt.CreatedAt < 1 {
 		return st.Appointment{}, ErrInvalidEntity
 	}
 	return v.EntityToStorageMapper.Appointment(appt), nil
