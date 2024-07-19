@@ -23,21 +23,15 @@ func onStartUser(ctx tele.Context) error {
 }
 
 func onSignUpForAppointment(ctx tele.Context) error {
-	errMsg := "can't handle sign up for appointment"
-	workingBarbers, err := getWorkingBarbers()
+	userID := ctx.Sender().ID
+	upcomingAppointment, err := cp.RepoWithContext.GetUpcomingAppointment(userID)
 	if err != nil {
-		return logAndMsgErrUser(ctx, errMsg, err)
+		if errors.Is(err, rep.ErrNoSavedAppointment) {
+			return showBarbersForAppointment(ctx, userID)
+		}
+		return logAndMsgErrUser(ctx, "can't handle sign up for appointment", err)
 	}
-	switch len(workingBarbers) {
-	case 0:
-		sess.UpdateUserState(ctx.Sender().ID, sess.StateStart)
-		return ctx.Edit(noWorkingBarbers, markupBackToMainUser)
-	case 1:
-		return showToUserServicesForNewAppointment(ctx, workingBarbers[0])
-	default:
-		sess.UpdateUserState(ctx.Sender().ID, sess.StateStart)
-		return ctx.Edit(selectBarberForAppointment, markupSelectBarberForAppointment(workingBarbers))
-	}
+	return informUpcomingAppointmentExists(ctx, upcomingAppointment)
 }
 
 func onSelectBarberForAppointment(ctx tele.Context) error {
@@ -158,7 +152,10 @@ func onConfirmNewAppointmentUser(ctx tele.Context) error {
 		return logAndMsgErrUser(ctx, errMsg, err)
 	}
 	return ctx.Edit(
-		fmt.Sprintf(newAppointmentSavedByUser, service.Info(), barber.Name, tm.ShowDate(workday.Date), newAppointment.Time.ShortString()),
+		fmt.Sprintf(
+			newAppointmentSavedByUser,
+			service.Info(), barber.Name, tm.ShowDate(workday.Date), newAppointment.Time.ShortString(),
+		),
 		markupBackToMainUserSend,
 	)
 }
@@ -308,9 +305,49 @@ func getWorkingBarbers() (workingBarbers []ent.Barber, err error) {
 	return
 }
 
+func informUpcomingAppointmentExists(ctx tele.Context, appointment ent.Appointment) error {
+	errMsg := "can't inform that appointment already exists"
+	service, err := cp.RepoWithContext.GetServiceByID(appointment.ServiceID)
+	if err != nil {
+		return logAndMsgErrUser(ctx, errMsg, err)
+	}
+	workday, err := cp.RepoWithContext.GetWorkdayByID(appointment.WorkdayID)
+	if err != nil {
+		return logAndMsgErrUser(ctx, errMsg, err)
+	}
+	barber, err := cp.RepoWithContext.GetBarberByID(workday.BarberID)
+	if err != nil {
+		return logAndMsgErrUser(ctx, errMsg, err)
+	}
+	return ctx.Edit(
+		fmt.Sprintf(
+			appointmentAlreadyExists,
+			service.Info(), barber.Name, tm.ShowDate(workday.Date), appointment.Time.ShortString(),
+		),
+		markupBackToMainUser,
+	)
+}
+
 func logAndMsgErrUser(ctx tele.Context, msg string, err error) error {
 	log.Print(e.Wrap(msg, err))
 	return ctx.Send(errorUser, markupBackToMainUser)
+}
+
+func showBarbersForAppointment(ctx tele.Context, userID int64) error {
+	workingBarbers, err := getWorkingBarbers()
+	if err != nil {
+		return logAndMsgErrUser(ctx, "can't show barbers for appointment", err)
+	}
+	switch len(workingBarbers) {
+	case 0:
+		sess.UpdateUserState(userID, sess.StateStart)
+		return ctx.Edit(noWorkingBarbers, markupBackToMainUser)
+	case 1:
+		return showToUserServicesForNewAppointment(ctx, workingBarbers[0])
+	default:
+		sess.UpdateUserState(userID, sess.StateStart)
+		return ctx.Edit(selectBarberForAppointment, markupSelectBarberForAppointment(workingBarbers))
+	}
 }
 
 func showToUserFreeTimesForNewAppointment(ctx tele.Context, workday ent.Workday, appointments []ent.Appointment, newAppointment sess.Appointment) error {

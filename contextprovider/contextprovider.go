@@ -149,12 +149,12 @@ func (c ContextProvider) GetServicesByBarberID(barberID int64) (services []ent.S
 	return c.repo.GetServicesByBarberID(ctx, barberID)
 }
 
-// func (c ContextProvider) GetUpcomingAppointment(userID int64) (appointment ent.Appointment, err error) {
-// 	defer func() { err = e.WrapIfErr("can't get appointment", err) }()
-// 	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
-// 	defer cancel()
-// 	return c.repo.GetUpcomingAppointment(ctx, userID)
-// }
+func (c ContextProvider) GetUpcomingAppointment(userID int64) (appointment ent.Appointment, err error) {
+	defer func() { err = e.WrapIfErr("can't get appointment", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
+	defer cancel()
+	return c.repo.GetUpcomingAppointment(ctx, userID)
+}
 
 func (c ContextProvider) GetUserByID(userID int64) (user ent.User, err error) {
 	defer func() { err = e.WrapIfErr("can't get user", err) }()
