@@ -20,6 +20,6 @@ type Workday struct {
 }
 
 const (
-	DefaultStart tm.Duration = 10 * tm.Hour
-	DefaultEnd   tm.Duration = 19 * tm.Hour
+	DefaultStart tm.Duration = 9 * tm.Hour
+	DefaultEnd   tm.Duration = 18 * tm.Hour
 )

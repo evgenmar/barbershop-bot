@@ -36,11 +36,20 @@ func New(path string) (*Storage, error) {
 }
 
 // CreateAppointment saves new appointment to storage.
+// Note and ID fields are ignored. UserID field is optional.
 func (s *Storage) CreateAppointment(ctx context.Context, appt st.Appointment) (err error) {
 	defer func() { err = e.WrapIfErr("can't save appointment", err) }()
-	q := `INSERT INTO appointments (user_id, workday_id, service_id, time, duration, created_at) VALUES (?, ?, ?, ?, ?, ?)`
+	var q string
+	args := make([]interface{}, 0, 6)
+	if appt.UserID.Valid {
+		q = `INSERT INTO appointments (user_id, workday_id, service_id, time, duration, created_at) VALUES (?, ?, ?, ?, ?, ?)`
+		args = append(args, appt.UserID, appt.WorkdayID, appt.ServiceID, appt.Time, appt.Duration, appt.CreatedAt)
+	} else {
+		q = `INSERT INTO appointments (workday_id, service_id, time, duration, created_at) VALUES (?, ?, ?, ?, ?)`
+		args = append(args, appt.WorkdayID, appt.ServiceID, appt.Time, appt.Duration, appt.CreatedAt)
+	}
 	s.rwMutex.Lock()
-	_, err = s.db.ExecContext(ctx, q, appt.UserID, appt.WorkdayID, appt.ServiceID, appt.Time, appt.Duration, appt.CreatedAt)
+	_, err = s.db.ExecContext(ctx, q, args...)
 	s.rwMutex.Unlock()
 	if err != nil {
 		if errors.Is(err, sqlite3.CONSTRAINT) {
@@ -159,12 +168,14 @@ func (s *Storage) DeleteBarberByID(ctx context.Context, barberID int64) error {
 	return nil
 }
 
-// DeletePastAppointments removes all past appointments for barber with specified ID.
+// DeletePastAppointments removes appointments at dates before today for barber with specified ID.
 func (s *Storage) DeletePastAppointments(ctx context.Context, barberID int64) error {
-	q := `DELETE FROM appointments WHERE workday_id IN 
-		(SELECT id FROM workdays WHERE barber_id = ? AND date < ?)`
+	q := `DELETE FROM appointments WHERE workday_id IN
+	(SELECT id FROM workdays WHERE barber_id = ? AND date < ?)`
+	today := m.MapToStorage.Date(tm.Today())
+	currentTime := int16(tm.CurrentDayTime())
 	s.rwMutex.Lock()
-	_, err := s.db.ExecContext(ctx, q, barberID, m.MapToStorage.Date(tm.Today()))
+	_, err := s.db.ExecContext(ctx, q, barberID, today, currentTime, barberID, today)
 	s.rwMutex.Unlock()
 	if err != nil {
 		return e.Wrap("can't delete appointments", err)
@@ -231,7 +242,7 @@ func (s *Storage) GetAllBarbers(ctx context.Context) (barbers []st.Barber, err e
 // Returned appointments are sorted by date and time in ascending order.
 func (s *Storage) GetAppointmentsByDateRange(ctx context.Context, barberID int64, dateRange st.DateRange) (appointments []st.Appointment, err error) {
 	defer func() { err = e.WrapIfErr("can't get appointments", err) }()
-	q := `SELECT a.id, a.user_id, a.workday_id, a.service_id, a.time, a.duration, a.created_at, w.date 
+	q := `SELECT a.id, a.user_id, a.workday_id, a.service_id, a.time, a.duration, a.note, a.created_at, w.date 
 		FROM appointments a JOIN workdays w ON a.workday_id = w.id
 		WHERE w.barber_id = ? AND w.date BETWEEN ? AND ? ORDER BY w.date, a.time`
 	s.rwMutex.RLock()
@@ -245,7 +256,7 @@ func (s *Storage) GetAppointmentsByDateRange(ctx context.Context, barberID int64
 	var ignored sql.RawBytes
 	for rows.Next() {
 		var a st.Appointment
-		if err := rows.Scan(&a.ID, &a.UserID, &a.WorkdayID, &a.ServiceID, &a.Time, &a.Duration, &a.CreatedAt, &ignored); err != nil {
+		if err := rows.Scan(&a.ID, &a.UserID, &a.WorkdayID, &a.ServiceID, &a.Time, &a.Duration, &a.Note, &a.CreatedAt, &ignored); err != nil {
 			return nil, err
 		}
 		appointments = append(appointments, a)
@@ -354,18 +365,20 @@ func (s *Storage) GetServicesByBarberID(ctx context.Context, barberID int64) (se
 // GetUpcomingAppointment returns an upcoming appointment for user with specified ID.
 func (s *Storage) GetUpcomingAppointment(ctx context.Context, userID int64) (appointment st.Appointment, err error) {
 	defer func() { err = e.WrapIfErr("can't get appointment", err) }()
-	q := `SELECT a.id, a.workday_id, a.service_id, a.time, a.duration, a.created_at, w.date 
+	q := `SELECT a.id, a.workday_id, a.service_id, a.time, a.duration, a.note, a.created_at, w.date 
 		FROM appointments a JOIN workdays w ON a.workday_id = w.id
-		WHERE a.user_id = ? AND w.date >= ?`
+		WHERE a.user_id = ? AND (w.date > ? OR (w.date = ? AND a.time > ?))`
 	today := m.MapToStorage.Date(tm.Today())
+	currentTime := int16(tm.CurrentDayTime())
 	var date string
 	s.rwMutex.RLock()
-	err = s.db.QueryRowContext(ctx, q, userID, today).Scan(
+	err = s.db.QueryRowContext(ctx, q, userID, today, today, currentTime).Scan(
 		&appointment.ID,
 		&appointment.WorkdayID,
 		&appointment.ServiceID,
 		&appointment.Time,
 		&appointment.Duration,
+		&appointment.Note,
 		&appointment.CreatedAt,
 		&date,
 	)
@@ -376,10 +389,7 @@ func (s *Storage) GetUpcomingAppointment(ctx context.Context, userID int64) (app
 		}
 		return st.Appointment{}, err
 	}
-	if date == today && tm.Duration(appointment.Time) <= tm.CurrentDayTime() {
-		return st.Appointment{}, st.ErrNoSavedObject
-	}
-	appointment.UserID = userID
+	appointment.UserID = sql.NullInt64{Int64: userID, Valid: true}
 	return appointment, nil
 }
 
@@ -498,11 +508,12 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 	}
 	q = `CREATE TABLE IF NOT EXISTS appointments (
 		id INTEGER PRIMARY KEY,
-		user_id INTEGER NOT NULL,
+		user_id INTEGER,
 		workday_id INTEGER NOT NULL,
 		service_id INTEGER,
 		time INTEGER NOT NULL,
 		duration INTEGER NOT NULL,
+		note TEXT,
 		created_at INTEGER NOT NULL,
 		UNIQUE (workday_id, time),
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -516,12 +527,28 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 	return nil
 }
 
-// UpdateAppointmentTime updates WorkdayID and Time fields of Appointment with specified ID.
-func (s *Storage) UpdateAppointmentTime(ctx context.Context, appointmentID, workdayID int, time int16) (err error) {
+// UpdateAppointment updates non-niladic fields of Appointment. ID field must be non-niladic and remains not updated.
+// UpdateAppointment also doesn't updates UserID, ServiceID, Duration, CreatedAt fields even if non-niladic.
+func (s *Storage) UpdateAppointment(ctx context.Context, appointment st.Appointment) (err error) {
 	defer func() { err = e.WrapIfErr("can't update appointment", err) }()
-	q := `UPDATE appointments SET workday_id = ? , time = ? WHERE id = ?`
+	query := make([]string, 0, 3)
+	args := make([]interface{}, 0, 3)
+	if appointment.WorkdayID != 0 {
+		query = append(query, "workday_id = ?")
+		args = append(args, appointment.WorkdayID)
+	}
+	if appointment.Time != 0 {
+		query = append(query, "time = ?")
+		args = append(args, appointment.Time)
+	}
+	if appointment.Note.Valid {
+		query = append(query, "note = ?")
+		args = append(args, appointment.Note)
+	}
+	args = append(args, appointment.ID)
+	q := fmt.Sprintf(`UPDATE appointments SET %s WHERE id = ?`, strings.Join(query, " , "))
 	s.rwMutex.Lock()
-	_, err = s.db.ExecContext(ctx, q, workdayID, time, appointmentID)
+	_, err = s.db.ExecContext(ctx, q, args...)
 	s.rwMutex.Unlock()
 	if err != nil {
 		if errors.Is(err, sqlite3.CONSTRAINT) {
@@ -564,7 +591,7 @@ func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) (err error
 }
 
 // UpdateService updates non-niladic fields of Service. ID field must be non-niladic and remains not updated.
-// UpdateService also doesn't updates barber_id field even if it's non-niladic.
+// UpdateService also doesn't updates BarberID field even if it's non-niladic.
 func (s *Storage) UpdateService(ctx context.Context, service st.Service) (err error) {
 	defer func() { err = e.WrapIfErr("can't update service", err) }()
 	query := make([]string, 0, 4)

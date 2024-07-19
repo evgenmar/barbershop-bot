@@ -15,6 +15,7 @@ var (
 
 type Storage interface {
 	// CreateAppointment saves new appointment to storage.
+	// Note and ID fields are ignored. UserID field is optional.
 	CreateAppointment(ctx context.Context, appt Appointment) error
 
 	//CreateBarber saves new BarberID to storage.
@@ -35,7 +36,7 @@ type Storage interface {
 	// DeleteBarberByID removes barber with specified ID. It also removes all serviced, workdays and appointments associated with barber.
 	DeleteBarberByID(ctx context.Context, barberID int64) error
 
-	// DeletePastAppointments removes all past appointments for barber with specified ID.
+	// DeletePastAppointments removes appointments at dates before today for barber with specified ID.
 	DeletePastAppointments(ctx context.Context, barberID int64) error
 
 	// DeleteServiceByID removes service with specified ID.
@@ -87,14 +88,15 @@ type Storage interface {
 	// Init prepares the storage for use. It creates the necessary tables if not exists.
 	Init(ctx context.Context) error
 
-	// UpdateAppointmentTime updates WorkdayID and Time fields of Appointment with specified ID.
-	UpdateAppointmentTime(ctx context.Context, appointmentID, workdayID int, time int16) error
+	// UpdateAppointment updates non-niladic fields of Appointment. ID field must be non-niladic and remains not updated.
+	// UpdateAppointment also doesn't updates UserID, ServiceID, Duration, CreatedAt fields even if non-niladic.
+	UpdateAppointment(ctx context.Context, appointment Appointment) error
 
 	// UpdateBarber updates valid and non-niladic fields of Barber. ID field must be non-niladic and remains not updated.
 	UpdateBarber(ctx context.Context, barber Barber) error
 
 	// UpdateService updates non-niladic fields of Service. ID field must be non-niladic and remains not updated.
-	// UpdateService also doesn't updates barber_id field even if it's non-niladic.
+	// UpdateService also doesn't updates BarberID field even if it's non-niladic.
 	UpdateService(ctx context.Context, service Service) error
 
 	// UpdateUser updates valid fields of User. ID field must be non-niladic and remains not updated.
@@ -102,12 +104,13 @@ type Storage interface {
 }
 
 type Appointment struct {
-	ID        int           `db:"id"`
-	UserID    int64         `db:"user_id"`
-	WorkdayID int           `db:"workday_id"`
-	ServiceID sql.NullInt32 `db:"service_id"`
-	Time      int16         `db:"time"`
-	Duration  int16         `db:"duration"`
+	ID        int            `db:"id"`
+	UserID    sql.NullInt64  `db:"user_id"`
+	WorkdayID int            `db:"workday_id"`
+	ServiceID sql.NullInt32  `db:"service_id"`
+	Time      int16          `db:"time"`
+	Duration  int16          `db:"duration"`
+	Note      sql.NullString `db:"note"`
 
 	//CreatedAt has a format of Unix time
 	CreatedAt int64 `db:"created_at"`

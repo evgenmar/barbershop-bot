@@ -3,7 +3,6 @@ package repository
 import (
 	ent "barbershop-bot/entities"
 	"barbershop-bot/lib/e"
-	tm "barbershop-bot/lib/time"
 	m "barbershop-bot/repository/mappers"
 	st "barbershop-bot/repository/storage"
 	"context"
@@ -44,7 +43,7 @@ func (r Repository) CreateAppointment(ctx context.Context, appt ent.Appointment)
 			err = ErrAlreadyExists
 		}
 	}()
-	appointment, err := m.MapToStorage.Appointment(appt)
+	appointment, err := m.MapToStorage.AppointmentForCreate(appt)
 	if err != nil {
 		if errors.Is(err, m.ErrInvalidEntity) {
 			return ErrInvalidAppointment
@@ -299,13 +298,20 @@ func (r Repository) GetWorkdaysByDateRange(ctx context.Context, barberID int64, 
 	return workdays, nil
 }
 
-func (r Repository) UpdateAppointmentTime(ctx context.Context, appointmentID, workdayID int, time tm.Duration) (err error) {
+func (r Repository) UpdateAppointment(ctx context.Context, appointment ent.Appointment) (err error) {
 	defer func() {
 		if errors.Is(err, st.ErrNonUniqueData) {
 			err = ErrNonUniqueData
 		}
 	}()
-	return r.Storage.UpdateAppointmentTime(ctx, appointmentID, workdayID, int16(time))
+	appt, err := m.MapToStorage.AppointmentForUpdate(appointment)
+	if err != nil {
+		if errors.Is(err, m.ErrInvalidEntity) {
+			return ErrInvalidAppointment
+		}
+		return err
+	}
+	return r.Storage.UpdateAppointment(ctx, appt)
 }
 
 // UpdateBarber updates only non-empty fields of Barber

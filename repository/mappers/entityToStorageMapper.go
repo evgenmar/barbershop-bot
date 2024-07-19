@@ -13,11 +13,12 @@ type EntityToStorageMapper struct{}
 func (e EntityToStorageMapper) Appointment(appointment ent.Appointment) st.Appointment {
 	return st.Appointment{
 		ID:        appointment.ID,
-		UserID:    appointment.UserID,
+		UserID:    mapInt64ToNullInt64(appointment.UserID),
 		WorkdayID: appointment.WorkdayID,
 		ServiceID: mapIntToNullInt32(appointment.ServiceID),
 		Time:      int16(appointment.Time),
 		Duration:  int16(appointment.Duration),
+		Note:      mapStrToNullStr(appointment.Note),
 		CreatedAt: appointment.CreatedAt,
 	}
 }
@@ -92,6 +93,13 @@ func mapDateToStr(date time.Time) (str string) {
 func mapIntToNullInt32(i int) (nullInt32 sql.NullInt32) {
 	if i != 0 {
 		nullInt32 = sql.NullInt32{Int32: int32(i), Valid: true}
+	}
+	return
+}
+
+func mapInt64ToNullInt64(i int64) (nullInt64 sql.NullInt64) {
+	if i != 0 {
+		nullInt64 = sql.NullInt64{Int64: i, Valid: true}
 	}
 	return
 }

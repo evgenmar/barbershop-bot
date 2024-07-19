@@ -11,7 +11,12 @@ type Appointment struct {
 	ServiceID int
 	Time      tm.Duration
 	Duration  tm.Duration
+	Note      string
 
 	//CreatedAt has a format of Unix time
 	CreatedAt int64
 }
+
+const (
+	NoNote = "Нет заметки"
+)

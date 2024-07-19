@@ -177,11 +177,11 @@ func (c ContextProvider) GetWorkdaysByDateRange(barberID int64, dateRange ent.Da
 	return c.repo.GetWorkdaysByDateRange(ctx, barberID, dateRange)
 }
 
-// func (c ContextProvider) UpdateAppointmentTime(appointmentID, workdayID int, time tm.Duration) (err error) {
+// func (c ContextProvider) UpdateAppointment(appointment ent.Appointment) (err error) {
 // 	defer func() { err = e.WrapIfErr("can't update appointment", err) }()
 // 	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
 // 	defer cancel()
-// 	return c.repo.UpdateAppointmentTime(ctx, appointmentID, workdayID, time)
+// 	return c.repo.UpdateAppointment(ctx, appointment)
 // }
 
 func (c ContextProvider) UpdateBarber(barber ent.Barber) (err error) {

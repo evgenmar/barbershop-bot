@@ -389,7 +389,10 @@ func showToUserFreeWorkdaysForNewAppointment(ctx tele.Context, deltaDisplayedMon
 		if err != nil {
 			return logAndMsgErrUser(ctx, errMsg, err)
 		}
-		return ctx.Edit(fmt.Sprintf(informUserNoFreeTimeForNewAppointment, barber.Phone, barber.ID), markupUserBackToMain)
+		return ctx.Edit(
+			fmt.Sprintf(informUserNoFreeTimeForNewAppointment, barber.Phone, barber.ID),
+			markupUserBackToMain, tele.ModeMarkdown,
+		)
 	}
 	displayedMonthRange := ent.DateRange{
 		StartDate: firstDisplayedDateRange.EndDate,

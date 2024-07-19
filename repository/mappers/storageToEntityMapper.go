@@ -17,11 +17,12 @@ var MapToEntity StorageToEntityMapper
 func (s StorageToEntityMapper) Appointment(appointment st.Appointment) ent.Appointment {
 	return ent.Appointment{
 		ID:        appointment.ID,
-		UserID:    appointment.UserID,
+		UserID:    mapNullInt64ToInt64(appointment.UserID),
 		WorkdayID: appointment.WorkdayID,
 		ServiceID: mapNullInt32ToInt(appointment.ServiceID),
 		Time:      tm.Duration(appointment.Time),
 		Duration:  tm.Duration(appointment.Duration),
+		Note:      mapNoteToEntity(appointment.Note),
 		CreatedAt: appointment.CreatedAt,
 	}
 }
@@ -85,11 +86,25 @@ func mapNameToEntity(name sql.NullString) string {
 	return name.String
 }
 
+func mapNoteToEntity(note sql.NullString) string {
+	if !note.Valid {
+		return ent.NoNote
+	}
+	return note.String
+}
+
 func mapNullInt32ToInt(nullint32 sql.NullInt32) int {
 	if !nullint32.Valid {
 		return 0
 	}
 	return int(nullint32.Int32)
+}
+
+func mapNullInt64ToInt64(nullint64 sql.NullInt64) int64 {
+	if !nullint64.Valid {
+		return 0
+	}
+	return nullint64.Int64
 }
 
 func mapPhoneToEntity(phone sql.NullString) string {
