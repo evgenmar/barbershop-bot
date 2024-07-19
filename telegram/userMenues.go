@@ -17,111 +17,111 @@ const (
 Перед тем как оставить свои персональные данные, ознакомьтесь с политикой конфиденциальности.`
 	privacyUser = "Текст политики конфиденциальности для клиентов."
 
-	appointmentAlreadyExists        = "Вы уже записаны на услугу:\n\n%s\n\nБарбер %s ждет Вас %s в %s."
-	noWorkingBarbers                = "Извините, услуги временно не предоставляются, так как в настоящий момент в приложении нет ни одного работающего барбера."
-	selectBarberForAppointment      = "Выберите барбера, к которому хотите записаться на стрижку."
-	selectServiceForAppointment     = "Выберите услугу из списка услуг, предоставляемых барбером %s."
-	noFreeTimeForNewAppointmentUser = `Извините, график барбера полностью занят и нет возможности записаться на эту услугу.
+	appointmentAlreadyExists              = "Вы уже записаны на услугу:\n\n%s\n\nБарбер %s ждет Вас %s в %s."
+	noWorkingBarbers                      = "Извините, услуги временно не предоставляются, так как в настоящий момент в приложении нет ни одного работающего барбера."
+	selectBarberForAppointment            = "Выберите барбера, к которому хотите записаться на стрижку."
+	userSelectServiceForAppointment       = "Выберите услугу из списка услуг, предоставляемых барбером %s."
+	informUserNoFreeTimeForNewAppointment = `Извините, график барбера полностью занят и нет возможности записаться на эту услугу.
 Вы можете попробовать связаться с барбером и уточнить у него возможность записи в индивидуальном порядке.
 Контакты для связи:
 Телефон: %s
 [Ссылка на профиль](tg://user?id=%d)`
-	selectDateForAppointment  = "Информация о выбранной услуге:\n\n%s\n\nВыберите удобную для Вас дату. Отображены только даты, на которые возможна запись."
-	selectTimeForAppointment  = "Информация о выбранной услуге:\n\n%s\n\nВыбранная Вами дата: %s\n\nВыберите удобное для Вас время. Отображено только время, на которое возможна запись."
-	confirmNewAppointment     = "Информация о выбранной услуге:\n\n%s\n\nВыбранная Вами дата: %s\nВыбранное время: %s\n\nПодтвердите создание записи или вернитесь в главное меню."
+	selectDateForAppointment  = "Информация об услуге:\n\n%s\n\nВыберите дату. Отображены только даты, на которые возможна запись."
+	selectTimeForAppointment  = "Информация об услуге:\n\n%s\n\nВыбранная Вами дата: %s\n\nВыберите время. Отображено только время, на которое возможна запись."
+	confirmNewAppointment     = "Информация об услуге:\n\n%s\n\nВыбранная Вами дата: %s\nВыбранное время: %s\n\nПодтвердите создание записи или вернитесь в главное меню."
 	newAppointmentFailed      = "К сожалению указанное время уже занято. Не удалось создать запись."
 	newAppointmentSavedByUser = "Вы записались на услугу:\n\n%s\n\nБарбер %s ждет Вас %s в %s."
 
 	errorUser = `Произошла ошибка обработки команды. Команда не была выполнена. Приносим извинения.
 Пожалуйста, перейдите в главное меню и попробуйте выполнить команду заново.`
 
-	endpntBarberForAppointment         = "barber_for_appointment"
-	endpntServiceForAppointmentUser    = "service_for_appointment_user"
-	endpntMonthForNewAppointmentUser   = "month_for_new_appointment_user"
-	endpntWorkdayForNewAppointmentUser = "workday_for_new_appointment_user"
-	endpntTimeForNewAppointmentUser    = "time_for_new_appointment_user"
-	endpntBackToMainUser               = "back_to_main_user"
+	endpntBarberForAppointment               = "barber_for_appointment"
+	endpntUserSelectServiceForAppointment    = "user_select_service_for_appointment"
+	endpntUserSelectMonthForNewAppointment   = "user_select_month_for_new_appointment"
+	endpntUserSelectWorkdayForNewAppointment = "user_select_workday_for_new_appointment"
+	endpntUserSelectTimeForNewAppointment    = "user_select_time_for_new_appointment"
+	endpntUserBackToMain                     = "user_back_to_main"
 )
 
 var (
-	markupMainUser                        = &tele.ReplyMarkup{}
-	btnSettingsUser                       = markupEmpty.Data("Настройки", "settings_user")
+	markupUserMain                        = &tele.ReplyMarkup{}
+	btnUserSettings                       = markupEmpty.Data("Настройки", "user_settings")
 	btnSignUpForAppointment               = markupEmpty.Data("Записаться на стрижку", "sign_up_for_appointment")
 	btnSelectBarberForAppointment         = markupEmpty.Data("", endpntBarberForAppointment)
-	btnSelectServiceForAppointmentUser    = markupEmpty.Data("", endpntServiceForAppointmentUser)
-	btnSelectMonthForNewAppointmentUser   = markupEmpty.Data("", endpntMonthForNewAppointmentUser)
-	btnSelectWorkdayForNewAppointmentUser = markupEmpty.Data("", endpntWorkdayForNewAppointmentUser)
-	btnSelectTimeForNewAppointmentUser    = markupEmpty.Data("", endpntTimeForNewAppointmentUser)
+	btnUserSelectServiceForAppointment    = markupEmpty.Data("", endpntUserSelectServiceForAppointment)
+	btnUserSelectMonthForNewAppointment   = markupEmpty.Data("", endpntUserSelectMonthForNewAppointment)
+	btnUserSelectWorkdayForNewAppointment = markupEmpty.Data("", endpntUserSelectWorkdayForNewAppointment)
+	btnUserSelectTimeForNewAppointment    = markupEmpty.Data("", endpntUserSelectTimeForNewAppointment)
 
-	markupConfirmNewAppointmentUser = &tele.ReplyMarkup{}
-	btnConfirmNewAppointmentUser    = markupEmpty.Data("Подтвердить запись", "confirm_new_appointment_user")
+	markupUserConfirmNewAppointment = &tele.ReplyMarkup{}
+	btnUserConfirmNewAppointment    = markupEmpty.Data("Подтвердить запись", "user_confirm_new_appointment")
 
-	markupNewAppointmentFailedUser            = &tele.ReplyMarkup{}
-	btnSelectAnotherTimeForNewAppointmentUser = markupEmpty.Data("Выбрать другое время", "select_another_time_for_new_appointment_user")
+	markupUserNewAppointmentFailed            = &tele.ReplyMarkup{}
+	btnUserSelectAnotherTimeForNewAppointment = markupEmpty.Data("Выбрать другое время", "user_select_another_time_for_new_appointment")
 
-	markupSettingsUser = &tele.ReplyMarkup{}
-	btnUpdPersonalUser = markupEmpty.Data("Обновить персональные данные", "upd_personal_data_user")
+	markupUserSettings = &tele.ReplyMarkup{}
+	btnUserUpdPersonal = markupEmpty.Data("Обновить персональные данные", "user_upd_personal_data")
 
 	markupPrivacyExplanation = &tele.ReplyMarkup{}
-	btnPrivacyUser           = markupEmpty.Data("Политика конфиденциальности", "privacy_policy_user")
+	btnUserPrivacy           = markupEmpty.Data("Политика конфиденциальности", "user_privacy_policy")
 
-	markupPrivacyUser       = &tele.ReplyMarkup{}
+	markupUserPrivacy       = &tele.ReplyMarkup{}
 	btnUserAgreeWithPrivacy = markupEmpty.Data("Соглашаюсь с политикой конфиденциальности", "user_agree_with_privacy")
 
-	markupPersonalUser = &tele.ReplyMarkup{}
-	btnUpdNameUser     = markupEmpty.Data("Обновить имя", "upd_name_user")
-	btnUpdPhoneUser    = markupEmpty.Data("Обновить номер телефона", "upd_phone_user")
+	markupUserPersonal = &tele.ReplyMarkup{}
+	btnUserUpdName     = markupEmpty.Data("Обновить имя", "user_upd_name")
+	btnUserUpdPhone    = markupEmpty.Data("Обновить номер телефона", "user_upd_phone")
 
-	markupBackToMainUser = &tele.ReplyMarkup{}
-	btnBackToMainUser    = markupEmpty.Data(backToMain, endpntBackToMainUser)
+	markupUserBackToMain = &tele.ReplyMarkup{}
+	btnUserBackToMain    = markupEmpty.Data(backToMain, endpntUserBackToMain)
 
-	markupBackToMainUserSend = &tele.ReplyMarkup{}
-	btnBackToMainUserSend    = markupEmpty.Data(backToMain, "back_to_main_user_send")
+	markupUserBackToMainSend = &tele.ReplyMarkup{}
+	btnUserBackToMainSend    = markupEmpty.Data(backToMain, "user_back_to_main_send")
 )
 
 func init() {
-	markupMainUser.Inline(
+	markupUserMain.Inline(
 		markupEmpty.Row(btnSignUpForAppointment),
-		markupEmpty.Row(btnSettingsUser),
+		markupEmpty.Row(btnUserSettings),
 	)
 
-	markupConfirmNewAppointmentUser.Inline(
-		markupEmpty.Row(btnConfirmNewAppointmentUser),
-		markupEmpty.Row(btnBackToMainUser),
+	markupUserConfirmNewAppointment.Inline(
+		markupEmpty.Row(btnUserConfirmNewAppointment),
+		markupEmpty.Row(btnUserBackToMain),
 	)
 
-	markupNewAppointmentFailedUser.Inline(
-		markupEmpty.Row(btnSelectAnotherTimeForNewAppointmentUser),
-		markupEmpty.Row(btnBackToMainUser),
+	markupUserNewAppointmentFailed.Inline(
+		markupEmpty.Row(btnUserSelectAnotherTimeForNewAppointment),
+		markupEmpty.Row(btnUserBackToMain),
 	)
 
-	markupSettingsUser.Inline(
-		markupEmpty.Row(btnUpdPersonalUser),
-		markupEmpty.Row(btnBackToMainUser),
+	markupUserSettings.Inline(
+		markupEmpty.Row(btnUserUpdPersonal),
+		markupEmpty.Row(btnUserBackToMain),
 	)
 
 	markupPrivacyExplanation.Inline(
-		markupEmpty.Row(btnPrivacyUser),
-		markupEmpty.Row(btnBackToMainUser),
+		markupEmpty.Row(btnUserPrivacy),
+		markupEmpty.Row(btnUserBackToMain),
 	)
 
-	markupPrivacyUser.Inline(
+	markupUserPrivacy.Inline(
 		markupEmpty.Row(btnUserAgreeWithPrivacy),
-		markupEmpty.Row(btnBackToMainUser),
+		markupEmpty.Row(btnUserBackToMain),
 	)
 
-	markupPersonalUser.Inline(
-		markupEmpty.Row(btnUpdNameUser),
-		markupEmpty.Row(btnUpdPhoneUser),
-		markupEmpty.Row(btnBackToMainUser),
+	markupUserPersonal.Inline(
+		markupEmpty.Row(btnUserUpdName),
+		markupEmpty.Row(btnUserUpdPhone),
+		markupEmpty.Row(btnUserBackToMain),
 	)
 
-	markupBackToMainUser.Inline(
-		markupEmpty.Row(btnBackToMainUser),
+	markupUserBackToMain.Inline(
+		markupEmpty.Row(btnUserBackToMain),
 	)
 
-	markupBackToMainUserSend.Inline(
-		markupEmpty.Row(btnBackToMainUserSend),
+	markupUserBackToMainSend.Inline(
+		markupEmpty.Row(btnUserBackToMainSend),
 	)
 }
 
@@ -139,7 +139,7 @@ func markupSelectBarberForAppointment(barbers []ent.Barber) *tele.ReplyMarkup {
 	for _, barber := range barbers {
 		rows = append(rows, markup.Row(btnBarber(barber, endpntBarberForAppointment)))
 	}
-	rows = append(rows, markup.Row(btnBackToMainUser))
+	rows = append(rows, markup.Row(btnUserBackToMain))
 	markup.Inline(rows...)
 	return markup
 }

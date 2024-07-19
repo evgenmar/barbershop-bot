@@ -21,35 +21,35 @@ import (
 
 func onStartBarber(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Send(mainMenu, markupMainBarber)
+	return ctx.Send(mainMenu, markupBarberMain)
 }
 
-func onSettingsBarber(ctx tele.Context) error {
+func onBarberSettings(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Edit(settingsMenu, markupSettingsBarber)
+	return ctx.Edit(settingsMenu, markupBarberSettings)
 }
 
 func onListOfNecessarySettings(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Edit(listOfNecessarySettings, markupShortSettingsBarber)
+	return ctx.Edit(listOfNecessarySettings, markupShortBarberSettings)
 }
 
-func onManageAccountBarber(ctx tele.Context) error {
+func onBarberManageAccount(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Edit(manageAccountBarber, markupManageAccountBarber)
+	return ctx.Edit(manageBarberAccount, markupBarberManageAccount)
 }
 
-func onShowCurrentSettingsBarber(ctx tele.Context) error {
+func onBarberCurrentSettings(ctx tele.Context) error {
 	barberID := ctx.Sender().ID
 	sess.UpdateBarberState(barberID, sess.StateStart)
 	barber, err := cp.RepoWithContext.GetBarberByID(barberID)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, "can't show current barber settings", err)
 	}
-	return ctx.Edit(currentSettings+barber.Info(), markupBackToMainBarber)
+	return ctx.Edit(currentSettings+barber.Info(), markupBarberBackToMain)
 }
 
-func onUpdPersonalBarber(ctx tele.Context) error {
+func onBarberUpdPersonal(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
 	barberID := ctx.Sender().ID
 	barber, err := cp.RepoWithContext.GetBarberByID(barberID)
@@ -57,22 +57,22 @@ func onUpdPersonalBarber(ctx tele.Context) error {
 		return logAndMsgErrBarber(ctx, "can't show update personal data options for barber", err)
 	}
 	if barber.Name == ent.NoName && barber.Phone == ent.NoPhone {
-		return ctx.Edit(privacyBarber, markupPrivacyBarber)
+		return ctx.Edit(privacyBarber, markupBarberPrivacy)
 	}
-	return ctx.Edit(selectPersonalData, markupPersonalBarber)
+	return ctx.Edit(selectPersonalData, markupBarberPersonal)
 }
 
 func onBarberAgreeWithPrivacy(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Edit(selectPersonalData, markupPersonalBarber)
+	return ctx.Edit(selectPersonalData, markupBarberPersonal)
 }
 
-func onUpdNameBarber(ctx tele.Context) error {
+func onBarberUpdName(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateUpdName)
 	return ctx.Edit(updName)
 }
 
-func onUpdPhoneBarber(ctx tele.Context) error {
+func onBarberUpdPhone(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateUpdPhone)
 	return ctx.Edit(updPhone)
 }
@@ -124,7 +124,7 @@ func onSelectLastWorkDate(ctx tele.Context) error {
 	}
 	switch dateToSave.Compare(barber.LastWorkdate) {
 	case 0:
-		return ctx.Edit(lastWorkDateUnchanged, markupBackToMainBarber)
+		return ctx.Edit(lastWorkDateUnchanged, markupBarberBackToMain)
 	case 1:
 		if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, LastWorkdate: dateToSave}); err != nil {
 			return logAndMsgErrBarber(ctx, errMsg, err)
@@ -132,9 +132,9 @@ func onSelectLastWorkDate(ctx tele.Context) error {
 		if err := sched.MakeSchedule(barberID); err != nil {
 			log.Print(e.Wrap(errMsg, err))
 			// TODO: ensure atomicity using outbox pattern
-			return ctx.Send(lastWorkDateSavedWithoutSсhedule, markupBackToMainBarber)
+			return ctx.Send(lastWorkDateSavedWithoutSсhedule, markupBarberBackToMain)
 		}
-		return ctx.Edit(lastWorkDateSaved, markupBackToMainBarber)
+		return ctx.Edit(lastWorkDateSaved, markupBarberBackToMain)
 	case -1:
 		latestWorkDate, err := cp.RepoWithContext.GetLatestWorkDate(barberID)
 		if err != nil {
@@ -144,15 +144,15 @@ func onSelectLastWorkDate(ctx tele.Context) error {
 		err = cp.RepoWithContext.DeleteWorkdaysByDateRange(barberID, dateRangeToDelete)
 		if err != nil && !errors.Is(err, rep.ErrInvalidDateRange) {
 			if errors.Is(err, rep.ErrAppointmentsExists) {
-				return ctx.Edit(haveAppointmentAfterDataToSave, markupBackToMainBarber)
+				return ctx.Edit(haveAppointmentAfterDataToSave, markupBarberBackToMain)
 			}
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
 		if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, LastWorkdate: dateToSave}); err != nil {
 			// TODO: ensure atomicity using outbox pattern
-			return ctx.Send(lastWorkDateNotSavedButScheduleDeleted, markupBackToMainBarber)
+			return ctx.Send(lastWorkDateNotSavedButScheduleDeleted, markupBarberBackToMain)
 		}
-		return ctx.Edit(lastWorkDateSaved, markupBackToMainBarber)
+		return ctx.Edit(lastWorkDateSaved, markupBarberBackToMain)
 	default:
 		return nil
 	}
@@ -168,7 +168,7 @@ func onSelfDeleteBarber(ctx tele.Context) error {
 	if barberToDelete.LastWorkdate.Before(tm.Today()) {
 		return ctx.Edit(confirmSelfDeletion, markupConfirmSelfDeletion)
 	}
-	return ctx.Edit(youHaveActiveSchedule+preDeletionBarberInstruction, markupBackToMainBarber)
+	return ctx.Edit(youHaveActiveSchedule+preDeletionBarberInstruction, markupBarberBackToMain)
 }
 
 func onSureToSelfDeleteBarber(ctx tele.Context) error {
@@ -281,7 +281,7 @@ func onSaveNewService(ctx tele.Context) error {
 	if err := cp.RepoWithContext.CreateService(serviceToCreate); err != nil {
 		sess.UpdateBarberState(barberID, sess.StateStart)
 		if errors.Is(err, rep.ErrInvalidService) {
-			return ctx.Edit(invalidService, markupBackToMainBarber)
+			return ctx.Edit(invalidService, markupBarberBackToMain)
 		}
 		if errors.Is(err, rep.ErrAlreadyExists) {
 			return ctx.Edit(nonUniqueServiceName+"\n\n"+newService.Info(), markupEnterServiceName, tele.ModeMarkdown)
@@ -321,7 +321,7 @@ func onSelectServiceToEdit(ctx tele.Context) error {
 	}
 	return ctx.Edit(
 		selectServiceToEdit,
-		markupSelectService(services, endpntServiceToEdit, endpntBackToMainBarber),
+		markupSelectService(services, endpntServiceToEdit, endpntBarberBackToMain),
 	)
 }
 
@@ -393,7 +393,7 @@ func onUpdateService(ctx tele.Context) error {
 	if err := cp.RepoWithContext.UpdateService(serviceToUpdate); err != nil {
 		sess.UpdateBarberState(barberID, sess.StateStart)
 		if errors.Is(err, rep.ErrInvalidService) {
-			return ctx.Edit(invalidService, markupBackToMainBarber)
+			return ctx.Edit(invalidService, markupBarberBackToMain)
 		}
 		if errors.Is(err, rep.ErrNonUniqueData) {
 			return ctx.Edit(nonUniqueServiceName+"\n\n"+editedService.Info(), markupEditServiceName)
@@ -416,7 +416,7 @@ func onDeleteService(ctx tele.Context) error {
 	}
 	return ctx.Edit(
 		selectServiceToDelete,
-		markupSelectService(services, endpntServiceToDelete, endpntBackToMainBarber),
+		markupSelectService(services, endpntServiceToDelete, endpntBarberBackToMain),
 	)
 }
 
@@ -442,7 +442,7 @@ func onSureToDeleteService(ctx tele.Context) error {
 	if err := cp.RepoWithContext.DeleteServiceByID(serviceID); err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	return ctx.Edit(serviceDeleted, markupBackToMainBarber)
+	return ctx.Edit(serviceDeleted, markupBarberBackToMain)
 }
 
 func onManageBarbers(ctx tele.Context) error {
@@ -460,7 +460,7 @@ func onShowAllBarbers(ctx tele.Context) error {
 	for _, barber := range barbers {
 		barbersInfo = barbersInfo + "\n\n" + barber.PublicInfo()
 	}
-	return ctx.Edit(listOfBarbers+barbersInfo, markupBackToMainBarber, tele.ModeMarkdown)
+	return ctx.Edit(listOfBarbers+barbersInfo, markupBarberBackToMain, tele.ModeMarkdown)
 }
 
 func onAddBarber(ctx tele.Context) error {
@@ -476,7 +476,7 @@ func onDeleteBarber(ctx tele.Context) error {
 		return logAndMsgErrBarber(ctx, "can't suggest actions to delete barber", err)
 	}
 	if len(barbers) == 1 {
-		return ctx.Edit(onlyOneBarberExists, markupBackToMainBarber)
+		return ctx.Edit(onlyOneBarberExists, markupBarberBackToMain)
 	}
 	markupSelectBarber := markupSelectBarberToDeletion(barberID, barbers)
 	if len(markupSelectBarber.InlineKeyboard) == 1 {
@@ -504,14 +504,14 @@ func onDeleteCertainBarber(ctx tele.Context) error {
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
 		cfg.Barbers.RemoveID(barberIDToDelete)
-		return ctx.Edit(barberDeleted, markupBackToMainBarber)
+		return ctx.Edit(barberDeleted, markupBarberBackToMain)
 	}
-	return ctx.Edit(barberHaveActiveSchedule, markupBackToMainBarber)
+	return ctx.Edit(barberHaveActiveSchedule, markupBarberBackToMain)
 }
 
-func onBackToMainBarber(ctx tele.Context) error {
+func onBarberBackToMain(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Edit(mainMenu, markupMainBarber)
+	return ctx.Edit(mainMenu, markupBarberMain)
 }
 
 func onTextBarber(ctx tele.Context) error {
@@ -553,7 +553,7 @@ func onUpdateBarberName(ctx tele.Context) error {
 		return logAndMsgErrBarber(ctx, "can't update barber's name", err)
 	}
 	sess.UpdateBarberState(barberID, sess.StateStart)
-	return ctx.Send(updNameSuccess, markupPersonalBarber)
+	return ctx.Send(updNameSuccess, markupBarberPersonal)
 }
 
 func onUpdateBarberPhone(ctx tele.Context) error {
@@ -571,7 +571,7 @@ func onUpdateBarberPhone(ctx tele.Context) error {
 		return logAndMsgErrBarber(ctx, "can't update barber's phone", err)
 	}
 	sess.UpdateBarberState(barberID, sess.StateStart)
-	return ctx.Send(updPhoneSuccess, markupPersonalBarber)
+	return ctx.Send(updPhoneSuccess, markupBarberPersonal)
 }
 
 func onEnterServName(ctx tele.Context) error {
@@ -666,7 +666,7 @@ func onAddNewBarber(ctx tele.Context) error {
 	newBarberID := ctx.Message().Contact.UserID
 	if err := cp.RepoWithContext.CreateBarber(newBarberID); err != nil {
 		if errors.Is(err, rep.ErrAlreadyExists) {
-			return ctx.Send(userIsAlreadyBarber, markupBackToMainBarber)
+			return ctx.Send(userIsAlreadyBarber, markupBarberBackToMain)
 		}
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
@@ -674,9 +674,9 @@ func onAddNewBarber(ctx tele.Context) error {
 	if err := sched.MakeSchedule(newBarberID); err != nil {
 		log.Print(e.Wrap(errMsg, err))
 		// TODO: ensure atomicity using outbox pattern
-		return ctx.Send(addedNewBarberWithoutSсhedule, markupBackToMainBarber)
+		return ctx.Send(addedNewBarberWithoutSсhedule, markupBarberBackToMain)
 	}
-	return ctx.Send(addedNewBarberWithSсhedule, markupBackToMainBarber)
+	return ctx.Send(addedNewBarberWithSсhedule, markupBarberBackToMain)
 }
 
 func defineDisplayedDateRangeForLastWorkDate(
@@ -717,7 +717,7 @@ func defineFirstDisplayedDateRangeForLastWorkDate(latestAppointmentDate time.Tim
 
 func logAndMsgErrBarber(ctx tele.Context, msg string, err error) error {
 	log.Print(e.Wrap(msg, err))
-	return ctx.Send(errorBarber, markupBackToMainBarber)
+	return ctx.Send(errorBarber, markupBarberBackToMain)
 }
 
 func showEditServOptsWithEditMsg(ctx tele.Context, editedService sess.EditedService) error {

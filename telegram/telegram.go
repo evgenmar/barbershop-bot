@@ -49,18 +49,18 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	bot.Handle("/start", noAction, onStartRestrict())
 	bot.Handle(tele.OnText, noAction, onTextRestrict())
 
-	barbers.Handle(&btnSettingsBarber, onSettingsBarber)
+	barbers.Handle(&btnBarberSettings, onBarberSettings)
 
 	barbers.Handle(&btnListOfNecessarySettings, onListOfNecessarySettings)
 
-	barbers.Handle(&btnManageAccountBarber, onManageAccountBarber)
+	barbers.Handle(&btnBarberManageAccount, onBarberManageAccount)
 
-	barbers.Handle(&btnShowCurrentSettingsBarber, onShowCurrentSettingsBarber)
+	barbers.Handle(&btnBarberCurrentSettings, onBarberCurrentSettings)
 
-	barbers.Handle(&btnUpdPersonalBarber, onUpdPersonalBarber)
+	barbers.Handle(&btnBarberUpdPersonal, onBarberUpdPersonal)
 	barbers.Handle(&btnBarberAgreeWithPrivacy, onBarberAgreeWithPrivacy)
-	barbers.Handle(&btnUpdNameBarber, onUpdNameBarber)
-	barbers.Handle(&btnUpdPhoneBarber, onUpdPhoneBarber)
+	barbers.Handle(&btnBarberUpdName, onBarberUpdName)
+	barbers.Handle(&btnBarberUpdPhone, onBarberUpdPhone)
 
 	barbers.Handle(&btnDeleteAccount, onDeleteAccount)
 	barbers.Handle(&btnSetLastWorkDate, onSetLastWorkDate)
@@ -102,29 +102,29 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	barbers.Handle(&btnDeleteBarber, onDeleteBarber)
 	barbers.Handle(&btnDeleteCertainBarber, onDeleteCertainBarber)
 
-	barbers.Handle(&btnBackToMainBarber, onBackToMainBarber)
+	barbers.Handle(&btnBarberBackToMain, onBarberBackToMain)
 
 	barbers.Handle(tele.OnContact, onContactBarber)
 	//TODO barberHandlers
 
 	users.Handle(&btnSignUpForAppointment, onSignUpForAppointment)
 	users.Handle(&btnSelectBarberForAppointment, onSelectBarberForAppointment)
-	users.Handle(&btnSelectServiceForAppointmentUser, onSelectServiceForAppointmentUser)
-	users.Handle(&btnSelectMonthForNewAppointmentUser, onSelectMonthForNewAppointmentUser)
-	users.Handle(&btnSelectWorkdayForNewAppointmentUser, onSelectWorkdayForNewAppointmentUser)
-	users.Handle(&btnSelectTimeForNewAppointmentUser, onSelectTimeForNewAppointmentUser)
-	users.Handle(&btnConfirmNewAppointmentUser, onConfirmNewAppointmentUser)
-	users.Handle(&btnSelectAnotherTimeForNewAppointmentUser, onSelectAnotherTimeForNewAppointmentUser)
+	users.Handle(&btnUserSelectServiceForAppointment, onUserSelectServiceForAppointment)
+	users.Handle(&btnUserSelectMonthForNewAppointment, onUserSelectMonthForNewAppointment)
+	users.Handle(&btnUserSelectWorkdayForNewAppointment, onUserSelectWorkdayForNewAppointment)
+	users.Handle(&btnUserSelectTimeForNewAppointment, onUserSelectTimeForNewAppointment)
+	users.Handle(&btnUserConfirmNewAppointment, onUserConfirmNewAppointment)
+	users.Handle(&btnUserSelectAnotherTimeForNewAppointment, onUserSelectAnotherTimeForNewAppointment)
 
-	users.Handle(&btnSettingsUser, onSettingsUser)
-	users.Handle(&btnUpdPersonalUser, onUpdPersonalUser)
-	users.Handle(&btnPrivacyUser, onPrivacyUser)
+	users.Handle(&btnUserSettings, onUserSettings)
+	users.Handle(&btnUserUpdPersonal, onUserUpdPersonal)
+	users.Handle(&btnUserPrivacy, onUserPrivacy)
 	users.Handle(&btnUserAgreeWithPrivacy, onUserAgreeWithPrivacy)
-	users.Handle(&btnUpdNameUser, onUpdNameUser)
-	users.Handle(&btnUpdPhoneUser, onUpdPhoneUser)
+	users.Handle(&btnUserUpdName, onUserUpdName)
+	users.Handle(&btnUserUpdPhone, onUserUpdPhone)
 
-	users.Handle(&btnBackToMainUser, onBackToMainUser)
-	users.Handle(&btnBackToMainUserSend, onBackToMainUserSend)
+	users.Handle(&btnUserBackToMain, onUserBackToMain)
+	users.Handle(&btnUserBackToMainSend, onUserBackToMainSend)
 	//TODO userHandlers
 
 	return bot

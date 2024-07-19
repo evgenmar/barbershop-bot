@@ -19,7 +19,7 @@ import (
 
 func onStartUser(ctx tele.Context) error {
 	sess.UpdateUserState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Send(mainMenu, markupMainUser)
+	return ctx.Send(mainMenu, markupUserMain)
 }
 
 func onSignUpForAppointment(ctx tele.Context) error {
@@ -47,7 +47,7 @@ func onSelectBarberForAppointment(ctx tele.Context) error {
 	return showToUserServicesForNewAppointment(ctx, barber)
 }
 
-func onSelectServiceForAppointmentUser(ctx tele.Context) error {
+func onUserSelectServiceForAppointment(ctx tele.Context) error {
 	errMsg := "can't show free workdays for new appointment"
 	serviceID, err := strconv.Atoi(ctx.Callback().Data)
 	if err != nil {
@@ -63,7 +63,7 @@ func onSelectServiceForAppointmentUser(ctx tele.Context) error {
 	return showToUserFreeWorkdaysForNewAppointment(ctx, 0, newAppointment)
 }
 
-func onSelectMonthForNewAppointmentUser(ctx tele.Context) error {
+func onUserSelectMonthForNewAppointment(ctx tele.Context) error {
 	delta, err := strconv.ParseInt(ctx.Callback().Data, 10, 8)
 	if err != nil {
 		return logAndMsgErrUser(ctx, "can't show free workdays for new appointment", err)
@@ -72,7 +72,7 @@ func onSelectMonthForNewAppointmentUser(ctx tele.Context) error {
 	return showToUserFreeWorkdaysForNewAppointment(ctx, int8(delta), newAppointment)
 }
 
-func onSelectWorkdayForNewAppointmentUser(ctx tele.Context) error {
+func onUserSelectWorkdayForNewAppointment(ctx tele.Context) error {
 	errMsg := "can't show free time for new appointment"
 	workdayID, err := strconv.Atoi(ctx.Callback().Data)
 	if err != nil {
@@ -87,7 +87,7 @@ func onSelectWorkdayForNewAppointmentUser(ctx tele.Context) error {
 	return showToUserFreeTimesForNewAppointment(ctx, workday, appointments, newAppointment)
 }
 
-func onSelectTimeForNewAppointmentUser(ctx tele.Context) error {
+func onUserSelectTimeForNewAppointment(ctx tele.Context) error {
 	errMsg := "can't handle select time for new appointment"
 	apptTime, err := strconv.ParseUint(ctx.Callback().Data, 10, 64)
 	if err != nil {
@@ -111,11 +111,11 @@ func onSelectTimeForNewAppointmentUser(ctx tele.Context) error {
 	}
 	return ctx.Edit(
 		fmt.Sprintf(confirmNewAppointment, service.Info(), tm.ShowDate(workday.Date), appointmentTime.ShortString()),
-		markupConfirmNewAppointmentUser,
+		markupUserConfirmNewAppointment,
 	)
 }
 
-func onConfirmNewAppointmentUser(ctx tele.Context) error {
+func onUserConfirmNewAppointment(ctx tele.Context) error {
 	errMsg := "can't confirm new appointment for user"
 	userID := ctx.Sender().ID
 	newAppointment := sess.GetNewAppointmentUser(userID)
@@ -137,13 +137,13 @@ func onConfirmNewAppointmentUser(ctx tele.Context) error {
 				newAppointmentSavedByUser,
 				service.Info(), barber.Name, tm.ShowDate(date), newAppointment.Time.ShortString(),
 			),
-			markupBackToMainUserSend,
+			markupUserBackToMainSend,
 		)
 	}
-	return ctx.Edit(newAppointmentFailed, markupNewAppointmentFailedUser)
+	return ctx.Edit(newAppointmentFailed, markupUserNewAppointmentFailed)
 }
 
-func onSelectAnotherTimeForNewAppointmentUser(ctx tele.Context) error {
+func onUserSelectAnotherTimeForNewAppointment(ctx tele.Context) error {
 	newAppointment := sess.GetNewAppointmentUser(ctx.Sender().ID)
 	workday, appointments, err := getWorkdayAndAppointments(newAppointment.WorkdayID)
 	if err != nil {
@@ -152,12 +152,12 @@ func onSelectAnotherTimeForNewAppointmentUser(ctx tele.Context) error {
 	return showToUserFreeTimesForNewAppointment(ctx, workday, appointments, newAppointment)
 }
 
-func onSettingsUser(ctx tele.Context) error {
+func onUserSettings(ctx tele.Context) error {
 	sess.UpdateUserState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Edit(settingsMenu, markupSettingsUser)
+	return ctx.Edit(settingsMenu, markupUserSettings)
 }
 
-func onUpdPersonalUser(ctx tele.Context) error {
+func onUserUpdPersonal(ctx tele.Context) error {
 	sess.UpdateUserState(ctx.Sender().ID, sess.StateStart)
 	userID := ctx.Sender().ID
 	user, err := cp.RepoWithContext.GetUserByID(userID)
@@ -170,37 +170,37 @@ func onUpdPersonalUser(ctx tele.Context) error {
 	if user.Name == ent.NoName && user.Phone == ent.NoPhone {
 		return ctx.Edit(privacyExplanation, markupPrivacyExplanation)
 	}
-	return ctx.Edit(selectPersonalData, markupPersonalUser)
+	return ctx.Edit(selectPersonalData, markupUserPersonal)
 }
 
-func onPrivacyUser(ctx tele.Context) error {
+func onUserPrivacy(ctx tele.Context) error {
 	sess.UpdateUserState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Edit(privacyUser, markupPrivacyUser)
+	return ctx.Edit(privacyUser, markupUserPrivacy)
 }
 
 func onUserAgreeWithPrivacy(ctx tele.Context) error {
 	sess.UpdateUserState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Edit(selectPersonalData, markupPersonalUser)
+	return ctx.Edit(selectPersonalData, markupUserPersonal)
 }
 
-func onUpdNameUser(ctx tele.Context) error {
+func onUserUpdName(ctx tele.Context) error {
 	sess.UpdateUserState(ctx.Sender().ID, sess.StateUpdName)
 	return ctx.Edit(updName)
 }
 
-func onUpdPhoneUser(ctx tele.Context) error {
+func onUserUpdPhone(ctx tele.Context) error {
 	sess.UpdateUserState(ctx.Sender().ID, sess.StateUpdPhone)
 	return ctx.Edit(updPhone)
 }
 
-func onBackToMainUser(ctx tele.Context) error {
+func onUserBackToMain(ctx tele.Context) error {
 	sess.UpdateUserState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Edit(mainMenu, markupMainUser)
+	return ctx.Edit(mainMenu, markupUserMain)
 }
 
-func onBackToMainUserSend(ctx tele.Context) error {
+func onUserBackToMainSend(ctx tele.Context) error {
 	sess.UpdateUserState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Send(mainMenu, markupMainUser)
+	return ctx.Send(mainMenu, markupUserMain)
 }
 
 func onTextUser(ctx tele.Context) error {
@@ -229,7 +229,7 @@ func onUpdateUserName(ctx tele.Context) error {
 				return logAndMsgErrUser(ctx, errMsg, err)
 			}
 			sess.UpdateUserState(userID, sess.StateStart)
-			return ctx.Send(updNameSuccess, markupPersonalUser)
+			return ctx.Send(updNameSuccess, markupUserPersonal)
 		}
 		if errors.Is(err, rep.ErrInvalidUser) {
 			return ctx.Send(invalidName)
@@ -238,7 +238,7 @@ func onUpdateUserName(ctx tele.Context) error {
 		return logAndMsgErrUser(ctx, errMsg, err)
 	}
 	sess.UpdateUserState(userID, sess.StateStart)
-	return ctx.Send(updNameSuccess, markupPersonalUser)
+	return ctx.Send(updNameSuccess, markupUserPersonal)
 }
 
 func onUpdateUserPhone(ctx tele.Context) error {
@@ -255,7 +255,7 @@ func onUpdateUserPhone(ctx tele.Context) error {
 				return logAndMsgErrUser(ctx, errMsg, err)
 			}
 			sess.UpdateUserState(userID, sess.StateStart)
-			return ctx.Send(updPhoneSuccess, markupPersonalUser)
+			return ctx.Send(updPhoneSuccess, markupUserPersonal)
 		}
 		if errors.Is(err, rep.ErrInvalidUser) {
 			return ctx.Send(invalidPhone)
@@ -264,7 +264,7 @@ func onUpdateUserPhone(ctx tele.Context) error {
 		return logAndMsgErrUser(ctx, errMsg, err)
 	}
 	sess.UpdateUserState(userID, sess.StateStart)
-	return ctx.Send(updPhoneSuccess, markupPersonalUser)
+	return ctx.Send(updPhoneSuccess, markupUserPersonal)
 }
 
 func checkAndCreateAppointmentByUser(ctx tele.Context, newAppointment sess.Appointment) (ok bool, date time.Time, err error) {
@@ -331,13 +331,13 @@ func informUpcomingAppointmentExists(ctx tele.Context, appointment ent.Appointme
 			appointmentAlreadyExists,
 			service.Info(), barber.Name, tm.ShowDate(workday.Date), appointment.Time.ShortString(),
 		),
-		markupBackToMainUser,
+		markupUserBackToMain,
 	)
 }
 
 func logAndMsgErrUser(ctx tele.Context, msg string, err error) error {
 	log.Print(e.Wrap(msg, err))
-	return ctx.Send(errorUser, markupBackToMainUser)
+	return ctx.Send(errorUser, markupUserBackToMain)
 }
 
 func showBarbersForAppointment(ctx tele.Context, userID int64) error {
@@ -348,7 +348,7 @@ func showBarbersForAppointment(ctx tele.Context, userID int64) error {
 	switch len(workingBarbers) {
 	case 0:
 		sess.UpdateUserState(userID, sess.StateStart)
-		return ctx.Edit(noWorkingBarbers, markupBackToMainUser)
+		return ctx.Edit(noWorkingBarbers, markupUserBackToMain)
 	case 1:
 		return showToUserServicesForNewAppointment(ctx, workingBarbers[0])
 	default:
@@ -371,9 +371,9 @@ func showToUserFreeTimesForNewAppointment(ctx tele.Context, workday ent.Workday,
 		fmt.Sprintf(selectTimeForAppointment, service.Info(), tm.ShowDate(workday.Date)),
 		markupSelectTimeForAppointment(
 			freeTimes,
-			endpntTimeForNewAppointmentUser,
-			endpntMonthForNewAppointmentUser,
-			endpntBackToMainUser,
+			endpntUserSelectTimeForNewAppointment,
+			endpntUserSelectMonthForNewAppointment,
+			endpntUserBackToMain,
 		),
 	)
 }
@@ -389,7 +389,7 @@ func showToUserFreeWorkdaysForNewAppointment(ctx tele.Context, deltaDisplayedMon
 		if err != nil {
 			return logAndMsgErrUser(ctx, errMsg, err)
 		}
-		return ctx.Edit(fmt.Sprintf(noFreeTimeForNewAppointmentUser, barber.Phone, barber.ID), markupBackToMainUser)
+		return ctx.Edit(fmt.Sprintf(informUserNoFreeTimeForNewAppointment, barber.Phone, barber.ID), markupUserBackToMain)
 	}
 	displayedMonthRange := ent.DateRange{
 		StartDate: firstDisplayedDateRange.EndDate,
@@ -407,9 +407,9 @@ func showToUserFreeWorkdaysForNewAppointment(ctx tele.Context, deltaDisplayedMon
 		displayedDateRange,
 		displayedMonthRange,
 		newAppointment,
-		endpntWorkdayForNewAppointmentUser,
-		endpntMonthForNewAppointmentUser,
-		endpntBackToMainUser,
+		endpntUserSelectWorkdayForNewAppointment,
+		endpntUserSelectMonthForNewAppointment,
+		endpntUserBackToMain,
 	)
 	if err != nil {
 		return logAndMsgErrUser(ctx, errMsg, err)
@@ -432,7 +432,7 @@ func showToUserServicesForNewAppointment(ctx tele.Context, barber ent.Barber) er
 		return logAndMsgErrUser(ctx, "can't show to user services for new appointment", err)
 	}
 	return ctx.Edit(
-		fmt.Sprintf(selectServiceForAppointment, barber.Name),
-		markupSelectService(services, endpntServiceForAppointmentUser, endpntBackToMainUser),
+		fmt.Sprintf(userSelectServiceForAppointment, barber.Name),
+		markupSelectService(services, endpntUserSelectServiceForAppointment, endpntUserBackToMain),
 	)
 }

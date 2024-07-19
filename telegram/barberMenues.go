@@ -18,7 +18,7 @@ const (
 1. Через меню управления аккаунтом введите свое имя для отображения клиентам.
 2. Через меню управления услугами создайте минимум одну услугу, которую вы будете предоставлять клиентам.`
 
-	manageAccountBarber = "В этом меню собраны функции для управления Вашим аккаунтом."
+	manageBarberAccount = "В этом меню собраны функции для управления Вашим аккаунтом."
 	currentSettings     = `Ваши текущие настройки:
 `
 	privacyBarber       = "Текст политики конфиденциальности для барберов."
@@ -134,32 +134,32 @@ const (
 	endpntServiceToDelete           = "service_to_delete"
 	endpntSureToDeleteService       = "sure_to_delete_service"
 	endpntBarberToDeletion          = "barber_to_deletion"
-	endpntBackToMainBarber          = "back_to_main_barber"
+	endpntBarberBackToMain          = "barber_back_to_main"
 )
 
 var (
-	markupMainBarber  = &tele.ReplyMarkup{}
-	btnSettingsBarber = markupEmpty.Data("Настройки", "settings_barber")
+	markupBarberMain  = &tele.ReplyMarkup{}
+	btnBarberSettings = markupEmpty.Data("Настройки", "barber_settings")
 
-	markupSettingsBarber       = &tele.ReplyMarkup{}
+	markupBarberSettings       = &tele.ReplyMarkup{}
 	btnListOfNecessarySettings = markupEmpty.Data("Перечень необходимых настроек", "list_of_necessary_settings")
-	btnManageAccountBarber     = markupEmpty.Data("Управление аккаунтом", "manage_account_barber")
+	btnBarberManageAccount     = markupEmpty.Data("Управление аккаунтом", "barber_manage_account")
 	btnManageServices          = markupEmpty.Data("Управление услугами", "manage_services")
 	btnManageBarbers           = markupEmpty.Data("Управление барберами", "manage_barbers")
 
-	markupShortSettingsBarber = &tele.ReplyMarkup{}
+	markupShortBarberSettings = &tele.ReplyMarkup{}
 
-	markupManageAccountBarber    = &tele.ReplyMarkup{}
-	btnShowCurrentSettingsBarber = markupEmpty.Data("Мои текущие настройки", "show_current_settings_barber")
-	btnUpdPersonalBarber         = markupEmpty.Data("Обновить персональные данные", "upd_personal_data_barber")
-	btnDeleteAccount             = markupEmpty.Data("Удаление аккаунта барбера", "delete_account")
+	markupBarberManageAccount = &tele.ReplyMarkup{}
+	btnBarberCurrentSettings  = markupEmpty.Data("Мои текущие настройки", "barber_current_settings")
+	btnBarberUpdPersonal      = markupEmpty.Data("Обновить персональные данные", "barber_upd_personal_data")
+	btnDeleteAccount          = markupEmpty.Data("Удаление аккаунта барбера", "delete_account")
 
-	markupPrivacyBarber       = &tele.ReplyMarkup{}
+	markupBarberPrivacy       = &tele.ReplyMarkup{}
 	btnBarberAgreeWithPrivacy = markupEmpty.Data("Соглашаюсь с политикой конфиденциальности", "barber_agree_with_privacy")
 
-	markupPersonalBarber = &tele.ReplyMarkup{}
-	btnUpdNameBarber     = markupEmpty.Data("Обновить имя", "upd_name_barber")
-	btnUpdPhoneBarber    = markupEmpty.Data("Обновить номер телефона", "upd_phone_barber")
+	markupBarberPersonal = &tele.ReplyMarkup{}
+	btnBarberUpdName     = markupEmpty.Data("Обновить имя", "barber_upd_name")
+	btnBarberUpdPhone    = markupEmpty.Data("Обновить номер телефона", "barber_upd_phone")
 
 	markupDeleteAccount     = &tele.ReplyMarkup{}
 	btnSetLastWorkDate      = markupEmpty.Data("Установить последний рабочий день", endpntSelectMonthOfLastWorkDate, "0")
@@ -221,56 +221,56 @@ var (
 	btnDeleteBarber        = markupEmpty.Data("Удалить барбера", "delete_barber")
 	btnDeleteCertainBarber = markupEmpty.Data("", endpntBarberToDeletion)
 
-	markupBackToMainBarber = &tele.ReplyMarkup{}
-	btnBackToMainBarber    = markupEmpty.Data(backToMain, endpntBackToMainBarber)
+	markupBarberBackToMain = &tele.ReplyMarkup{}
+	btnBarberBackToMain    = markupEmpty.Data(backToMain, endpntBarberBackToMain)
 )
 
 func init() {
-	markupMainBarber.Inline(
-		markupEmpty.Row(btnSettingsBarber),
+	markupBarberMain.Inline(
+		markupEmpty.Row(btnBarberSettings),
 	)
 
-	markupSettingsBarber.Inline(
+	markupBarberSettings.Inline(
 		markupEmpty.Row(btnListOfNecessarySettings),
-		markupEmpty.Row(btnManageAccountBarber),
+		markupEmpty.Row(btnBarberManageAccount),
 		markupEmpty.Row(btnManageServices),
 		markupEmpty.Row(btnManageBarbers),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
-	markupShortSettingsBarber.Inline(
-		markupEmpty.Row(btnManageAccountBarber),
+	markupShortBarberSettings.Inline(
+		markupEmpty.Row(btnBarberManageAccount),
 		markupEmpty.Row(btnManageServices),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
-	markupManageAccountBarber.Inline(
-		markupEmpty.Row(btnShowCurrentSettingsBarber),
-		markupEmpty.Row(btnUpdPersonalBarber),
+	markupBarberManageAccount.Inline(
+		markupEmpty.Row(btnBarberCurrentSettings),
+		markupEmpty.Row(btnBarberUpdPersonal),
 		markupEmpty.Row(btnDeleteAccount),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
-	markupPrivacyBarber.Inline(
+	markupBarberPrivacy.Inline(
 		markupEmpty.Row(btnBarberAgreeWithPrivacy),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
-	markupPersonalBarber.Inline(
-		markupEmpty.Row(btnUpdNameBarber),
-		markupEmpty.Row(btnUpdPhoneBarber),
-		markupEmpty.Row(btnBackToMainBarber),
+	markupBarberPersonal.Inline(
+		markupEmpty.Row(btnBarberUpdName),
+		markupEmpty.Row(btnBarberUpdPhone),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
 	markupDeleteAccount.Inline(
 		markupEmpty.Row(btnSetLastWorkDate),
 		markupEmpty.Row(btnSelfDeleteBarber),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
 	markupConfirmSelfDeletion.Inline(
 		markupEmpty.Row(btnSureToSelfDeleteBarber),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
 	markupManageServicesFull.Inline(
@@ -278,25 +278,25 @@ func init() {
 		markupEmpty.Row(btnCreateService),
 		markupEmpty.Row(btnEditService),
 		markupEmpty.Row(btnDeleteService),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
 	markupManageServicesShort.Inline(
 		markupEmpty.Row(btnCreateService),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
 	markupShowMyServices.Inline(
 		markupEmpty.Row(btnCreateService),
 		markupEmpty.Row(btnEditService),
 		markupEmpty.Row(btnDeleteService),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
 	markupСontinueOldOrMakeNewService.Inline(
 		markupEmpty.Row(btnСontinueOldService),
 		markupEmpty.Row(btnMakeNewService),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
 	markupEnterServiceParams.Inline(
@@ -304,7 +304,7 @@ func init() {
 		markupEmpty.Row(btnEnterServiceDescription),
 		markupEmpty.Row(btnEnterServicePrice),
 		markupEmpty.Row(btnSelectServiceDurationOnEnter),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
 	markupReadyToCreateService.Inline(
@@ -313,18 +313,18 @@ func init() {
 		markupEmpty.Row(btnEnterServiceDescription),
 		markupEmpty.Row(btnEnterServicePrice),
 		markupEmpty.Row(btnSelectServiceDurationOnEnter),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
 	markupEnterServiceName.Inline(
 		markupEmpty.Row(btnEnterServiceName),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
 	markupContinueEditingOrSelectService.Inline(
 		markupEmpty.Row(btnСontinueEditingService),
 		markupEmpty.Row(btnSelectServiceToEdit),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
 	markupEditServiceParams.Inline(
@@ -332,7 +332,7 @@ func init() {
 		markupEmpty.Row(btnEditServiceDescription),
 		markupEmpty.Row(btnEditServicePrice),
 		markupEmpty.Row(btnSelectServiceDurationOnEdit),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
 	markupReadyToUpdateService.Inline(
@@ -341,23 +341,23 @@ func init() {
 		markupEmpty.Row(btnEditServiceDescription),
 		markupEmpty.Row(btnEditServicePrice),
 		markupEmpty.Row(btnSelectServiceDurationOnEdit),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
 	markupEditServiceName.Inline(
 		markupEmpty.Row(btnEditServiceName),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
 	markupManageBarbers.Inline(
 		markupEmpty.Row(btnShowAllBurbers),
 		markupEmpty.Row(btnAddBarber),
 		markupEmpty.Row(btnDeleteBarber),
-		markupEmpty.Row(btnBackToMainBarber),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
-	markupBackToMainBarber.Inline(
-		markupEmpty.Row(btnBackToMainBarber),
+	markupBarberBackToMain.Inline(
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 }
 
@@ -373,7 +373,7 @@ func markupConfirmServiceDeletion(serviceID int) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 	markup.Inline(
 		markup.Row(markup.Data("Подтвердить удаление", endpntSureToDeleteService, strconv.Itoa(serviceID))),
-		markup.Row(btnBackToMainBarber),
+		markup.Row(btnBarberBackToMain),
 	)
 	return markup
 }
@@ -387,7 +387,7 @@ func markupSelectBarberToDeletion(senderID int64, barbers []ent.Barber) *tele.Re
 			rows = append(rows, markup.Row(btnBarber(barber, endpntBarberToDeletion)))
 		}
 	}
-	rows = append(rows, markup.Row(btnBackToMainBarber))
+	rows = append(rows, markup.Row(btnBarberBackToMain))
 	markup.Inline(rows...)
 	return markup
 }
@@ -398,7 +398,7 @@ func markupSelectLastWorkDate(dateRange, monthRange ent.DateRange) *tele.ReplyMa
 	rowSelectMonth := markup.Row(btnPrevMonth, btnMonth(dateRange.Month()), btnNextMonth)
 	rowsSelectDate := rowsSelectLastWorkDate(dateRange)
 	rowRestoreDefaultDate := markup.Row(btnInfiniteLastWorkDate)
-	rowBackToMainBarber := markup.Row(btnBackToMainBarber)
+	rowBackToMainBarber := markup.Row(btnBarberBackToMain)
 	var rows []tele.Row
 	rows = append(rows, rowSelectMonth, rowWeekdays)
 	rows = append(rows, rowsSelectDate...)
@@ -414,7 +414,7 @@ func markupSelectServiceDuration(endpnt string) *tele.ReplyMarkup {
 		btnsDurationsToSelect = append(btnsDurationsToSelect, btnDuration(duration, endpnt))
 	}
 	rows := markup.Split(2, btnsDurationsToSelect)
-	rows = append(rows, markup.Row(btnBackToMainBarber))
+	rows = append(rows, markup.Row(btnBarberBackToMain))
 	markup.Inline(rows...)
 	return markup
 }
