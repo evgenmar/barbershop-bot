@@ -11,6 +11,16 @@ import (
 	tele "gopkg.in/telebot.v3"
 )
 
+func checkAppointment(appointment sess.Appointment) (ok bool, date time.Time, err error) {
+	workday, appointments, err := getWorkdayAndAppointments(appointment.WorkdayID)
+	if err != nil {
+		return
+	}
+	ok = isTimeForAppointmentAvailable(appointment.Time, appointment.Duration, workday, appointments)
+	date = workday.Date
+	return
+}
+
 func defineDisplayedDateRangeForAppointment(
 	firstDisplayedDateRange ent.DateRange,
 	displayedMonthRange ent.DateRange,

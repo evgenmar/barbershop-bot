@@ -119,45 +119,28 @@ func onConfirmNewAppointmentUser(ctx tele.Context) error {
 	errMsg := "can't confirm new appointment for user"
 	userID := ctx.Sender().ID
 	newAppointment := sess.GetNewAppointmentUser(userID)
-	appointmentsMutex.Lock()
-	workday, appointments, err := getWorkdayAndAppointments(newAppointment.WorkdayID)
+	ok, date, err := checkAndCreateAppointmentByUser(ctx, newAppointment)
 	if err != nil {
 		return logAndMsgErrUser(ctx, errMsg, err)
 	}
-	if !isTimeForAppointmentAvailable(newAppointment.Time, newAppointment.Duration, workday, appointments) {
-		return ctx.Edit(newAppointmentFailed, markupNewAppointmentFailedUser)
-	}
-	if err := cp.RepoWithContext.CreateUser(ent.User{ID: userID}); err != nil {
-		if !errors.Is(err, rep.ErrAlreadyExists) {
+	if ok {
+		service, err := cp.RepoWithContext.GetServiceByID(newAppointment.ServiceID)
+		if err != nil {
 			return logAndMsgErrUser(ctx, errMsg, err)
 		}
+		barber, err := cp.RepoWithContext.GetBarberByID(newAppointment.BarberID)
+		if err != nil {
+			return logAndMsgErrUser(ctx, errMsg, err)
+		}
+		return ctx.Edit(
+			fmt.Sprintf(
+				newAppointmentSavedByUser,
+				service.Info(), barber.Name, tm.ShowDate(date), newAppointment.Time.ShortString(),
+			),
+			markupBackToMainUserSend,
+		)
 	}
-	if err := cp.RepoWithContext.CreateAppointment(ent.Appointment{
-		UserID:    userID,
-		WorkdayID: newAppointment.WorkdayID,
-		ServiceID: newAppointment.ServiceID,
-		Time:      newAppointment.Time,
-		Duration:  newAppointment.Duration,
-		CreatedAt: time.Now().Unix(),
-	}); err != nil {
-		return logAndMsgErrUser(ctx, errMsg, err)
-	}
-	appointmentsMutex.Unlock()
-	service, err := cp.RepoWithContext.GetServiceByID(newAppointment.ServiceID)
-	if err != nil {
-		return logAndMsgErrUser(ctx, errMsg, err)
-	}
-	barber, err := cp.RepoWithContext.GetBarberByID(newAppointment.BarberID)
-	if err != nil {
-		return logAndMsgErrUser(ctx, errMsg, err)
-	}
-	return ctx.Edit(
-		fmt.Sprintf(
-			newAppointmentSavedByUser,
-			service.Info(), barber.Name, tm.ShowDate(workday.Date), newAppointment.Time.ShortString(),
-		),
-		markupBackToMainUserSend,
-	)
+	return ctx.Edit(newAppointmentFailed, markupNewAppointmentFailedUser)
 }
 
 func onSelectAnotherTimeForNewAppointmentUser(ctx tele.Context) error {
@@ -282,6 +265,30 @@ func onUpdateUserPhone(ctx tele.Context) error {
 	}
 	sess.UpdateUserState(userID, sess.StateStart)
 	return ctx.Send(updPhoneSuccess, markupPersonalUser)
+}
+
+func checkAndCreateAppointmentByUser(ctx tele.Context, newAppointment sess.Appointment) (ok bool, date time.Time, err error) {
+	appointmentsMutex.Lock()
+	defer appointmentsMutex.Unlock()
+	ok, date, err = checkAppointment(newAppointment)
+	if err != nil || !ok {
+		return
+	}
+	userID := ctx.Sender().ID
+	if err = cp.RepoWithContext.CreateUser(ent.User{ID: userID}); err != nil {
+		if !errors.Is(err, rep.ErrAlreadyExists) {
+			return
+		}
+	}
+	err = cp.RepoWithContext.CreateAppointment(ent.Appointment{
+		UserID:    userID,
+		WorkdayID: newAppointment.WorkdayID,
+		ServiceID: newAppointment.ServiceID,
+		Time:      newAppointment.Time,
+		Duration:  newAppointment.Duration,
+		CreatedAt: time.Now().Unix(),
+	})
+	return
 }
 
 func getWorkingBarbers() (workingBarbers []ent.Barber, err error) {
