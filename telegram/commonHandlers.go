@@ -11,13 +11,27 @@ import (
 	tele "gopkg.in/telebot.v3"
 )
 
-func checkAppointment(appointment sess.Appointment) (ok bool, date time.Time, err error) {
-	workday, appointments, err := getWorkdayAndAppointments(appointment.WorkdayID)
+func calculateAndCheckDisplayedRanges(deltaDisplayedMonth int8, appointment sess.Appointment) (
+	displayedDateRange, displayedMonthRange ent.DateRange, ok bool, err error,
+) {
+	firstDisplayedDateRange, err := defineFirstDisplayedDateRangeForAppointment(appointment)
 	if err != nil {
 		return
 	}
-	ok = isTimeForAppointmentAvailable(appointment.Time, appointment.Duration, workday, appointments)
-	date = workday.Date
+	if firstDisplayedDateRange.EndDate.After(ent.MonthFromNow(cfg.MaxAppointmentBookingMonths).EndDate) {
+		return
+	}
+	ok = true
+	displayedMonthRange = ent.DateRange{
+		StartDate: firstDisplayedDateRange.EndDate,
+		EndDate:   ent.MonthFromNow(cfg.MaxAppointmentBookingMonths).EndDate,
+	}
+	displayedDateRange = defineDisplayedDateRangeForAppointment(
+		firstDisplayedDateRange,
+		displayedMonthRange,
+		deltaDisplayedMonth,
+		appointment,
+	)
 	return
 }
 
@@ -82,37 +96,27 @@ func earlestDateWithFreeTime(appointment sess.Appointment, dateRange ent.DateRan
 		appointments[appt.WorkdayID] = append(appointments[appt.WorkdayID], appt)
 	}
 	for _, workday := range workdays {
-		if haveFreeTimeForAppointment(workday, appointments[workday.ID], appointment.Duration) {
+		if haveFreeTimeForAppointment(workday, appointments[workday.ID], appointment) {
 			return workday.Date, true, nil
 		}
 	}
 	return time.Time{}, false, nil
 }
 
-func freeTimesForAppointment(workday ent.Workday, appointments []ent.Appointment, duration tm.Duration) (freeTimes []tm.Duration) {
-	var analyzedTime tm.Duration
-	if workday.Date.Equal(tm.Today()) {
-		currentDayTime := tm.CurrentDayTime()
-		if currentDayTime > workday.StartTime {
-			analyzedTime = currentDayTime.RoundUpToMultipleOf30()
-		} else {
-			analyzedTime = workday.StartTime
-		}
-	} else {
-		analyzedTime = workday.StartTime
-	}
-	i := 0
+func freeTimesForAppointment(workday ent.Workday, appointments []ent.Appointment, appt sess.Appointment) (freeTimes []tm.Duration) {
+	analyzedTime, appointments := prepareAnalizedTimeAndAppointments(workday, appointments, appt.ID)
+	analyzedApptIndex := 0
 	for analyzedTime < workday.EndTime {
-		if i < len(appointments) {
-			if (appointments[i].Time - analyzedTime) >= duration {
+		if analyzedApptIndex < len(appointments) {
+			if (appointments[analyzedApptIndex].Time - analyzedTime) >= appt.Duration {
 				freeTimes = append(freeTimes, analyzedTime)
 				analyzedTime += 30 * tm.Minute
 			} else {
-				analyzedTime = appointments[i].Time + appointments[i].Duration
-				i++
+				analyzedTime = appointments[analyzedApptIndex].Time + appointments[analyzedApptIndex].Duration
+				analyzedApptIndex++
 			}
 		} else {
-			if (workday.EndTime - analyzedTime) >= duration {
+			if (workday.EndTime - analyzedTime) >= appt.Duration {
 				freeTimes = append(freeTimes, analyzedTime)
 				analyzedTime += 30 * tm.Minute
 			} else {
@@ -121,6 +125,15 @@ func freeTimesForAppointment(workday ent.Workday, appointments []ent.Appointment
 		}
 	}
 	return
+}
+
+func getFutureAppointments(appointments []ent.Appointment, currentDayTime tm.Duration) []ent.Appointment {
+	for i, appointment := range appointments {
+		if appointment.Time > currentDayTime {
+			return appointments[i:]
+		}
+	}
+	return nil
 }
 
 func getWorkdayAndAppointments(workdayID int) (ent.Workday, []ent.Appointment, error) {
@@ -138,28 +151,32 @@ func getWorkdayAndAppointments(workdayID int) (ent.Workday, []ent.Appointment, e
 	return workday, appointments, nil
 }
 
-func isTimeForAppointmentAvailable(appointmentTime, appointmentDuration tm.Duration, workday ent.Workday, appointments []ent.Appointment) bool {
-	if workday.Date.Equal(tm.Today()) && appointmentTime < tm.CurrentDayTime() {
+func haveFreeTimeForAppointment(workday ent.Workday, appointments []ent.Appointment, appt sess.Appointment) bool {
+	analyzedTime, appointments := prepareAnalizedTimeAndAppointments(workday, appointments, appt.ID)
+
+	if workday.Date.Equal(tm.Today()) {
+		currentDayTime := tm.CurrentDayTime()
+		if currentDayTime > workday.StartTime {
+			analyzedTime = currentDayTime
+			appointments = getFutureAppointments(appointments, currentDayTime)
+		}
+	}
+	for _, appointment := range appointments {
+		if (appointment.Time - analyzedTime) >= appt.Duration {
+			return true
+		}
+		analyzedTime = appointment.Time + appointment.Duration
+	}
+	return (workday.EndTime - analyzedTime) >= appt.Duration
+}
+
+func isTimeForAppointmentAvailable(workday ent.Workday, appointments []ent.Appointment, appt sess.Appointment) bool {
+	if workday.Date.Equal(tm.Today()) && appt.Time < tm.CurrentDayTime() {
 		return false
 	}
-	var timeSlotStart, timeSlotEnd tm.Duration
-	timeSlotStart = workday.StartTime
-	if len(appointments) == 0 {
-		timeSlotEnd = workday.EndTime
-	} else {
-		timeSlotEnd = appointments[0].Time
-	}
-	if appointmentTime >= timeSlotStart && (appointmentTime+appointmentDuration) <= timeSlotEnd {
-		return true
-	}
-	for i, appointment := range appointments {
-		timeSlotStart = appointment.Time + appointment.Duration
-		if i < (len(appointments) - 1) {
-			timeSlotEnd = appointments[i+1].Time
-		} else {
-			timeSlotEnd = workday.EndTime
-		}
-		if appointmentTime >= timeSlotStart && (appointmentTime+appointmentDuration) <= timeSlotEnd {
+	freeTimes := freeTimesForAppointment(workday, appointments, appt)
+	for _, freeTime := range freeTimes {
+		if appt.Time == freeTime {
 			return true
 		}
 	}
@@ -167,3 +184,23 @@ func isTimeForAppointmentAvailable(appointmentTime, appointmentDuration tm.Durat
 }
 
 func noAction(tele.Context) error { return nil }
+
+func prepareAnalizedTimeAndAppointments(workday ent.Workday, appointments []ent.Appointment, oldAppointmentID int) (tm.Duration, []ent.Appointment) {
+	if oldAppointmentID != 0 {
+		for i, apappointment := range appointments {
+			if apappointment.ID == oldAppointmentID {
+				appointments = append(appointments[:i], appointments[i+1:]...)
+				break
+			}
+		}
+	}
+	analyzedTime := workday.StartTime
+	if workday.Date.Equal(tm.Today()) {
+		currentDayTime := tm.CurrentDayTime()
+		if currentDayTime > workday.StartTime {
+			analyzedTime = currentDayTime.RoundUpToMultipleOf30()
+			appointments = getFutureAppointments(appointments, currentDayTime)
+		}
+	}
+	return analyzedTime, appointments
+}

@@ -54,6 +54,9 @@ type Storage interface {
 	// Returned appointments are sorted by date and time in ascending order.
 	GetAppointmentsByDateRange(ctx context.Context, barberID int64, dateRange DateRange) ([]Appointment, error)
 
+	// GetAppointmentByID returns appointment with specified ID.
+	GetAppointmentByID(ctx context.Context, appointmentID int) (Appointment, error)
+
 	//GetBarberByID returns barber with specified ID.
 	GetBarberByID(ctx context.Context, barberID int64) (Barber, error)
 

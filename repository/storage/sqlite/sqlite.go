@@ -173,9 +173,8 @@ func (s *Storage) DeletePastAppointments(ctx context.Context, barberID int64) er
 	q := `DELETE FROM appointments WHERE workday_id IN
 	(SELECT id FROM workdays WHERE barber_id = ? AND date < ?)`
 	today := m.MapToStorage.Date(tm.Today())
-	currentTime := int16(tm.CurrentDayTime())
 	s.rwMutex.Lock()
-	_, err := s.db.ExecContext(ctx, q, barberID, today, currentTime, barberID, today)
+	_, err := s.db.ExecContext(ctx, q, barberID, today)
 	s.rwMutex.Unlock()
 	if err != nil {
 		return e.Wrap("can't delete appointments", err)
@@ -267,6 +266,31 @@ func (s *Storage) GetAppointmentsByDateRange(ctx context.Context, barberID int64
 	return appointments, nil
 }
 
+// GetAppointmentByID returns appointment with specified ID.
+func (s *Storage) GetAppointmentByID(ctx context.Context, appointmentID int) (appointment st.Appointment, err error) {
+	defer func() { err = e.WrapIfErr("can't get appointment", err) }()
+	q := `SELECT user_id, workday_id, service_id, time, duration, note, created_at FROM appointments WHERE id = ?`
+	s.rwMutex.RLock()
+	err = s.db.QueryRowContext(ctx, q, appointmentID).Scan(
+		&appointment.UserID,
+		&appointment.WorkdayID,
+		&appointment.ServiceID,
+		&appointment.Time,
+		&appointment.Duration,
+		&appointment.Note,
+		&appointment.CreatedAt,
+	)
+	s.rwMutex.RUnlock()
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return st.Appointment{}, st.ErrNoSavedObject
+		}
+		return st.Appointment{}, err
+	}
+	appointment.ID = appointmentID
+	return appointment, nil
+}
+
 // GetBarberByID returns barber with specified ID.
 func (s *Storage) GetBarberByID(ctx context.Context, barberID int64) (st.Barber, error) {
 	q := `SELECT name, phone, last_workdate FROM barbers WHERE id = ?`
@@ -324,7 +348,13 @@ func (s *Storage) GetServiceByID(ctx context.Context, serviceID int) (service st
 	defer func() { err = e.WrapIfErr("can't get service", err) }()
 	q := `SELECT barber_id, name, description, price, duration FROM services WHERE id = ?`
 	s.rwMutex.RLock()
-	err = s.db.QueryRowContext(ctx, q, serviceID).Scan(&service.BarberID, &service.Name, &service.Desciption, &service.Price, &service.Duration)
+	err = s.db.QueryRowContext(ctx, q, serviceID).Scan(
+		&service.BarberID,
+		&service.Name,
+		&service.Desciption,
+		&service.Price,
+		&service.Duration,
+	)
 	s.rwMutex.RUnlock()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -518,7 +548,7 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 		UNIQUE (workday_id, time),
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 		FOREIGN KEY (workday_id) REFERENCES workdays(id) ON DELETE RESTRICT,
-		FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+		FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE SET NULL
 		)`
 	_, err = s.db.ExecContext(ctx, q)
 	if err != nil {

@@ -18,11 +18,11 @@ const (
 Если Вам будет достаточно, чтобы с Вами связались через telegram, оставлять персональные данные не обязательно.`
 	privacyUser = "Текст политики конфиденциальности для клиентов."
 
-	appointmentAlreadyExists              = "Вы уже записаны на услугу:\n\n%s\n\nБарбер %s ждет Вас %s в %s."
-	noWorkingBarbers                      = "Извините, услуги временно не предоставляются, так как в настоящий момент в приложении нет ни одного работающего барбера."
-	selectBarberForAppointment            = "Выберите барбера, к которому хотите записаться на стрижку."
-	userSelectServiceForAppointment       = "Выберите услугу из списка услуг, предоставляемых барбером %s."
-	informUserNoFreeTimeForNewAppointment = `Извините, график барбера полностью занят и нет возможности записаться на эту услугу.
+	appointmentAlreadyExists           = "Вы уже записаны на услугу:\n\n%s\n\nБарбер %s ждет Вас %s в %s."
+	noWorkingBarbers                   = "Извините, услуги временно не предоставляются, так как в настоящий момент в приложении нет ни одного работающего барбера."
+	selectBarberForAppointment         = "Выберите барбера, к которому хотите записаться на стрижку."
+	userSelectServiceForAppointment    = "Выберите услугу из списка услуг, предоставляемых барбером %s."
+	informUserNoFreeTimeForAppointment = `Извините, график барбера полностью занят.
 Вы можете попробовать связаться с барбером и уточнить у него возможность записи в индивидуальном порядке.
 Контакты для связи:
 Телефон: %s
@@ -30,35 +30,50 @@ const (
 	selectDateForAppointment  = "Информация об услуге:\n\n%s\n\nВыберите дату. Отображены только даты, на которые возможна запись."
 	selectTimeForAppointment  = "Информация об услуге:\n\n%s\n\nВыбранная Вами дата: %s\n\nВыберите время. Отображено только время, на которое возможна запись."
 	confirmNewAppointment     = "Информация об услуге:\n\n%s\n\nВыбранная Вами дата: %s\nВыбранное время: %s\n\nПодтвердите создание записи или вернитесь в главное меню."
-	newAppointmentFailed      = "К сожалению указанное время уже занято. Не удалось создать запись."
+	failedToSaveAppointment   = "К сожалению указанное время уже занято. Не удалось создать запись."
 	newAppointmentSavedByUser = "Вы записались на услугу:\n\n%s\n\nБарбер %s ждет Вас %s в %s."
+
+	youHaveNoAppointments         = "На данный момент у Вас нет записи, которую можно было бы перенести или отменить."
+	rescheduleOrCancelAppointment = "Вы записаны к барберу %s %s в %s на услугу:\n\n%s\n\nПри необходимости перенести или отменить запись выберите соотетствующее действие."
+	confirmRescheduleAppointment  = "Информация о переносимой записи:\n\n%s\n\nНовая дата: %s\nНовое время: %s\n\nПодтвердите перенос записи или вернитесь в главное меню."
+	appointmentRescheduledByUser  = "Информация о перенесенной записи:\n\n%s\n\nЗапись перенесена на новое время. Барбер %s ждет Вас %s в %s."
+	failedToRescheduleAppointment = "К сожалению указанное время уже занято. Не удалось перенести запись."
 
 	errorUser = `Произошла ошибка обработки команды. Команда не была выполнена. Приносим извинения.
 Пожалуйста, перейдите в главное меню и попробуйте выполнить команду заново.`
 
-	endpntBarberForAppointment               = "barber_for_appointment"
-	endpntUserSelectServiceForAppointment    = "user_select_service_for_appointment"
-	endpntUserSelectMonthForNewAppointment   = "user_select_month_for_new_appointment"
-	endpntUserSelectWorkdayForNewAppointment = "user_select_workday_for_new_appointment"
-	endpntUserSelectTimeForNewAppointment    = "user_select_time_for_new_appointment"
-	endpntUserBackToMain                     = "user_back_to_main"
+	endpntBarberForAppointment            = "barber_for_appointment"
+	endpntUserSelectServiceForAppointment = "user_select_service_for_appointment"
+	endpntUserSelectMonthForAppointment   = "user_select_month_for_appointment"
+	endpntUserSelectWorkdayForAppointment = "user_select_workday_for_appointment"
+	endpntUserSelectTimeForAppointment    = "user_select_time_for_appointment"
+	endpntUserBackToMain                  = "user_back_to_main"
 )
 
 var (
-	markupUserMain                        = &tele.ReplyMarkup{}
-	btnUserSettings                       = markupEmpty.Data("Настройки", "user_settings")
-	btnSignUpForAppointment               = markupEmpty.Data("Записаться на стрижку", "sign_up_for_appointment")
-	btnSelectBarberForAppointment         = markupEmpty.Data("", endpntBarberForAppointment)
-	btnUserSelectServiceForAppointment    = markupEmpty.Data("", endpntUserSelectServiceForAppointment)
-	btnUserSelectMonthForNewAppointment   = markupEmpty.Data("", endpntUserSelectMonthForNewAppointment)
-	btnUserSelectWorkdayForNewAppointment = markupEmpty.Data("", endpntUserSelectWorkdayForNewAppointment)
-	btnUserSelectTimeForNewAppointment    = markupEmpty.Data("", endpntUserSelectTimeForNewAppointment)
+	markupUserMain                   = &tele.ReplyMarkup{}
+	btnUserSettings                  = markupEmpty.Data("Настройки", "user_settings")
+	btnSignUpForAppointment          = markupEmpty.Data("Записаться на стрижку", "sign_up_for_appointment")
+	btnRescheduleOrCancelAppointment = markupEmpty.Data("Перенести/отменить запись", "reschedule_or_cancel_appointment")
+
+	btnSelectBarberForAppointment      = markupEmpty.Data("", endpntBarberForAppointment)
+	btnUserSelectServiceForAppointment = markupEmpty.Data("", endpntUserSelectServiceForAppointment)
+	btnUserSelectMonthForAppointment   = markupEmpty.Data("", endpntUserSelectMonthForAppointment)
+	btnUserSelectWorkdayForAppointment = markupEmpty.Data("", endpntUserSelectWorkdayForAppointment)
+	btnUserSelectTimeForAppointment    = markupEmpty.Data("", endpntUserSelectTimeForAppointment)
 
 	markupUserConfirmNewAppointment = &tele.ReplyMarkup{}
 	btnUserConfirmNewAppointment    = markupEmpty.Data("Подтвердить запись", "user_confirm_new_appointment")
 
-	markupUserNewAppointmentFailed            = &tele.ReplyMarkup{}
-	btnUserSelectAnotherTimeForNewAppointment = markupEmpty.Data("Выбрать другое время", "user_select_another_time_for_new_appointment")
+	markupUserFailedToSaveOrRescheduleAppointment = &tele.ReplyMarkup{}
+	btnUserSelectAnotherTimeForAppointment        = markupEmpty.Data("Выбрать другое время", "user_select_another_time_for_appointment")
+
+	markupRescheduleOrCancelAppointment = &tele.ReplyMarkup{}
+	btnUserRescheduleAppointment        = markupEmpty.Data("Перенести запись", "user_reschedule_appointment")
+	btnUserCancelAppointment            = markupEmpty.Data("Отменить запись", "user_cancel_appointment")
+
+	markupUserConfirmRescheduleAppointment = &tele.ReplyMarkup{}
+	btnUserConfirmRescheduleAppointment    = markupEmpty.Data("Подтвердить перенос записи", "user_confirm_reschedule_appointment")
 
 	markupUserSettings = &tele.ReplyMarkup{}
 	btnUserUpdPersonal = markupEmpty.Data("Обновить персональные данные", "user_upd_personal_data")
@@ -83,6 +98,7 @@ var (
 func init() {
 	markupUserMain.Inline(
 		markupEmpty.Row(btnSignUpForAppointment),
+		markupEmpty.Row(btnRescheduleOrCancelAppointment),
 		markupEmpty.Row(btnUserSettings),
 	)
 
@@ -91,8 +107,19 @@ func init() {
 		markupEmpty.Row(btnUserBackToMain),
 	)
 
-	markupUserNewAppointmentFailed.Inline(
-		markupEmpty.Row(btnUserSelectAnotherTimeForNewAppointment),
+	markupUserFailedToSaveOrRescheduleAppointment.Inline(
+		markupEmpty.Row(btnUserSelectAnotherTimeForAppointment),
+		markupEmpty.Row(btnUserBackToMain),
+	)
+
+	markupRescheduleOrCancelAppointment.Inline(
+		markupEmpty.Row(btnUserRescheduleAppointment),
+		markupEmpty.Row(btnUserCancelAppointment),
+		markupEmpty.Row(btnUserBackToMain),
+	)
+
+	markupUserConfirmRescheduleAppointment.Inline(
+		markupEmpty.Row(btnUserConfirmRescheduleAppointment),
 		markupEmpty.Row(btnUserBackToMain),
 	)
 
@@ -181,27 +208,6 @@ func markupSelectWorkdayForAppointment(
 	return markup, nil
 }
 
-func haveFreeTimeForAppointment(workday ent.Workday, appointments []ent.Appointment, duration tm.Duration) bool {
-	var analyzedTime tm.Duration
-	if workday.Date.Equal(tm.Today()) {
-		currentDayTime := tm.CurrentDayTime()
-		if currentDayTime > workday.StartTime {
-			analyzedTime = currentDayTime
-		} else {
-			analyzedTime = workday.StartTime
-		}
-	} else {
-		analyzedTime = workday.StartTime
-	}
-	for _, appointment := range appointments {
-		if (appointment.Time - analyzedTime) >= duration {
-			return true
-		}
-		analyzedTime = appointment.Time + appointment.Duration
-	}
-	return (workday.EndTime - analyzedTime) >= duration
-}
-
 func rowsSelectTimeForAppointment(freeTimes []tm.Duration, endpnt string) []tele.Row {
 	var btnsTimesToSelect []tele.Btn
 	for _, freeTime := range freeTimes {
@@ -239,7 +245,7 @@ func rowsSelectWorkdayForAppointment(dateRange ent.DateRange, appointment sess.A
 		if !ok {
 			btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnEmpty)
 		} else {
-			if haveFreeTimeForAppointment(workday, appointments[workday.ID], appointment.Duration) {
+			if haveFreeTimeForAppointment(workday, appointments[workday.ID], appointment) {
 				btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnWorkday(workday, endpntWorkday))
 			} else {
 				btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnEmpty)

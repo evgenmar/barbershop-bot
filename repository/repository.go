@@ -180,6 +180,19 @@ func (r Repository) GetAppointmentsByDateRange(ctx context.Context, barberID int
 	return appointments, nil
 }
 
+func (r Repository) GetAppointmentByID(ctx context.Context, appointmentID int) (appointment ent.Appointment, err error) {
+	defer func() {
+		if errors.Is(err, st.ErrNoSavedObject) {
+			err = ErrNoSavedAppointment
+		}
+	}()
+	appt, err := r.Storage.GetAppointmentByID(ctx, appointmentID)
+	if err != nil {
+		return ent.Appointment{}, err
+	}
+	return m.MapToEntity.Appointment(appt), nil
+}
+
 func (r Repository) GetBarberByID(ctx context.Context, barberID int64) (barber ent.Barber, err error) {
 	defer func() {
 		if errors.Is(err, st.ErrNoSavedObject) {

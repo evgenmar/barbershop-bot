@@ -7,7 +7,6 @@ import (
 
 type Appointment struct {
 	ID            int
-	UserID        int64
 	WorkdayID     int
 	ServiceID     int
 	Time          tm.Duration

@@ -7,8 +7,8 @@ import (
 
 type userSession struct {
 	status
-	newAppointment Appointment
-	expiresAt      int64
+	Appointment
+	expiresAt int64
 }
 
 type userSessionManager struct {
@@ -21,9 +21,9 @@ var (
 	onceUser        sync.Once
 )
 
-func GetNewAppointmentUser(userID int64) Appointment {
+func GetAppointmentUser(userID int64) Appointment {
 	session := getUserSessionManager().getSession(userID)
-	return session.newAppointment
+	return session.Appointment
 }
 
 func GetUserState(userID int64) State {
@@ -34,9 +34,9 @@ func GetUserState(userID int64) State {
 	return session.state
 }
 
-func UpdateNewAppointmentAndUserState(userID int64, newAppointment Appointment, state State) {
+func UpdateAppointmentAndUserState(userID int64, appointment Appointment, state State) {
 	session := getUserSessionManager().getSession(userID)
-	session.newAppointment = newAppointment
+	session.Appointment = appointment
 	session.status = newStatus(state)
 	getUserSessionManager().updateSession(userID, session)
 }

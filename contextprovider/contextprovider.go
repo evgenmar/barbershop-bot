@@ -114,6 +114,13 @@ func (c ContextProvider) GetAppointmentsByDateRange(barberID int64, dateRange en
 	return c.repo.GetAppointmentsByDateRange(ctx, barberID, dateRange)
 }
 
+// func (c ContextProvider) GetAppointmentByID(appointmentID int) (appointment ent.Appointment, err error) {
+// 	defer func() { err = e.WrapIfErr("can't get appointment", err) }()
+// 	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
+// 	defer cancel()
+// 	return c.repo.GetAppointmentByID(ctx, appointmentID)
+// }
+
 func (c ContextProvider) GetBarberByID(barberID int64) (barber ent.Barber, err error) {
 	defer func() { err = e.WrapIfErr("can't get barber", err) }()
 	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
@@ -177,12 +184,12 @@ func (c ContextProvider) GetWorkdaysByDateRange(barberID int64, dateRange ent.Da
 	return c.repo.GetWorkdaysByDateRange(ctx, barberID, dateRange)
 }
 
-// func (c ContextProvider) UpdateAppointment(appointment ent.Appointment) (err error) {
-// 	defer func() { err = e.WrapIfErr("can't update appointment", err) }()
-// 	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
-// 	defer cancel()
-// 	return c.repo.UpdateAppointment(ctx, appointment)
-// }
+func (c ContextProvider) UpdateAppointment(appointment ent.Appointment) (err error) {
+	defer func() { err = e.WrapIfErr("can't update appointment", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
+	defer cancel()
+	return c.repo.UpdateAppointment(ctx, appointment)
+}
 
 func (c ContextProvider) UpdateBarber(barber ent.Barber) (err error) {
 	defer func() { err = e.WrapIfErr("can't update barber", err) }()
