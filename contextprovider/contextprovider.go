@@ -65,12 +65,12 @@ func (c ContextProvider) CreateWorkdays(wds ...ent.Workday) (err error) {
 	return c.repo.CreateWorkdays(ctx, wds...)
 }
 
-// func (c ContextProvider) DeleteAppointmentByID(appointmentID int) (err error) {
-// 	defer func() { err = e.WrapIfErr("can't delete appointment", err) }()
-// 	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
-// 	defer cancel()
-// 	return c.repo.DeleteAppointmentByID(ctx, appointmentID)
-// }
+func (c ContextProvider) DeleteAppointmentByID(appointmentID int) (err error) {
+	defer func() { err = e.WrapIfErr("can't delete appointment", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
+	defer cancel()
+	return c.repo.DeleteAppointmentByID(ctx, appointmentID)
+}
 
 func (c ContextProvider) DeleteBarberByID(barberID int64) (err error) {
 	defer func() { err = e.WrapIfErr("can't delete barber", err) }()

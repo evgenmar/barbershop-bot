@@ -119,6 +119,8 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	users.Handle(&btnRescheduleOrCancelAppointment, onRescheduleOrCancelAppointment)
 	users.Handle(&btnUserRescheduleAppointment, onUserRescheduleAppointment)
 	users.Handle(&btnUserConfirmRescheduleAppointment, onUserConfirmRescheduleAppointment)
+	users.Handle(&btnUserCancelAppointment, onUserCancelAppointment)
+	users.Handle(&btnUserConfirmCancelAppointment, onUserConfirmCancelAppointment)
 
 	users.Handle(&btnUserSettings, onUserSettings)
 	users.Handle(&btnUserUpdPersonal, onUserUpdPersonal)

@@ -38,6 +38,8 @@ const (
 	confirmRescheduleAppointment  = "Информация о переносимой записи:\n\n%s\n\nНовая дата: %s\nНовое время: %s\n\nПодтвердите перенос записи или вернитесь в главное меню."
 	appointmentRescheduledByUser  = "Информация о перенесенной записи:\n\n%s\n\nЗапись перенесена на новое время. Барбер %s ждет Вас %s в %s."
 	failedToRescheduleAppointment = "К сожалению указанное время уже занято. Не удалось перенести запись."
+	confirmCancelAppointment      = "Вы записаны к барберу %s %s в %s на услугу:\n\n%s\n\nПодтвердите отмену этой записи или вернитесь в главное меню."
+	appointmentCanceled           = "Запись удалена."
 
 	errorUser = `Произошла ошибка обработки команды. Команда не была выполнена. Приносим извинения.
 Пожалуйста, перейдите в главное меню и попробуйте выполнить команду заново.`
@@ -74,6 +76,9 @@ var (
 
 	markupUserConfirmRescheduleAppointment = &tele.ReplyMarkup{}
 	btnUserConfirmRescheduleAppointment    = markupEmpty.Data("Подтвердить перенос записи", "user_confirm_reschedule_appointment")
+
+	markupUserConfirmCancelAppointment = &tele.ReplyMarkup{}
+	btnUserConfirmCancelAppointment    = markupEmpty.Data("Подтвердить отмену записи", "user_confirm_cancel_appointment")
 
 	markupUserSettings = &tele.ReplyMarkup{}
 	btnUserUpdPersonal = markupEmpty.Data("Обновить персональные данные", "user_upd_personal_data")
@@ -120,6 +125,11 @@ func init() {
 
 	markupUserConfirmRescheduleAppointment.Inline(
 		markupEmpty.Row(btnUserConfirmRescheduleAppointment),
+		markupEmpty.Row(btnUserBackToMain),
+	)
+
+	markupUserConfirmCancelAppointment.Inline(
+		markupEmpty.Row(btnUserConfirmCancelAppointment),
 		markupEmpty.Row(btnUserBackToMain),
 	)
 

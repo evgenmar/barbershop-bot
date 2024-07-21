@@ -244,6 +244,42 @@ func onUserConfirmRescheduleAppointment(ctx tele.Context) error {
 	return ctx.Edit(failedToRescheduleAppointment, markupUserFailedToSaveOrRescheduleAppointment)
 }
 
+func onUserCancelAppointment(ctx tele.Context) error {
+	errMsg := "can't handle user cancel appointment"
+	userID := ctx.Sender().ID
+	upcomingAppointment, err := cp.RepoWithContext.GetUpcomingAppointment(userID)
+	if err != nil {
+		if errors.Is(err, rep.ErrNoSavedAppointment) {
+			return ctx.Edit(youHaveNoAppointments, markupUserBackToMain)
+		}
+		return logAndMsgErrUser(ctx, errMsg, err)
+	}
+	serviceInfo, barberName, date, time, err := getAppointmentInfo(upcomingAppointment)
+	if err != nil {
+		return logAndMsgErrUser(ctx, errMsg, err)
+	}
+	return ctx.Edit(
+		fmt.Sprintf(confirmCancelAppointment, barberName, date, time, serviceInfo),
+		markupUserConfirmCancelAppointment,
+	)
+}
+
+func onUserConfirmCancelAppointment(ctx tele.Context) error {
+	errMsg := "can't confirm cancel appointment for user"
+	userID := ctx.Sender().ID
+	upcomingAppointment, err := cp.RepoWithContext.GetUpcomingAppointment(userID)
+	if err != nil {
+		if errors.Is(err, rep.ErrNoSavedAppointment) {
+			return ctx.Edit(youHaveNoAppointments, markupUserBackToMain)
+		}
+		return logAndMsgErrUser(ctx, errMsg, err)
+	}
+	if err := cp.RepoWithContext.DeleteAppointmentByID(upcomingAppointment.ID); err != nil {
+		return logAndMsgErrUser(ctx, errMsg, err)
+	}
+	return ctx.Edit(appointmentCanceled, markupUserBackToMain)
+}
+
 func onUserSettings(ctx tele.Context) error {
 	sess.UpdateUserState(ctx.Sender().ID, sess.StateStart)
 	return ctx.Edit(settingsMenu, markupUserSettings)
