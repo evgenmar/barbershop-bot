@@ -236,6 +236,47 @@ func (s *Storage) GetAllBarbers(ctx context.Context) (barbers []st.Barber, err e
 	return barbers, nil
 }
 
+// GetAppointmentByID returns appointment with specified ID.
+func (s *Storage) GetAppointmentByID(ctx context.Context, appointmentID int) (appointment st.Appointment, err error) {
+	defer func() { err = e.WrapIfErr("can't get appointment", err) }()
+	q := `SELECT user_id, workday_id, service_id, time, duration, note, created_at FROM appointments WHERE id = ?`
+	s.rwMutex.RLock()
+	err = s.db.QueryRowContext(ctx, q, appointmentID).Scan(
+		&appointment.UserID,
+		&appointment.WorkdayID,
+		&appointment.ServiceID,
+		&appointment.Time,
+		&appointment.Duration,
+		&appointment.Note,
+		&appointment.CreatedAt,
+	)
+	s.rwMutex.RUnlock()
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return st.Appointment{}, st.ErrNoSavedObject
+		}
+		return st.Appointment{}, err
+	}
+	appointment.ID = appointmentID
+	return appointment, nil
+}
+
+// GetAppointmentIDByWorkdayIDAndTime returns ID of appointment with specified workdayID and time.
+func (s *Storage) GetAppointmentIDByWorkdayIDAndTime(ctx context.Context, workdayID int, time int16) (appointmentID int, err error) {
+	defer func() { err = e.WrapIfErr("can't get appointmentID", err) }()
+	q := `SELECT id FROM appointments WHERE workday_id = ? AND time = ?`
+	s.rwMutex.RLock()
+	err = s.db.QueryRowContext(ctx, q, workdayID, time).Scan(&appointmentID)
+	s.rwMutex.RUnlock()
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, st.ErrNoSavedObject
+		}
+		return 0, err
+	}
+	return appointmentID, nil
+}
+
 // GetAppointmentsByDateRange returns appointments that fall within the date range.
 // It only returns appointments for barber with specified ID.
 // Returned appointments are sorted by date and time in ascending order.
@@ -264,31 +305,6 @@ func (s *Storage) GetAppointmentsByDateRange(ctx context.Context, barberID int64
 		return nil, err
 	}
 	return appointments, nil
-}
-
-// GetAppointmentByID returns appointment with specified ID.
-func (s *Storage) GetAppointmentByID(ctx context.Context, appointmentID int) (appointment st.Appointment, err error) {
-	defer func() { err = e.WrapIfErr("can't get appointment", err) }()
-	q := `SELECT user_id, workday_id, service_id, time, duration, note, created_at FROM appointments WHERE id = ?`
-	s.rwMutex.RLock()
-	err = s.db.QueryRowContext(ctx, q, appointmentID).Scan(
-		&appointment.UserID,
-		&appointment.WorkdayID,
-		&appointment.ServiceID,
-		&appointment.Time,
-		&appointment.Duration,
-		&appointment.Note,
-		&appointment.CreatedAt,
-	)
-	s.rwMutex.RUnlock()
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return st.Appointment{}, st.ErrNoSavedObject
-		}
-		return st.Appointment{}, err
-	}
-	appointment.ID = appointmentID
-	return appointment, nil
 }
 
 // GetBarberByID returns barber with specified ID.
@@ -367,9 +383,10 @@ func (s *Storage) GetServiceByID(ctx context.Context, serviceID int) (service st
 }
 
 // GetServicesByBarberID returns all services provided by barber with specified ID.
+// Returned services are sorted by price in ascending order.
 func (s *Storage) GetServicesByBarberID(ctx context.Context, barberID int64) (services []st.Service, err error) {
 	defer func() { err = e.WrapIfErr("can't get services", err) }()
-	q := `SELECT id, name, description, price, duration FROM services WHERE barber_id = ?`
+	q := `SELECT id, name, description, price, duration FROM services WHERE barber_id = ? ORDER BY price`
 	s.rwMutex.RLock()
 	rows, err := s.db.QueryContext(ctx, q, barberID)
 	s.rwMutex.RUnlock()
@@ -399,7 +416,7 @@ func (s *Storage) GetUpcomingAppointment(ctx context.Context, userID int64) (app
 		FROM appointments a JOIN workdays w ON a.workday_id = w.id
 		WHERE a.user_id = ? AND (w.date > ? OR (w.date = ? AND a.time > ?))`
 	today := m.MapToStorage.Date(tm.Today())
-	currentTime := int16(tm.CurrentDayTime())
+	currentTime := m.MapToStorage.Duration(tm.CurrentDayTime())
 	var date string
 	s.rwMutex.RLock()
 	err = s.db.QueryRowContext(ctx, q, userID, today, today, currentTime).Scan(

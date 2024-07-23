@@ -22,6 +22,7 @@ const (
 	StateEditServiceName
 	StateEditServiceDescription
 	StateEditServicePrice
+	StateUpdNote
 )
 
 // By default new Status lifetime is 24 hours except of StatusStart with a lifetime till 3000-01-01 00:00:00 UTC.

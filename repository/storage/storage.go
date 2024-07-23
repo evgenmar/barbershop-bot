@@ -49,13 +49,16 @@ type Storage interface {
 	// GetAllBarbers return a slice of all barbers.
 	GetAllBarbers(ctx context.Context) ([]Barber, error)
 
+	// GetAppointmentByID returns appointment with specified ID.
+	GetAppointmentByID(ctx context.Context, appointmentID int) (Appointment, error)
+
+	// GetAppointmentIDByWorkdayIDAndTime returns ID of appointment with specified workdayID and time.
+	GetAppointmentIDByWorkdayIDAndTime(ctx context.Context, workdayID int, time int16) (int, error)
+
 	// GetAppointmentsByDateRange returns appointments that fall within the date range.
 	// It only returns appointments for barber with specified ID.
 	// Returned appointments are sorted by date and time in ascending order.
 	GetAppointmentsByDateRange(ctx context.Context, barberID int64, dateRange DateRange) ([]Appointment, error)
-
-	// GetAppointmentByID returns appointment with specified ID.
-	GetAppointmentByID(ctx context.Context, appointmentID int) (Appointment, error)
 
 	//GetBarberByID returns barber with specified ID.
 	GetBarberByID(ctx context.Context, barberID int64) (Barber, error)
@@ -72,6 +75,7 @@ type Storage interface {
 	GetServiceByID(ctx context.Context, serviceID int) (Service, error)
 
 	// GetServicesByBarberID returns all services provided by barber with specified ID.
+	// Returned services are sorted by price in ascending order.
 	GetServicesByBarberID(ctx context.Context, barberID int64) ([]Service, error)
 
 	// GetUpcomingAppointment returns an upcoming appointment for user with specified ID.

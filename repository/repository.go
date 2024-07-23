@@ -3,6 +3,7 @@ package repository
 import (
 	ent "barbershop-bot/entities"
 	"barbershop-bot/lib/e"
+	tm "barbershop-bot/lib/time"
 	m "barbershop-bot/repository/mappers"
 	st "barbershop-bot/repository/storage"
 	"context"
@@ -161,6 +162,28 @@ func (r Repository) GetAllBarbers(ctx context.Context) (barbers []ent.Barber, er
 	return barbers, nil
 }
 
+func (r Repository) GetAppointmentByID(ctx context.Context, appointmentID int) (appointment ent.Appointment, err error) {
+	defer func() {
+		if errors.Is(err, st.ErrNoSavedObject) {
+			err = ErrNoSavedAppointment
+		}
+	}()
+	appt, err := r.Storage.GetAppointmentByID(ctx, appointmentID)
+	if err != nil {
+		return ent.Appointment{}, err
+	}
+	return m.MapToEntity.Appointment(appt), nil
+}
+
+func (r Repository) GetAppointmentIDByWorkdayIDAndTime(ctx context.Context, workdayID int, time tm.Duration) (appointmentID int, err error) {
+	defer func() {
+		if errors.Is(err, st.ErrNoSavedObject) {
+			err = ErrNoSavedAppointment
+		}
+	}()
+	return r.Storage.GetAppointmentIDByWorkdayIDAndTime(ctx, workdayID, m.MapToStorage.Duration(time))
+}
+
 func (r Repository) GetAppointmentsByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (appointments []ent.Appointment, err error) {
 	defer func() { err = e.WrapIfErr("can't get appointments", err) }()
 	dr, err := m.MapToStorage.DateRange(dateRange)
@@ -178,19 +201,6 @@ func (r Repository) GetAppointmentsByDateRange(ctx context.Context, barberID int
 		appointments = append(appointments, m.MapToEntity.Appointment(appt))
 	}
 	return appointments, nil
-}
-
-func (r Repository) GetAppointmentByID(ctx context.Context, appointmentID int) (appointment ent.Appointment, err error) {
-	defer func() {
-		if errors.Is(err, st.ErrNoSavedObject) {
-			err = ErrNoSavedAppointment
-		}
-	}()
-	appt, err := r.Storage.GetAppointmentByID(ctx, appointmentID)
-	if err != nil {
-		return ent.Appointment{}, err
-	}
-	return m.MapToEntity.Appointment(appt), nil
 }
 
 func (r Repository) GetBarberByID(ctx context.Context, barberID int64) (barber ent.Barber, err error) {

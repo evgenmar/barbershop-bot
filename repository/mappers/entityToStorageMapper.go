@@ -2,6 +2,7 @@ package mappers
 
 import (
 	ent "barbershop-bot/entities"
+	tm "barbershop-bot/lib/time"
 	st "barbershop-bot/repository/storage"
 	"database/sql"
 	"time"
@@ -16,8 +17,8 @@ func (e EntityToStorageMapper) Appointment(appointment ent.Appointment) st.Appoi
 		UserID:    mapInt64ToNullInt64(appointment.UserID),
 		WorkdayID: appointment.WorkdayID,
 		ServiceID: mapIntToNullInt32(appointment.ServiceID),
-		Time:      int16(appointment.Time),
-		Duration:  int16(appointment.Duration),
+		Time:      e.Duration(appointment.Time),
+		Duration:  e.Duration(appointment.Duration),
 		Note:      mapStrToNullStr(appointment.Note),
 		CreatedAt: appointment.CreatedAt,
 	}
@@ -50,8 +51,12 @@ func (e EntityToStorageMapper) Service(service ent.Service) st.Service {
 		Name:       service.Name,
 		Desciption: service.Desciption,
 		Price:      uint(service.Price),
-		Duration:   int16(service.Duration),
+		Duration:   e.Duration(service.Duration),
 	}
+}
+
+func (e EntityToStorageMapper) Duration(dur tm.Duration) int16 {
+	return int16(dur)
 }
 
 func (e EntityToStorageMapper) User(user ent.User) st.User {
@@ -66,8 +71,8 @@ func (e EntityToStorageMapper) Workday(workday ent.Workday) st.Workday {
 	return st.Workday{
 		BarberID:  workday.BarberID,
 		Date:      e.Date(workday.Date),
-		StartTime: int16(workday.StartTime),
-		EndTime:   int16(workday.EndTime),
+		StartTime: e.Duration(workday.StartTime),
+		EndTime:   e.Duration(workday.EndTime),
 	}
 }
 

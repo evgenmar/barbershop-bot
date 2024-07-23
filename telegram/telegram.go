@@ -49,6 +49,15 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	bot.Handle("/start", noAction, onStartRestrict())
 	bot.Handle(tele.OnText, noAction, onTextRestrict())
 
+	barbers.Handle(&btnSignUpClientForAppointment, onSignUpClientForAppointment)
+	barbers.Handle(callbackUnique(endpntBarberSelectServiceForAppointment), onBarberSelectServiceForAppointment)
+	barbers.Handle(callbackUnique(endpntBarberSelectMonthForAppointment), onBarberSelectMonthForAppointment)
+	barbers.Handle(callbackUnique(endpntBarberSelectWorkdayForAppointment), onBarberSelectWorkdayForAppointment)
+	barbers.Handle(callbackUnique(endpntBarberSelectTimeForAppointment), onBarberSelectTimeForAppointment)
+	barbers.Handle(&btnBarberConfirmNewAppointment, onBarberConfirmNewAppointment)
+	barbers.Handle(&btnBarberSelectAnotherTimeForAppointment, onBarberSelectAnotherTimeForAppointment)
+	barbers.Handle(&btnUpdNote, onUpdNote)
+
 	barbers.Handle(&btnBarberSettings, onBarberSettings)
 
 	barbers.Handle(&btnListOfNecessarySettings, onListOfNecessarySettings)
@@ -64,7 +73,7 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 
 	barbers.Handle(&btnDeleteAccount, onDeleteAccount)
 	barbers.Handle(&btnSetLastWorkDate, onSetLastWorkDate)
-	barbers.Handle(&btnSelectLastWorkDate, onSelectLastWorkDate)
+	barbers.Handle(callbackUnique(endpntSelectLastWorkDate), onSelectLastWorkDate)
 	barbers.Handle(&btnSelfDeleteBarber, onSelfDeleteBarber)
 	barbers.Handle(&btnSureToSelfDeleteBarber, onSureToSelfDeleteBarber)
 
@@ -78,29 +87,29 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	barbers.Handle(&btnEnterServiceDescription, onEnterServiceDescription)
 	barbers.Handle(&btnEnterServicePrice, onEnterServicePrice)
 	barbers.Handle(&btnSelectServiceDurationOnEnter, onSelectServiceDurationOnEnter)
-	barbers.Handle(&btnSelectCertainDurationOnEnter, onSelectCertainDurationOnEnter)
+	barbers.Handle(callbackUnique(endpntEnterServiceDuration), onSelectCertainDurationOnEnter)
 	barbers.Handle(&btnSaveNewService, onSaveNewService)
 
 	barbers.Handle(&btnEditService, onEditService)
 	barbers.Handle(&btnСontinueEditingService, onСontinueEditingService)
 	barbers.Handle(&btnSelectServiceToEdit, onSelectServiceToEdit)
-	barbers.Handle(&btnSelectCertainServiceToEdit, onSelectCertainServiceToEdit)
+	barbers.Handle(callbackUnique(endpntServiceToEdit), onSelectCertainServiceToEdit)
 	barbers.Handle(&btnEditServiceName, onEditServiceName)
 	barbers.Handle(&btnEditServiceDescription, onEditServiceDescription)
 	barbers.Handle(&btnEditServicePrice, onEditServicePrice)
 	barbers.Handle(&btnSelectServiceDurationOnEdit, onSelectServiceDurationOnEdit)
-	barbers.Handle(&btnSelectCertainDurationOnEdit, onSelectCertainDurationOnEdit)
+	barbers.Handle(callbackUnique(endpntEditServiceDuration), onSelectCertainDurationOnEdit)
 	barbers.Handle(&btnUpdateService, onUpdateService)
 
 	barbers.Handle(&btnDeleteService, onDeleteService)
-	barbers.Handle(&btnSelectCertainServiceToDelete, onSelectCertainServiceToDelete)
-	barbers.Handle(&btnSureToDeleteService, onSureToDeleteService)
+	barbers.Handle(callbackUnique(endpntServiceToDelete), onSelectCertainServiceToDelete)
+	barbers.Handle(callbackUnique(endpntSureToDeleteService), onSureToDeleteService)
 
 	barbers.Handle(&btnManageBarbers, onManageBarbers)
 	barbers.Handle(&btnShowAllBurbers, onShowAllBarbers)
 	barbers.Handle(&btnAddBarber, onAddBarber)
 	barbers.Handle(&btnDeleteBarber, onDeleteBarber)
-	barbers.Handle(&btnDeleteCertainBarber, onDeleteCertainBarber)
+	barbers.Handle(callbackUnique(endpntBarberToDeletion), onDeleteCertainBarber)
 
 	barbers.Handle(&btnBarberBackToMain, onBarberBackToMain)
 
@@ -108,11 +117,11 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	//TODO barberHandlers
 
 	users.Handle(&btnSignUpForAppointment, onSignUpForAppointment)
-	users.Handle(&btnSelectBarberForAppointment, onSelectBarberForAppointment)
-	users.Handle(&btnUserSelectServiceForAppointment, onUserSelectServiceForAppointment)
-	users.Handle(&btnUserSelectMonthForAppointment, onUserSelectMonthForAppointment)
-	users.Handle(&btnUserSelectWorkdayForAppointment, onUserSelectWorkdayForAppointment)
-	users.Handle(&btnUserSelectTimeForAppointment, onUserSelectTimeForAppointment)
+	users.Handle(callbackUnique(endpntBarberForAppointment), onSelectBarberForAppointment)
+	users.Handle(callbackUnique(endpntUserSelectServiceForAppointment), onUserSelectServiceForAppointment)
+	users.Handle(callbackUnique(endpntUserSelectMonthForAppointment), onUserSelectMonthForAppointment)
+	users.Handle(callbackUnique(endpntUserSelectWorkdayForAppointment), onUserSelectWorkdayForAppointment)
+	users.Handle(callbackUnique(endpntUserSelectTimeForAppointment), onUserSelectTimeForAppointment)
 	users.Handle(&btnUserConfirmNewAppointment, onUserConfirmNewAppointment)
 	users.Handle(&btnUserSelectAnotherTimeForAppointment, onUserSelectAnotherTimeForAppointment)
 

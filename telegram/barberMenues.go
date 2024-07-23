@@ -11,6 +11,17 @@ import (
 )
 
 const (
+	barberSelectServiceForAppointment    = "Выберите услугу, на которую хотите записать клиента."
+	informBarberNoFreeTimeForAppointment = `Ваш график полностью занят, нет времени для новой записи.
+Попробуйте добавить рабочие часы в свой график или предложите клиенту записаться на услугу меньшей длительности, для которой возможно найдется время в существующем графике.`
+	newAppointmentSavedByBarber = "Вы записали клиента на услугу:\n\n%s\n\nВремя записи %s в %s.\n\nЖелаете добавить заметку к только что сделанной записи? Вы можете сделать это позднее, найдя запись в Вашем графике."
+	enterNote                   = "Введите заметку к записи клиента."
+	invalidNote                 = `Введенная заметка не соответствует установленным критериям:
+- заметка может содержать любые буквы, цифры, пробелы, знаки пунктуации, а также знаки + и -;
+- длина заметки должна быть не менее 3 символов и не более 100 символов.
+Пожалуйста, попробуйте ввести заметку еще раз. При необходимости вернуться в главное меню воспользуйтесь командой /start`
+	updNoteSuccess = "Заметка успешно добавлена/обновлена."
+
 	listOfNecessarySettings = `Прежде чем клиенты получат возможность записаться к Вам на стрижку через этот бот, Вы должны произвести необходимый минимум подготовительных настроек.
 Это необходимо для того, чтобы предоставить Вашим клиентам максимально комфортный пользовательский опыт обращения с этим ботом.
 Итак, что необходимо сделать:
@@ -62,13 +73,13 @@ const (
 	enterServiceParams          = "Для ввода или изменения параметров услуги выберите соответствующую опцию. Вы также можете покинуть это меню и вернуться к созданию услуги позднее.\n\n"
 	enterServiceName            = "Введите название услуги. Название услуги не должно совпадать с названиями других Ваших услуг."
 	invalidServiceName          = `Введенное название услуги не соответствует установленным критериям:
-	- название услуги может содержать любые буквы, цифры, пробелы, знаки пунктуации, а также знаки + и -;
-	- длина названия услуги должна быть не менее 3 символов и не более 35 символов.
+- название услуги может содержать любые буквы (минимум 1 буква в названии), цифры, пробелы, знаки пунктуации, а также знаки + и -;
+- длина названия услуги должна быть не менее 3 символов и не более 35 символов.
 Пожалуйста, попробуйте ввести название услуги еще раз. При необходимости вернуться в главное меню воспользуйтесь командой /start`
 	enterServiceDescription   = "Введите описание услуги."
 	invalidServiceDescription = `Введенное описание услуги не соответствует установленным критериям:
-	- описание услуги может содержать любые буквы (минимум 7 букв в описании), цифры, пробелы, знаки пунктуации, а также знаки + и -;
-	- длина описания услуги должна быть не менее 10 символов и не более 400 символов.
+- описание услуги может содержать любые буквы (минимум 7 букв в описании), цифры, пробелы, знаки пунктуации, а также знаки + и -;
+- длина описания услуги должна быть не менее 10 символов и не более 400 символов.
 Пожалуйста, попробуйте ввести описание услуги еще раз. При необходимости вернуться в главное меню воспользуйтесь командой /start`
 	enterServicePrice   = "Введите цену услуги в рублях. Цена услуги должна быть больше нуля. Нужно ввести только число, дополнительные символы, какие-либо сокращения вводить не нужно."
 	invalidServicePrice = `Неизвестный формат цены. Введите число, равное стоимости оказания услуги в рублях. Цена услуги должна быть больше нуля. Нужно ввести только число, дополнительные символы, какие-либо сокращения вводить не нужно.
@@ -126,20 +137,37 @@ const (
 	errorBarber = `Произошла ошибка обработки команды. Команда не была выполнена. Если ошибка будет повторяться, возможно, потребуется перезапуск сервиса.
 Пожалуйста, перейдите в главное меню и попробуйте выполнить команду заново.`
 
-	endpntSelectMonthOfLastWorkDate = "select_month_of_last_work_date"
-	endpntSelectLastWorkDate        = "select_last_work_date"
-	endpntEnterServiceDuration      = "enter_service_duration"
-	endpntServiceToEdit             = "service_to_edit"
-	endpntEditServiceDuration       = "edit_service_duration"
-	endpntServiceToDelete           = "service_to_delete"
-	endpntSureToDeleteService       = "sure_to_delete_service"
-	endpntBarberToDeletion          = "barber_to_deletion"
-	endpntBarberBackToMain          = "barber_back_to_main"
+	endpntBarberSelectServiceForAppointment = "barber_select_service_for_appointment"
+	endpntBarberSelectMonthForAppointment   = "barber_select_month_for_appointment"
+	endpntBarberSelectWorkdayForAppointment = "barber_select_workday_for_appointment"
+	endpntBarberSelectTimeForAppointment    = "barber_select_time_for_appointment"
+	endpntSelectMonthOfLastWorkDate         = "select_month_of_last_work_date"
+	endpntSelectLastWorkDate                = "select_last_work_date"
+	endpntEnterServiceDuration              = "enter_service_duration"
+	endpntServiceToEdit                     = "service_to_edit"
+	endpntEditServiceDuration               = "edit_service_duration"
+	endpntServiceToDelete                   = "service_to_delete"
+	endpntSureToDeleteService               = "sure_to_delete_service"
+	endpntBarberToDeletion                  = "barber_to_deletion"
+	endpntBarberBackToMain                  = "barber_back_to_main"
 )
 
 var (
-	markupBarberMain  = &tele.ReplyMarkup{}
-	btnBarberSettings = markupEmpty.Data("Настройки", "barber_settings")
+	markupBarberMain              = &tele.ReplyMarkup{}
+	btnSignUpClientForAppointment = markupEmpty.Data("Записать клиента на стрижку", "sign_up_client_for_appointment")
+	btnBarberSettings             = markupEmpty.Data("Настройки", "barber_settings")
+
+	markupBarberConfirmNewAppointment = &tele.ReplyMarkup{}
+	btnBarberConfirmNewAppointment    = markupEmpty.Data("Подтвердить запись", "barber_confirm_new_appointment")
+
+	markupBarberConfirmRescheduleAppointment = &tele.ReplyMarkup{}
+	btnBarberConfirmRescheduleAppointment    = markupEmpty.Data("Подтвердить перенос записи", "barber_confirm_reschedule_appointment")
+
+	markupBarberFailedToSaveOrRescheduleAppointment = &tele.ReplyMarkup{}
+	btnBarberSelectAnotherTimeForAppointment        = markupEmpty.Data("Выбрать другое время", "barber_select_another_time_for_appointment")
+
+	markupUpdNote = &tele.ReplyMarkup{}
+	btnUpdNote    = markupEmpty.Data("Добавить заметку", "upd_note")
 
 	markupBarberSettings       = &tele.ReplyMarkup{}
 	btnListOfNecessarySettings = markupEmpty.Data("Перечень необходимых настроек", "list_of_necessary_settings")
@@ -163,7 +191,6 @@ var (
 
 	markupDeleteAccount     = &tele.ReplyMarkup{}
 	btnSetLastWorkDate      = markupEmpty.Data("Установить последний рабочий день", endpntSelectMonthOfLastWorkDate, "0")
-	btnSelectLastWorkDate   = markupEmpty.Data("", endpntSelectLastWorkDate)
 	btnInfiniteLastWorkDate = markupEmpty.Data("Установить бессрочную дату", endpntSelectLastWorkDate, cfg.InfiniteWorkDate)
 	btnSelfDeleteBarber     = markupEmpty.Data(`Отказаться от статуса "барбер"`, "self_delete_barber")
 
@@ -188,7 +215,6 @@ var (
 	btnEnterServiceDescription      = markupEmpty.Data("Ввести описание услуги", "enter_service_description")
 	btnEnterServicePrice            = markupEmpty.Data("Ввести цену услуги", "enter_service_price")
 	btnSelectServiceDurationOnEnter = markupEmpty.Data("Выбрать продолжительность услуги", "select_service_duration_on_enter")
-	btnSelectCertainDurationOnEnter = markupEmpty.Data("", endpntEnterServiceDuration)
 
 	markupReadyToCreateService = &tele.ReplyMarkup{}
 	btnSaveNewService          = markupEmpty.Data("Сохранить новую услугу", "save_new_service")
@@ -198,28 +224,22 @@ var (
 	markupContinueEditingOrSelectService = &tele.ReplyMarkup{}
 	btnСontinueEditingService            = markupEmpty.Data("Продолжить ранее начатое", "continue_editing")
 	btnSelectServiceToEdit               = markupEmpty.Data("Начать заново", "select_service_to_edit")
-	btnSelectCertainServiceToEdit        = markupEmpty.Data("", endpntServiceToEdit)
 
 	markupEditServiceParams        = &tele.ReplyMarkup{}
 	btnEditServiceName             = markupEmpty.Data("Изменить название услуги", "edit_service_name")
 	btnEditServiceDescription      = markupEmpty.Data("Изменить описание услуги", "edit_service_description")
 	btnEditServicePrice            = markupEmpty.Data("Изменить цену услуги", "edit_service_price")
 	btnSelectServiceDurationOnEdit = markupEmpty.Data("Изменить продолжительность услуги", "select_service_duration_on_edit")
-	btnSelectCertainDurationOnEdit = markupEmpty.Data("", endpntEditServiceDuration)
 
 	markupReadyToUpdateService = &tele.ReplyMarkup{}
 	btnUpdateService           = markupEmpty.Data("Применить изменения", "update_service")
 
 	markupEditServiceName = &tele.ReplyMarkup{}
 
-	btnSelectCertainServiceToDelete = markupEmpty.Data("", endpntServiceToDelete)
-	btnSureToDeleteService          = markupEmpty.Data("", endpntSureToDeleteService)
-
-	markupManageBarbers    = &tele.ReplyMarkup{}
-	btnShowAllBurbers      = markupEmpty.Data("Список барберов", "show_all_barbers")
-	btnAddBarber           = markupEmpty.Data("Добавить барбера", "add_barber")
-	btnDeleteBarber        = markupEmpty.Data("Удалить барбера", "delete_barber")
-	btnDeleteCertainBarber = markupEmpty.Data("", endpntBarberToDeletion)
+	markupManageBarbers = &tele.ReplyMarkup{}
+	btnShowAllBurbers   = markupEmpty.Data("Список барберов", "show_all_barbers")
+	btnAddBarber        = markupEmpty.Data("Добавить барбера", "add_barber")
+	btnDeleteBarber     = markupEmpty.Data("Удалить барбера", "delete_barber")
 
 	markupBarberBackToMain = &tele.ReplyMarkup{}
 	btnBarberBackToMain    = markupEmpty.Data(backToMain, endpntBarberBackToMain)
@@ -227,7 +247,28 @@ var (
 
 func init() {
 	markupBarberMain.Inline(
+		markupEmpty.Row(btnSignUpClientForAppointment),
 		markupEmpty.Row(btnBarberSettings),
+	)
+
+	markupBarberConfirmNewAppointment.Inline(
+		markupEmpty.Row(btnBarberConfirmNewAppointment),
+		markupEmpty.Row(btnBarberBackToMain),
+	)
+
+	markupBarberFailedToSaveOrRescheduleAppointment.Inline(
+		markupEmpty.Row(btnBarberSelectAnotherTimeForAppointment),
+		markupEmpty.Row(btnBarberBackToMain),
+	)
+
+	markupBarberConfirmRescheduleAppointment.Inline(
+		markupEmpty.Row(btnBarberConfirmRescheduleAppointment),
+		markupEmpty.Row(btnBarberBackToMain),
+	)
+
+	markupUpdNote.Inline(
+		markupEmpty.Row(btnUpdNote),
+		markupEmpty.Row(btnBarberBackToMain),
 	)
 
 	markupBarberSettings.Inline(

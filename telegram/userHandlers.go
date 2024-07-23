@@ -35,7 +35,7 @@ func onSignUpForAppointment(ctx tele.Context) error {
 }
 
 func onSelectBarberForAppointment(ctx tele.Context) error {
-	errMsg := "can't show barber's services for appointment"
+	errMsg := "can't show to user services for appointment"
 	barberID, err := strconv.ParseInt(ctx.Callback().Data, 10, 64)
 	if err != nil {
 		return logAndMsgErrUser(ctx, errMsg, err)
@@ -484,14 +484,6 @@ func getAppointmentInfo(appointment ent.Appointment) (serviceInfo, barberName, d
 		return
 	}
 	return serviceInfo, barber.Name, tm.ShowDate(workday.Date), appointment.Time.ShortString(), nil
-}
-
-func getNullServiceInfo(serviceID int, appointmentDuration tm.Duration) string {
-	service, err := cp.RepoWithContext.GetServiceByID(serviceID)
-	if err != nil {
-		return "Длительность услуги: " + appointmentDuration.LongString()
-	}
-	return service.Info()
 }
 
 func getWorkingBarbers() (workingBarbers []ent.Barber, err error) {

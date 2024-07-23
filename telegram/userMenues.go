@@ -1,12 +1,7 @@
 package telegram
 
 import (
-	cp "barbershop-bot/contextprovider"
 	ent "barbershop-bot/entities"
-	tm "barbershop-bot/lib/time"
-	sess "barbershop-bot/sessions"
-	"strconv"
-	"time"
 
 	tele "gopkg.in/telebot.v3"
 )
@@ -27,15 +22,10 @@ const (
 Контакты для связи:
 Телефон: %s
 [Ссылка на профиль](tg://user?id=%d)`
-	selectDateForAppointment  = "Информация об услуге:\n\n%s\n\nВыберите дату. Отображены только даты, на которые возможна запись."
-	selectTimeForAppointment  = "Информация об услуге:\n\n%s\n\nВыбранная Вами дата: %s\n\nВыберите время. Отображено только время, на которое возможна запись."
-	confirmNewAppointment     = "Информация об услуге:\n\n%s\n\nВыбранная Вами дата: %s\nВыбранное время: %s\n\nПодтвердите создание записи или вернитесь в главное меню."
-	failedToSaveAppointment   = "К сожалению указанное время уже занято. Не удалось создать запись."
 	newAppointmentSavedByUser = "Вы записались на услугу:\n\n%s\n\nБарбер %s ждет Вас %s в %s."
 
 	youHaveNoAppointments         = "На данный момент у Вас нет записи, которую можно было бы перенести или отменить."
 	rescheduleOrCancelAppointment = "Вы записаны к барберу %s %s в %s на услугу:\n\n%s\n\nПри необходимости перенести или отменить запись выберите соотетствующее действие."
-	confirmRescheduleAppointment  = "Информация о переносимой записи:\n\n%s\n\nНовая дата: %s\nНовое время: %s\n\nПодтвердите перенос записи или вернитесь в главное меню."
 	appointmentRescheduledByUser  = "Информация о перенесенной записи:\n\n%s\n\nЗапись перенесена на новое время. Барбер %s ждет Вас %s в %s."
 	failedToRescheduleAppointment = "К сожалению указанное время уже занято. Не удалось перенести запись."
 	confirmCancelAppointment      = "Вы записаны к барберу %s %s в %s на услугу:\n\n%s\n\nПодтвердите отмену этой записи или вернитесь в главное меню."
@@ -57,12 +47,6 @@ var (
 	btnUserSettings                  = markupEmpty.Data("Настройки", "user_settings")
 	btnSignUpForAppointment          = markupEmpty.Data("Записаться на стрижку", "sign_up_for_appointment")
 	btnRescheduleOrCancelAppointment = markupEmpty.Data("Перенести/отменить запись", "reschedule_or_cancel_appointment")
-
-	btnSelectBarberForAppointment      = markupEmpty.Data("", endpntBarberForAppointment)
-	btnUserSelectServiceForAppointment = markupEmpty.Data("", endpntUserSelectServiceForAppointment)
-	btnUserSelectMonthForAppointment   = markupEmpty.Data("", endpntUserSelectMonthForAppointment)
-	btnUserSelectWorkdayForAppointment = markupEmpty.Data("", endpntUserSelectWorkdayForAppointment)
-	btnUserSelectTimeForAppointment    = markupEmpty.Data("", endpntUserSelectTimeForAppointment)
 
 	markupUserConfirmNewAppointment = &tele.ReplyMarkup{}
 	btnUserConfirmNewAppointment    = markupEmpty.Data("Подтвердить запись", "user_confirm_new_appointment")
@@ -163,14 +147,6 @@ func init() {
 	)
 }
 
-func btnTime(dur tm.Duration, endpnt string) tele.Btn {
-	return markupEmpty.Data(dur.ShortString(), endpnt, strconv.FormatUint(uint64(dur), 10))
-}
-
-func btnWorkday(workday ent.Workday, endpnt string) tele.Btn {
-	return markupEmpty.Data(strconv.Itoa(workday.Date.Day()), endpnt, strconv.Itoa(workday.ID))
-}
-
 func markupSelectBarberForAppointment(barbers []ent.Barber) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 	var rows []tele.Row
@@ -180,90 +156,4 @@ func markupSelectBarberForAppointment(barbers []ent.Barber) *tele.ReplyMarkup {
 	rows = append(rows, markup.Row(btnUserBackToMain))
 	markup.Inline(rows...)
 	return markup
-}
-
-func markupSelectTimeForAppointment(freeTimes []tm.Duration, endpntTime, endpntMonth, endpntBackToMain string) *tele.ReplyMarkup {
-	markup := &tele.ReplyMarkup{}
-	rowsSelectTime := rowsSelectTimeForAppointment(freeTimes, endpntTime)
-	rowBackToSelectWorkday := markup.Row(markup.Data(backToSelectWorkday, endpntMonth, "0"))
-	rowBackToMain := markup.Row(markup.Data(backToMain, endpntBackToMain))
-	var rows []tele.Row
-	rows = append(rows, rowsSelectTime...)
-	rows = append(rows, rowBackToSelectWorkday, rowBackToMain)
-	markup.Inline(rows...)
-	return markup
-}
-
-func markupSelectWorkdayForAppointment(
-	dateRange ent.DateRange,
-	monthRange ent.DateRange,
-	appointment sess.Appointment,
-	endpntWorkday string,
-	endpntMonth string,
-	endpntBackToMain string,
-) (*tele.ReplyMarkup, error) {
-	markup := &tele.ReplyMarkup{}
-	btnPrevMonth, btnNextMonth := btnsSwitchMonth(dateRange.EndDate, monthRange, endpntMonth)
-	rowSelectMonth := markup.Row(btnPrevMonth, btnMonth(dateRange.Month()), btnNextMonth)
-	rowsSelectWorkday, err := rowsSelectWorkdayForAppointment(dateRange, appointment, endpntWorkday)
-	if err != nil {
-		return nil, err
-	}
-	rowBackToMain := markup.Row(markup.Data(backToMain, endpntBackToMain))
-	var rows []tele.Row
-	rows = append(rows, rowSelectMonth, rowWeekdays)
-	rows = append(rows, rowsSelectWorkday...)
-	rows = append(rows, rowBackToMain)
-	markup.Inline(rows...)
-	return markup, nil
-}
-
-func rowsSelectTimeForAppointment(freeTimes []tm.Duration, endpnt string) []tele.Row {
-	var btnsTimesToSelect []tele.Btn
-	for _, freeTime := range freeTimes {
-		btnsTimesToSelect = append(btnsTimesToSelect, btnTime(freeTime, endpnt))
-	}
-	for i := 1; i <= (4-len(freeTimes)%4)%4; i++ {
-		btnsTimesToSelect = append(btnsTimesToSelect, btnEmpty)
-	}
-	return markupEmpty.Split(4, btnsTimesToSelect)
-}
-
-func rowsSelectWorkdayForAppointment(dateRange ent.DateRange, appointment sess.Appointment, endpntWorkday string) ([]tele.Row, error) {
-	wds, err := cp.RepoWithContext.GetWorkdaysByDateRange(appointment.BarberID, dateRange)
-	if err != nil {
-		return nil, err
-	}
-	workdays := make(map[int]ent.Workday)
-	for _, wd := range wds {
-		workdays[wd.Date.Day()] = wd
-	}
-	appts, err := cp.RepoWithContext.GetAppointmentsByDateRange(appointment.BarberID, dateRange)
-	if err != nil {
-		return nil, err
-	}
-	appointments := make(map[int][]ent.Appointment)
-	for _, appt := range appts {
-		appointments[appt.WorkdayID] = append(appointments[appt.WorkdayID], appt)
-	}
-	var btnsWorkdaysToSelect []tele.Btn
-	for i := 1; i < dateRange.StartWeekday(); i++ {
-		btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnEmpty)
-	}
-	for date := dateRange.StartDate; date.Compare(dateRange.EndDate) <= 0; date = date.Add(24 * time.Hour) {
-		workday, ok := workdays[date.Day()]
-		if !ok {
-			btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnEmpty)
-		} else {
-			if haveFreeTimeForAppointment(workday, appointments[workday.ID], appointment) {
-				btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnWorkday(workday, endpntWorkday))
-			} else {
-				btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnEmpty)
-			}
-		}
-	}
-	for i := 7; i > dateRange.EndWeekday(); i-- {
-		btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnEmpty)
-	}
-	return markupEmpty.Split(7, btnsWorkdaysToSelect), nil
 }

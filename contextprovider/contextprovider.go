@@ -4,7 +4,7 @@ import (
 	ent "barbershop-bot/entities"
 	"barbershop-bot/lib/e"
 
-	//tm "barbershop-bot/lib/time"
+	tm "barbershop-bot/lib/time"
 	rep "barbershop-bot/repository"
 	st "barbershop-bot/repository/storage"
 	"context"
@@ -107,19 +107,26 @@ func (c ContextProvider) GetAllBarbers() (barbers []ent.Barber, err error) {
 	return c.repo.GetAllBarbers(ctx)
 }
 
-func (c ContextProvider) GetAppointmentsByDateRange(barberID int64, dateRange ent.DateRange) (appointments []ent.Appointment, err error) {
-	defer func() { err = e.WrapIfErr("can't get appointments", err) }()
-	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
-	defer cancel()
-	return c.repo.GetAppointmentsByDateRange(ctx, barberID, dateRange)
-}
-
 // func (c ContextProvider) GetAppointmentByID(appointmentID int) (appointment ent.Appointment, err error) {
 // 	defer func() { err = e.WrapIfErr("can't get appointment", err) }()
 // 	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
 // 	defer cancel()
 // 	return c.repo.GetAppointmentByID(ctx, appointmentID)
 // }
+
+func (c ContextProvider) GetAppointmentIDByWorkdayIDAndTime(workdayID int, time tm.Duration) (appointmentID int, err error) {
+	defer func() { err = e.WrapIfErr("can't get appointmentID", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
+	defer cancel()
+	return c.repo.GetAppointmentIDByWorkdayIDAndTime(ctx, workdayID, time)
+}
+
+func (c ContextProvider) GetAppointmentsByDateRange(barberID int64, dateRange ent.DateRange) (appointments []ent.Appointment, err error) {
+	defer func() { err = e.WrapIfErr("can't get appointments", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), timoutRead)
+	defer cancel()
+	return c.repo.GetAppointmentsByDateRange(ctx, barberID, dateRange)
+}
 
 func (c ContextProvider) GetBarberByID(barberID int64) (barber ent.Barber, err error) {
 	defer func() { err = e.WrapIfErr("can't get barber", err) }()

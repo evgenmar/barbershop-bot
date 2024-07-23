@@ -35,6 +35,10 @@ func calculateAndCheckDisplayedRanges(deltaDisplayedMonth int8, appointment sess
 	return
 }
 
+func callbackUnique(endpnt string) string {
+	return "\f" + endpnt
+}
+
 func defineDisplayedDateRangeForAppointment(
 	firstDisplayedDateRange ent.DateRange,
 	displayedMonthRange ent.DateRange,
@@ -134,6 +138,14 @@ func getFutureAppointments(appointments []ent.Appointment, currentDayTime tm.Dur
 		}
 	}
 	return nil
+}
+
+func getNullServiceInfo(serviceID int, appointmentDuration tm.Duration) string {
+	service, err := cp.RepoWithContext.GetServiceByID(serviceID)
+	if err != nil {
+		return "Длительность услуги: " + appointmentDuration.LongString()
+	}
+	return service.Info()
 }
 
 func getWorkdayAndAppointments(workdayID int) (ent.Workday, []ent.Appointment, error) {
