@@ -418,7 +418,7 @@ func calculateAndShowToUserFreeWorkdaysForAppointment(ctx tele.Context, deltaDis
 	if err != nil {
 		return logAndMsgErrUser(ctx, "can't show to user free workdays for new appointment", err)
 	}
-	if displayedMonthRange.firstMonth > displayedMonthRange.lastMonth {
+	if displayedMonthRange.lastMonth == 0 {
 		return informUserNoFreeTime(ctx, appointment.BarberID)
 	}
 	appointment.LastShownMonth = tm.ParseMonth(displayedDateRange.LastDate)

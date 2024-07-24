@@ -212,7 +212,7 @@ func rowsSelectWorkdayForAppointment(dateRange ent.DateRange, appointment sess.A
 		if !ok {
 			btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnDash)
 		} else {
-			if haveFreeTimeForAppointment(workday, appointments[workday.ID], appointment) {
+			if workdayHaveFreeTimeForAppointment(workday, appointments[workday.ID], appointment) {
 				btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnWorkday(workday, endpntWorkday))
 			} else {
 				btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnDash)

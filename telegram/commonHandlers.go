@@ -23,9 +23,9 @@ func calculateDisplayedRangesForAppointment(deltaDisplayedMonth int8, appointmen
 	if err != nil {
 		return
 	}
-	displayedMonthRange = monthRange{
-		firstMonth: tm.ParseMonth(firstDisplayedDateRange.LastDate),
-		lastMonth:  tm.MonthFromNow(cfg.MaxAppointmentBookingMonths),
+	displayedMonthRange, err = defineDisplayedMonthRangeForAppointment(firstDisplayedDateRange, appointment)
+	if err != nil {
+		return
 	}
 	displayedDateRange = defineDisplayedDateRangeForAppointment(
 		firstDisplayedDateRange,
@@ -46,7 +46,7 @@ func defineDisplayedDateRangeForAppointment(
 	deltaDisplayedMonth int8,
 	appointment sess.Appointment,
 ) ent.DateRange {
-	if displayedMonthRange.firstMonth > displayedMonthRange.lastMonth {
+	if displayedMonthRange.lastMonth == 0 {
 		return ent.DateRange{}
 	}
 	if displayedMonthRange.firstMonth == displayedMonthRange.lastMonth {
@@ -73,9 +73,27 @@ func defineDisplayedDateRangeForAppointment(
 	return firstDisplayedDateRange
 }
 
+func defineDisplayedMonthRangeForAppointment(firstDisplayedDateRange ent.DateRange, appointment sess.Appointment) (monthRange, error) {
+	firstMonth := tm.ParseMonth(firstDisplayedDateRange.LastDate)
+	lastPossibleMonth := tm.MonthFromNow(cfg.MaxAppointmentBookingMonths)
+	if firstMonth > lastPossibleMonth {
+		return monthRange{}, nil
+	}
+	for lastMonth := lastPossibleMonth; lastMonth > firstMonth; lastMonth-- {
+		ok, err := monthHaveFreeTimeForAppointment(lastMonth, appointment)
+		if err != nil {
+			return monthRange{}, err
+		}
+		if ok {
+			return monthRange{firstMonth: firstMonth, lastMonth: lastMonth}, nil
+		}
+	}
+	return monthRange{firstMonth: firstMonth, lastMonth: firstMonth}, nil
+}
+
 func defineFirstDisplayedDateRangeForAppointment(appointment sess.Appointment) (firstDisplayedDateRange ent.DateRange, err error) {
 	var relativeFirstDisplayedMonth byte = 0
-	firstDisplayedDateRange = ent.MonthFromNow(relativeFirstDisplayedMonth)
+	firstDisplayedDateRange = ent.MonthFromNow(0)
 	for relativeFirstDisplayedMonth <= cfg.MaxAppointmentBookingMonths {
 		earlestFreeDate, err := earlestDateWithFreeTime(appointment, firstDisplayedDateRange)
 		if err != nil {
@@ -107,7 +125,7 @@ func earlestDateWithFreeTime(appointment sess.Appointment, dateRange ent.DateRan
 		appointments[appt.WorkdayID] = append(appointments[appt.WorkdayID], appt)
 	}
 	for _, workday := range workdays {
-		if haveFreeTimeForAppointment(workday, appointments[workday.ID], appointment) {
+		if workdayHaveFreeTimeForAppointment(workday, appointments[workday.ID], appointment) {
 			return workday.Date, nil
 		}
 	}
@@ -170,25 +188,6 @@ func getWorkdayAndAppointments(workdayID int) (ent.Workday, []ent.Appointment, e
 	return workday, appointments, nil
 }
 
-func haveFreeTimeForAppointment(workday ent.Workday, appointments []ent.Appointment, appt sess.Appointment) bool {
-	analyzedTime, appointments := prepareAnalizedTimeAndAppointments(workday, appointments, appt.ID)
-
-	if workday.Date.Equal(tm.Today()) {
-		currentDayTime := tm.CurrentDayTime()
-		if currentDayTime > workday.StartTime {
-			analyzedTime = currentDayTime
-			appointments = getFutureAppointments(appointments, currentDayTime)
-		}
-	}
-	for _, appointment := range appointments {
-		if (appointment.Time - analyzedTime) >= appt.Duration {
-			return true
-		}
-		analyzedTime = appointment.Time + appointment.Duration
-	}
-	return (workday.EndTime - analyzedTime) >= appt.Duration
-}
-
 func isTimeForAppointmentAvailable(workday ent.Workday, appointments []ent.Appointment, appt sess.Appointment) bool {
 	if workday.Date.Equal(tm.Today()) && appt.Time < tm.CurrentDayTime() {
 		return false
@@ -200,6 +199,28 @@ func isTimeForAppointmentAvailable(workday ent.Workday, appointments []ent.Appoi
 		}
 	}
 	return false
+}
+
+func monthHaveFreeTimeForAppointment(month tm.Month, appointment sess.Appointment) (bool, error) {
+	dateRange := ent.Month(month)
+	workdays, err := cp.RepoWithContext.GetWorkdaysByDateRange(appointment.BarberID, dateRange)
+	if err != nil {
+		return false, err
+	}
+	appts, err := cp.RepoWithContext.GetAppointmentsByDateRange(appointment.BarberID, dateRange)
+	if err != nil {
+		return false, err
+	}
+	appointments := make(map[int][]ent.Appointment)
+	for _, appt := range appts {
+		appointments[appt.WorkdayID] = append(appointments[appt.WorkdayID], appt)
+	}
+	for _, workday := range workdays {
+		if workdayHaveFreeTimeForAppointment(workday, appointments[workday.ID], appointment) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func noAction(tele.Context) error { return nil }
@@ -222,4 +243,22 @@ func prepareAnalizedTimeAndAppointments(workday ent.Workday, appointments []ent.
 		}
 	}
 	return analyzedTime, appointments
+}
+
+func workdayHaveFreeTimeForAppointment(workday ent.Workday, appointments []ent.Appointment, appt sess.Appointment) bool {
+	analyzedTime, appointments := prepareAnalizedTimeAndAppointments(workday, appointments, appt.ID)
+	if workday.Date.Equal(tm.Today()) {
+		currentDayTime := tm.CurrentDayTime()
+		if currentDayTime > workday.StartTime {
+			analyzedTime = currentDayTime
+			appointments = getFutureAppointments(appointments, currentDayTime)
+		}
+	}
+	for _, appointment := range appointments {
+		if (appointment.Time - analyzedTime) >= appt.Duration {
+			return true
+		}
+		analyzedTime = appointment.Time + appointment.Duration
+	}
+	return (workday.EndTime - analyzedTime) >= appt.Duration
 }

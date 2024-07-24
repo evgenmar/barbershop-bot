@@ -890,7 +890,7 @@ func calculateAndShowToBarberFreeWorkdaysForAppointment(ctx tele.Context, deltaD
 	if err != nil {
 		return logAndMsgErrBarber(ctx, "can't show to barber free workdays for new appointment", err)
 	}
-	if displayedMonthRange.firstMonth > displayedMonthRange.lastMonth {
+	if displayedMonthRange.lastMonth == 0 {
 		return ctx.Edit(informBarberNoFreeTimeForAppointment, markupBarberBackToMain)
 	}
 	appointment.LastShownMonth = tm.ParseMonth(displayedDateRange.LastDate)
@@ -1002,6 +1002,12 @@ func earlestScheduledDate(barberID int64, dateRange ent.DateRange) (earlestWorkD
 		return time.Time{}, err
 	}
 	if len(workdays) == 0 {
+		return time.Time{}, nil
+	}
+	if workdays[0].Date.Equal(tm.Today()) && workdays[0].EndTime < tm.CurrentDayTime() {
+		if len(workdays) > 1 {
+			return workdays[1].Date, nil
+		}
 		return time.Time{}, nil
 	}
 	return workdays[0].Date, nil
