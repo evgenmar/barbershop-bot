@@ -11,20 +11,21 @@ import (
 	tele "gopkg.in/telebot.v3"
 )
 
-func calculateAndCheckDisplayedRanges(deltaDisplayedMonth int8, appointment sess.Appointment) (
-	displayedDateRange, displayedMonthRange ent.DateRange, ok bool, err error,
+type monthRange struct {
+	firstMonth tm.Month
+	lastMonth  tm.Month
+}
+
+func calculateDisplayedRangesForAppointment(deltaDisplayedMonth int8, appointment sess.Appointment) (
+	displayedDateRange ent.DateRange, displayedMonthRange monthRange, err error,
 ) {
 	firstDisplayedDateRange, err := defineFirstDisplayedDateRangeForAppointment(appointment)
 	if err != nil {
 		return
 	}
-	if firstDisplayedDateRange.EndDate.After(ent.MonthFromNow(cfg.MaxAppointmentBookingMonths).EndDate) {
-		return
-	}
-	ok = true
-	displayedMonthRange = ent.DateRange{
-		StartDate: firstDisplayedDateRange.EndDate,
-		EndDate:   ent.MonthFromNow(cfg.MaxAppointmentBookingMonths).EndDate,
+	displayedMonthRange = monthRange{
+		firstMonth: tm.ParseMonth(firstDisplayedDateRange.LastDate),
+		lastMonth:  tm.MonthFromNow(cfg.MaxAppointmentBookingMonths),
 	}
 	displayedDateRange = defineDisplayedDateRangeForAppointment(
 		firstDisplayedDateRange,
@@ -41,42 +42,48 @@ func callbackUnique(endpnt string) string {
 
 func defineDisplayedDateRangeForAppointment(
 	firstDisplayedDateRange ent.DateRange,
-	displayedMonthRange ent.DateRange,
+	displayedMonthRange monthRange,
 	deltaDisplayedMonth int8,
 	appointment sess.Appointment,
 ) ent.DateRange {
-	displayedDateRange := firstDisplayedDateRange
+	if displayedMonthRange.firstMonth > displayedMonthRange.lastMonth {
+		return ent.DateRange{}
+	}
+	if displayedMonthRange.firstMonth == displayedMonthRange.lastMonth {
+		return firstDisplayedDateRange
+	}
 	if deltaDisplayedMonth == 0 {
 		if appointment.WorkdayID != 0 {
-			if appointment.LastShownDate.After(displayedDateRange.EndDate) {
-				displayedDateRange = ent.MonthFromBase(appointment.LastShownDate, 0)
+			if appointment.LastShownMonth > tm.ParseMonth(firstDisplayedDateRange.LastDate) {
+				return ent.Month(appointment.LastShownMonth)
 			}
 		}
-	} else {
-		newDateRange := ent.MonthFromBase(appointment.LastShownDate, deltaDisplayedMonth)
-		if newDateRange.EndDate.After(displayedMonthRange.EndDate) || newDateRange.EndDate.Before(displayedMonthRange.StartDate) {
-			if appointment.LastShownDate.After(displayedDateRange.EndDate) {
-				displayedDateRange = ent.MonthFromBase(appointment.LastShownDate, 0)
-			}
-		}
-		if newDateRange.EndDate.After(displayedDateRange.EndDate) {
-			displayedDateRange = newDateRange
-		}
+		return firstDisplayedDateRange
 	}
-	return displayedDateRange
+	newDisplayedMonth := appointment.LastShownMonth + tm.Month(deltaDisplayedMonth)
+	if newDisplayedMonth > displayedMonthRange.lastMonth {
+		return ent.Month(displayedMonthRange.lastMonth)
+	}
+	if newDisplayedMonth < displayedMonthRange.firstMonth {
+		return firstDisplayedDateRange
+	}
+	if newDisplayedMonth > displayedMonthRange.firstMonth {
+		return ent.Month(newDisplayedMonth)
+	}
+	return firstDisplayedDateRange
 }
 
 func defineFirstDisplayedDateRangeForAppointment(appointment sess.Appointment) (firstDisplayedDateRange ent.DateRange, err error) {
 	var relativeFirstDisplayedMonth byte = 0
+	firstDisplayedDateRange = ent.MonthFromNow(relativeFirstDisplayedMonth)
 	for relativeFirstDisplayedMonth <= cfg.MaxAppointmentBookingMonths {
-		firstDisplayedDateRange = ent.MonthFromNow(relativeFirstDisplayedMonth)
-		earlestFreeDate, ok, err := earlestDateWithFreeTime(appointment, firstDisplayedDateRange)
+		earlestFreeDate, err := earlestDateWithFreeTime(appointment, firstDisplayedDateRange)
 		if err != nil {
 			return ent.DateRange{}, err
 		}
-		if ok {
-			if earlestFreeDate.After(firstDisplayedDateRange.StartDate) {
-				firstDisplayedDateRange.StartDate = earlestFreeDate
+		if !earlestFreeDate.Equal(time.Time{}) {
+			if earlestFreeDate.After(firstDisplayedDateRange.FirstDate) {
+				firstDisplayedDateRange.FirstDate = earlestFreeDate
 			}
 			break
 		}
@@ -86,14 +93,14 @@ func defineFirstDisplayedDateRangeForAppointment(appointment sess.Appointment) (
 	return
 }
 
-func earlestDateWithFreeTime(appointment sess.Appointment, dateRange ent.DateRange) (earlestFreeDate time.Time, ok bool, err error) {
+func earlestDateWithFreeTime(appointment sess.Appointment, dateRange ent.DateRange) (earlestFreeDate time.Time, err error) {
 	workdays, err := cp.RepoWithContext.GetWorkdaysByDateRange(appointment.BarberID, dateRange)
 	if err != nil {
-		return time.Time{}, false, err
+		return time.Time{}, err
 	}
 	appts, err := cp.RepoWithContext.GetAppointmentsByDateRange(appointment.BarberID, dateRange)
 	if err != nil {
-		return time.Time{}, false, err
+		return time.Time{}, err
 	}
 	appointments := make(map[int][]ent.Appointment)
 	for _, appt := range appts {
@@ -101,10 +108,10 @@ func earlestDateWithFreeTime(appointment sess.Appointment, dateRange ent.DateRan
 	}
 	for _, workday := range workdays {
 		if haveFreeTimeForAppointment(workday, appointments[workday.ID], appointment) {
-			return workday.Date, true, nil
+			return workday.Date, nil
 		}
 	}
-	return time.Time{}, false, nil
+	return time.Time{}, nil
 }
 
 func freeTimesForAppointment(workday ent.Workday, appointments []ent.Appointment, appt sess.Appointment) (freeTimes []tm.Duration) {
@@ -155,7 +162,7 @@ func getWorkdayAndAppointments(workdayID int) (ent.Workday, []ent.Appointment, e
 	}
 	appointments, err := cp.RepoWithContext.GetAppointmentsByDateRange(
 		workday.BarberID,
-		ent.DateRange{StartDate: workday.Date, EndDate: workday.Date},
+		ent.DateRange{FirstDate: workday.Date, LastDate: workday.Date},
 	)
 	if err != nil {
 		return ent.Workday{}, nil, err

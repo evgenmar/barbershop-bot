@@ -152,6 +152,22 @@ func onUpdNote(ctx tele.Context) error {
 	return ctx.Edit(enterNote)
 }
 
+func onMyWorkSchedule(ctx tele.Context) error {
+	editedAppointment := sess.Appointment{
+		BarberID: ctx.Sender().ID,
+	}
+	return calculateAndShowScheduleCalendar(ctx, 0, editedAppointment)
+}
+
+func onSelectMonthFromScheduleCalendar(ctx tele.Context) error {
+	delta, err := strconv.ParseInt(ctx.Callback().Data, 10, 8)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, "can't show schedule calendar", err)
+	}
+	appointment := sess.GetAppointmentBarber(ctx.Sender().ID)
+	return calculateAndShowScheduleCalendar(ctx, int8(delta), appointment)
+}
+
 func onBarberSettings(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
 	return ctx.Edit(settingsMenu, markupBarberSettings)
@@ -222,9 +238,9 @@ func onSetLastWorkDate(ctx tele.Context) error {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
 	firstDisplayedDateRange := defineFirstDisplayedDateRangeForLastWorkDate(latestAppointmentDate)
-	displayedMonthRange := ent.DateRange{
-		StartDate: firstDisplayedDateRange.EndDate,
-		EndDate:   ent.MonthFromNow(cfg.ScheduledWeeks * 7 / 30).EndDate,
+	displayedMonthRange := monthRange{
+		firstMonth: tm.ParseMonth(firstDisplayedDateRange.LastDate),
+		lastMonth:  tm.MonthFromNow(cfg.ScheduledWeeks * 7 / 30),
 	}
 	lastWorkDate := sess.GetLastWorkDate(barberID)
 	displayedDateRange := defineDisplayedDateRangeForLastWorkDate(
@@ -233,7 +249,7 @@ func onSetLastWorkDate(ctx tele.Context) error {
 		int8(delta),
 		lastWorkDate,
 	)
-	lastWorkDate.LastShownDate = displayedDateRange.EndDate
+	lastWorkDate.LastShownMonth = tm.ParseMonth(displayedDateRange.LastDate)
 	sess.UpdateLastWorkDateAndState(barberID, lastWorkDate, sess.StateStart)
 	return ctx.Edit(selectLastWorkDate, markupSelectLastWorkDate(displayedDateRange, displayedMonthRange))
 }
@@ -268,7 +284,7 @@ func onSelectLastWorkDate(ctx tele.Context) error {
 		if err != nil {
 			return logAndMsgErrBarber(ctx, errMsg, err)
 		}
-		dateRangeToDelete := ent.DateRange{StartDate: dateToSave.Add(24 * time.Hour), EndDate: latestWorkDate}
+		dateRangeToDelete := ent.DateRange{FirstDate: dateToSave.Add(24 * time.Hour), LastDate: latestWorkDate}
 		err = cp.RepoWithContext.DeleteWorkdaysByDateRange(barberID, dateRangeToDelete)
 		if err != nil && !errors.Is(err, rep.ErrInvalidDateRange) {
 			if errors.Is(err, rep.ErrAppointmentsExists) {
@@ -829,6 +845,28 @@ func onAddNewBarber(ctx tele.Context) error {
 	return ctx.Send(addedNewBarberWithSсhedule, markupBarberBackToMain)
 }
 
+func calculateAndShowScheduleCalendar(ctx tele.Context, deltaDisplayedMonth int8, appointment sess.Appointment) error {
+	errMsg := "can't show schedule calendar"
+	displayedDateRange, displayedMonthRange, err := calculateDisplayedRangesForScheduleCalendar(deltaDisplayedMonth, appointment)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	if displayedMonthRange.firstMonth > displayedMonthRange.lastMonth {
+		return ctx.Edit(scheduleCalendarIsEmpty, markupBarberBackToMain)
+	}
+	appointment.LastShownMonth = tm.ParseMonth(displayedDateRange.LastDate)
+	sess.UpdateAppointmentAndBarberState(ctx.Sender().ID, appointment, sess.StateStart)
+	markupSelectWorkday, err := markupSelectWorkdayFromScheduleCalendar(
+		displayedDateRange,
+		displayedMonthRange,
+		appointment.BarberID,
+	)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	return ctx.Edit(selectWorkday, markupSelectWorkday)
+}
+
 func calculateAndShowToBarberFreeTimesForAppointment(ctx tele.Context, workday ent.Workday, appointments []ent.Appointment, appointment sess.Appointment) error {
 	freeTimes := freeTimesForAppointment(workday, appointments, appointment)
 	if len(freeTimes) == 0 {
@@ -848,14 +886,14 @@ func calculateAndShowToBarberFreeTimesForAppointment(ctx tele.Context, workday e
 }
 
 func calculateAndShowToBarberFreeWorkdaysForAppointment(ctx tele.Context, deltaDisplayedMonth int8, appointment sess.Appointment) error {
-	displayedDateRange, displayedMonthRange, ok, err := calculateAndCheckDisplayedRanges(deltaDisplayedMonth, appointment)
+	displayedDateRange, displayedMonthRange, err := calculateDisplayedRangesForAppointment(deltaDisplayedMonth, appointment)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, "can't show to barber free workdays for new appointment", err)
 	}
-	if !ok {
+	if displayedMonthRange.firstMonth > displayedMonthRange.lastMonth {
 		return ctx.Edit(informBarberNoFreeTimeForAppointment, markupBarberBackToMain)
 	}
-	appointment.LastShownDate = displayedDateRange.EndDate
+	appointment.LastShownMonth = tm.ParseMonth(displayedDateRange.LastDate)
 	sess.UpdateAppointmentAndBarberState(ctx.Sender().ID, appointment, sess.StateStart)
 	return showToBarberFreeWorkdaysForAppointment(ctx, displayedDateRange, displayedMonthRange, appointment)
 }
@@ -881,40 +919,92 @@ func checkAndCreateAppointmentByBarber(appointment sess.Appointment) (ok bool, e
 	return
 }
 
+func calculateDisplayedRangesForScheduleCalendar(deltaDisplayedMonth int8, appointment sess.Appointment) (
+	displayedDateRange ent.DateRange, displayedMonthRange monthRange, err error,
+) {
+	firstDisplayedDateRange, err := defineFirstDisplayedDateRangeForScheduleCalendar(appointment.BarberID)
+	if err != nil {
+		return
+	}
+	displayedMonthRange = monthRange{
+		firstMonth: tm.ParseMonth(firstDisplayedDateRange.LastDate),
+		lastMonth:  tm.MonthFromNow(cfg.ScheduledWeeks * 7 / 30),
+	}
+	displayedDateRange = defineDisplayedDateRangeForAppointment(
+		firstDisplayedDateRange,
+		displayedMonthRange,
+		deltaDisplayedMonth,
+		appointment,
+	)
+	return
+}
+
 func defineDisplayedDateRangeForLastWorkDate(
 	firstDisplayedDateRange ent.DateRange,
-	displayedMonthRange ent.DateRange,
+	displayedMonthRange monthRange,
 	deltaDisplayedMonth int8,
 	lastWorkDate sess.LastWorkDate,
 ) ent.DateRange {
-	displayedDateRange := firstDisplayedDateRange
-	if deltaDisplayedMonth != 0 {
-		newDateRange := ent.MonthFromBase(lastWorkDate.LastShownDate, deltaDisplayedMonth)
-		if newDateRange.EndDate.After(displayedMonthRange.EndDate) || newDateRange.EndDate.Before(displayedMonthRange.StartDate) {
-			if lastWorkDate.LastShownDate.After(displayedDateRange.EndDate) {
-				displayedDateRange = ent.MonthFromBase(lastWorkDate.LastShownDate, 0)
-			}
-		}
-		if newDateRange.EndDate.After(displayedDateRange.EndDate) {
-			displayedDateRange = newDateRange
-		}
+	if deltaDisplayedMonth == 0 {
+		return firstDisplayedDateRange
 	}
-	return displayedDateRange
+	newDisplayedMonth := lastWorkDate.LastShownMonth + tm.Month(deltaDisplayedMonth)
+	if newDisplayedMonth > displayedMonthRange.lastMonth {
+		return ent.Month(displayedMonthRange.lastMonth)
+	}
+	if newDisplayedMonth < displayedMonthRange.firstMonth {
+		return firstDisplayedDateRange
+	}
+	if newDisplayedMonth > displayedMonthRange.firstMonth {
+		return ent.Month(newDisplayedMonth)
+	}
+	return firstDisplayedDateRange
 }
 
 func defineFirstDisplayedDateRangeForLastWorkDate(latestAppointmentDate time.Time) (firstDisplayedDateRange ent.DateRange) {
 	var relativeFirstDisplayedMonth byte = 0
 	for relativeFirstDisplayedMonth <= cfg.MaxAppointmentBookingMonths {
 		firstDisplayedDateRange = ent.MonthFromNow(relativeFirstDisplayedMonth)
-		if latestAppointmentDate.Compare(firstDisplayedDateRange.EndDate) <= 0 {
-			if latestAppointmentDate.After(firstDisplayedDateRange.StartDate) {
-				firstDisplayedDateRange.StartDate = latestAppointmentDate
+		if latestAppointmentDate.Compare(firstDisplayedDateRange.LastDate) <= 0 {
+			if latestAppointmentDate.After(firstDisplayedDateRange.FirstDate) {
+				firstDisplayedDateRange.FirstDate = latestAppointmentDate
 			}
 			break
 		}
 		relativeFirstDisplayedMonth++
 	}
 	return
+}
+
+func defineFirstDisplayedDateRangeForScheduleCalendar(barberID int64) (firstDisplayedDateRange ent.DateRange, err error) {
+	var relativeFirstDisplayedMonth byte = 0
+	firstDisplayedDateRange = ent.MonthFromNow(relativeFirstDisplayedMonth)
+	for relativeFirstDisplayedMonth <= cfg.ScheduledWeeks*7/30 {
+		earlestWorkDate, err := earlestScheduledDate(barberID, firstDisplayedDateRange)
+		if err != nil {
+			return ent.DateRange{}, err
+		}
+		if !earlestWorkDate.Equal(time.Time{}) {
+			if earlestWorkDate.After(firstDisplayedDateRange.FirstDate) {
+				firstDisplayedDateRange.FirstDate = earlestWorkDate
+			}
+			break
+		}
+		relativeFirstDisplayedMonth++
+		firstDisplayedDateRange = ent.MonthFromNow(relativeFirstDisplayedMonth)
+	}
+	return
+}
+
+func earlestScheduledDate(barberID int64, dateRange ent.DateRange) (earlestWorkDate time.Time, err error) {
+	workdays, err := cp.RepoWithContext.GetWorkdaysByDateRange(barberID, dateRange)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if len(workdays) == 0 {
+		return time.Time{}, nil
+	}
+	return workdays[0].Date, nil
 }
 
 func logAndMsgErrBarber(ctx tele.Context, msg string, err error) error {
@@ -956,7 +1046,12 @@ func showNewServOptsWithSendMsg(ctx tele.Context, newService sess.NewService) er
 	return ctx.Send(enterServiceParams+newService.Info(), markupEnterServiceParams, tele.ModeMarkdown)
 }
 
-func showToBarberFreeWorkdaysForAppointment(ctx tele.Context, displayedDateRange, displayedMonthRange ent.DateRange, appointment sess.Appointment) error {
+func showToBarberFreeWorkdaysForAppointment(
+	ctx tele.Context,
+	displayedDateRange ent.DateRange,
+	displayedMonthRange monthRange,
+	appointment sess.Appointment,
+) error {
 	markupSelectWorkday, err := markupSelectWorkdayForAppointment(
 		displayedDateRange,
 		displayedMonthRange,

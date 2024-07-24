@@ -54,7 +54,7 @@ func (v ValidatedEntityToStorageMapper) Date(date time.Time) string {
 }
 
 func (v ValidatedEntityToStorageMapper) DateRange(dateRange ent.DateRange) (st.DateRange, error) {
-	if dateRange.StartDate.After(dateRange.EndDate) {
+	if dateRange.FirstDate.After(dateRange.LastDate) {
 		return st.DateRange{}, ErrInvalidEntity
 	}
 	return v.EntityToStorageMapper.DateRange(dateRange), nil

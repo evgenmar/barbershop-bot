@@ -414,14 +414,14 @@ func calculateAndShowToUserFreeTimesForAppointment(ctx tele.Context, workday ent
 }
 
 func calculateAndShowToUserFreeWorkdaysForAppointment(ctx tele.Context, deltaDisplayedMonth int8, appointment sess.Appointment) error {
-	displayedDateRange, displayedMonthRange, ok, err := calculateAndCheckDisplayedRanges(deltaDisplayedMonth, appointment)
+	displayedDateRange, displayedMonthRange, err := calculateDisplayedRangesForAppointment(deltaDisplayedMonth, appointment)
 	if err != nil {
 		return logAndMsgErrUser(ctx, "can't show to user free workdays for new appointment", err)
 	}
-	if !ok {
+	if displayedMonthRange.firstMonth > displayedMonthRange.lastMonth {
 		return informUserNoFreeTime(ctx, appointment.BarberID)
 	}
-	appointment.LastShownDate = displayedDateRange.EndDate
+	appointment.LastShownMonth = tm.ParseMonth(displayedDateRange.LastDate)
 	sess.UpdateAppointmentAndUserState(ctx.Sender().ID, appointment, sess.StateStart)
 	return showToUserFreeWorkdaysForAppointment(ctx, displayedDateRange, displayedMonthRange, appointment)
 }
@@ -551,7 +551,7 @@ func showBarbersForAppointment(ctx tele.Context, userID int64) error {
 	}
 }
 
-func showToUserFreeWorkdaysForAppointment(ctx tele.Context, displayedDateRange, displayedMonthRange ent.DateRange, appointment sess.Appointment) error {
+func showToUserFreeWorkdaysForAppointment(ctx tele.Context, displayedDateRange ent.DateRange, displayedMonthRange monthRange, appointment sess.Appointment) error {
 	markupSelectWorkday, err := markupSelectWorkdayForAppointment(
 		displayedDateRange,
 		displayedMonthRange,

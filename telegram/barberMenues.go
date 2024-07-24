@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	cp "barbershop-bot/contextprovider"
 	ent "barbershop-bot/entities"
 	cfg "barbershop-bot/lib/config"
 	tm "barbershop-bot/lib/time"
@@ -22,6 +23,9 @@ const (
 Пожалуйста, попробуйте ввести заметку еще раз. При необходимости вернуться в главное меню воспользуйтесь командой /start`
 	updNoteSuccess = "Заметка успешно добавлена/обновлена."
 
+	scheduleCalendarIsEmpty = "В Вашем графике работы нет ни одного рабочего дня."
+	selectWorkday           = "Выберите рабочий день для просмотра.\nВы также можете добавить новый рабочий день в свой график или, наоборот, сделать день выходным."
+
 	listOfNecessarySettings = `Прежде чем клиенты получат возможность записаться к Вам на стрижку через этот бот, Вы должны произвести необходимый минимум подготовительных настроек.
 Это необходимо для того, чтобы предоставить Вашим клиентам максимально комфортный пользовательский опыт обращения с этим ботом.
 Итак, что необходимо сделать:
@@ -42,7 +46,7 @@ const (
 	selectLastWorkDate = `Данную функцию следует использовать, если Вы планируете прекратить использовать этот бот в своей работе и хотите, чтобы клиенты перестали использовать бот для записи к Вам на стрижку.
 	
 Выберите дату последнего рабочего дня.
-Для выбора доступны только даты позже последней существующей записи клиента на стрижку.
+Для выбора доступны только даты не раньше последней существующей записи клиента на стрижку.
 Если Вы хотите выбрать более раннюю дату, сначала отмените последние записи клиентов на стрижку.
 	
 ВНИМАНИЕ!!! После установки даты последнего рабочего дня клиенты не смогут записаться на стрижку на более позднюю дату.
@@ -141,20 +145,27 @@ const (
 	endpntBarberSelectMonthForAppointment   = "barber_select_month_for_appointment"
 	endpntBarberSelectWorkdayForAppointment = "barber_select_workday_for_appointment"
 	endpntBarberSelectTimeForAppointment    = "barber_select_time_for_appointment"
-	endpntSelectMonthOfLastWorkDate         = "select_month_of_last_work_date"
-	endpntSelectLastWorkDate                = "select_last_work_date"
-	endpntEnterServiceDuration              = "enter_service_duration"
-	endpntServiceToEdit                     = "service_to_edit"
-	endpntEditServiceDuration               = "edit_service_duration"
-	endpntServiceToDelete                   = "service_to_delete"
-	endpntSureToDeleteService               = "sure_to_delete_service"
-	endpntBarberToDeletion                  = "barber_to_deletion"
-	endpntBarberBackToMain                  = "barber_back_to_main"
+
+	endpntSelectMonthFromScheduleCalendar   = "select_month_from_schedule_calendar"
+	endpntSelectWorkdayFromScheduleCalendar = "select_workday_from_schedule_calendar"
+
+	endpntSelectMonthOfLastWorkDate = "select_month_of_last_work_date"
+	endpntSelectLastWorkDate        = "select_last_work_date"
+
+	endpntEnterServiceDuration = "enter_service_duration"
+	endpntServiceToEdit        = "service_to_edit"
+	endpntEditServiceDuration  = "edit_service_duration"
+	endpntServiceToDelete      = "service_to_delete"
+	endpntSureToDeleteService  = "sure_to_delete_service"
+
+	endpntBarberToDeletion = "barber_to_deletion"
+	endpntBarberBackToMain = "barber_back_to_main"
 )
 
 var (
 	markupBarberMain              = &tele.ReplyMarkup{}
 	btnSignUpClientForAppointment = markupEmpty.Data("Записать клиента на стрижку", "sign_up_client_for_appointment")
+	btnMyWorkSchedule             = markupEmpty.Data("Мой график работы", "my_work_schedule")
 	btnBarberSettings             = markupEmpty.Data("Настройки", "barber_settings")
 
 	markupBarberConfirmNewAppointment = &tele.ReplyMarkup{}
@@ -168,6 +179,9 @@ var (
 
 	markupUpdNote = &tele.ReplyMarkup{}
 	btnUpdNote    = markupEmpty.Data("Добавить заметку", "upd_note")
+
+	btnAddWorkday    = markupEmpty.Data("Добавить рабочий день", "add_workday")
+	btnAddNonWorkday = markupEmpty.Data("Сделать день выходным", "add_nonworkday")
 
 	markupBarberSettings       = &tele.ReplyMarkup{}
 	btnListOfNecessarySettings = markupEmpty.Data("Перечень необходимых настроек", "list_of_necessary_settings")
@@ -248,6 +262,7 @@ var (
 func init() {
 	markupBarberMain.Inline(
 		markupEmpty.Row(btnSignUpClientForAppointment),
+		markupEmpty.Row(btnMyWorkSchedule),
 		markupEmpty.Row(btnBarberSettings),
 	)
 
@@ -433,9 +448,9 @@ func markupSelectBarberToDeletion(senderID int64, barbers []ent.Barber) *tele.Re
 	return markup
 }
 
-func markupSelectLastWorkDate(dateRange, monthRange ent.DateRange) *tele.ReplyMarkup {
+func markupSelectLastWorkDate(dateRange ent.DateRange, monthRange monthRange) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
-	btnPrevMonth, btnNextMonth := btnsSwitchMonth(dateRange.EndDate, monthRange, endpntSelectMonthOfLastWorkDate)
+	btnPrevMonth, btnNextMonth := btnsSwitchMonth(tm.ParseMonth(dateRange.LastDate), monthRange, endpntSelectMonthOfLastWorkDate)
 	rowSelectMonth := markup.Row(btnPrevMonth, btnMonth(dateRange.Month()), btnNextMonth)
 	rowsSelectDate := rowsSelectLastWorkDate(dateRange)
 	rowRestoreDefaultDate := markup.Row(btnInfiniteLastWorkDate)
@@ -460,16 +475,63 @@ func markupSelectServiceDuration(endpnt string) *tele.ReplyMarkup {
 	return markup
 }
 
+func markupSelectWorkdayFromScheduleCalendar(dateRange ent.DateRange, monthRange monthRange, barberID int64) (*tele.ReplyMarkup, error) {
+	markup := &tele.ReplyMarkup{}
+	btnPrevMonth, btnNextMonth := btnsSwitchMonth(
+		tm.ParseMonth(dateRange.LastDate),
+		monthRange,
+		endpntSelectMonthFromScheduleCalendar,
+	)
+	rowSelectMonth := markup.Row(btnPrevMonth, btnMonth(dateRange.Month()), btnNextMonth)
+	rowsSelectWorkday, err := rowsSelectWorkdayFromScheduleCalendar(dateRange, barberID)
+	if err != nil {
+		return nil, err
+	}
+	var rows []tele.Row
+	rows = append(rows, rowSelectMonth, rowWeekdays)
+	rows = append(rows, rowsSelectWorkday...)
+	rows = append(rows, markup.Row(btnAddWorkday), markup.Row(btnAddNonWorkday), markup.Row(btnBarberBackToMain))
+	markup.Inline(rows...)
+	return markup, nil
+}
+
 func rowsSelectLastWorkDate(dateRange ent.DateRange) []tele.Row {
 	var btnsDatesToSelect []tele.Btn
 	for i := 1; i < dateRange.StartWeekday(); i++ {
 		btnsDatesToSelect = append(btnsDatesToSelect, btnEmpty)
 	}
-	for date := dateRange.StartDate; date.Compare(dateRange.EndDate) <= 0; date = date.Add(24 * time.Hour) {
+	for date := dateRange.FirstDate; date.Compare(dateRange.LastDate) <= 0; date = date.Add(24 * time.Hour) {
 		btnsDatesToSelect = append(btnsDatesToSelect, btnDate(date, endpntSelectLastWorkDate))
 	}
 	for i := 7; i > dateRange.EndWeekday(); i-- {
 		btnsDatesToSelect = append(btnsDatesToSelect, btnEmpty)
 	}
 	return markupEmpty.Split(7, btnsDatesToSelect)
+}
+
+func rowsSelectWorkdayFromScheduleCalendar(dateRange ent.DateRange, barberID int64) ([]tele.Row, error) {
+	wds, err := cp.RepoWithContext.GetWorkdaysByDateRange(barberID, dateRange)
+	if err != nil {
+		return nil, err
+	}
+	workdays := make(map[int]ent.Workday)
+	for _, wd := range wds {
+		workdays[wd.Date.Day()] = wd
+	}
+	var btnsWorkdaysToSelect []tele.Btn
+	for i := 1; i < dateRange.StartWeekday(); i++ {
+		btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnEmpty)
+	}
+	for date := dateRange.FirstDate; date.Compare(dateRange.LastDate) <= 0; date = date.Add(24 * time.Hour) {
+		workday, ok := workdays[date.Day()]
+		if !ok {
+			btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnDash)
+		} else {
+			btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnWorkday(workday, endpntSelectWorkdayFromScheduleCalendar))
+		}
+	}
+	for i := 7; i > dateRange.EndWeekday(); i-- {
+		btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnEmpty)
+	}
+	return markupEmpty.Split(7, btnsWorkdaysToSelect), nil
 }

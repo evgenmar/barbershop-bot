@@ -10,6 +10,9 @@ import (
 // Duration is designed to measure time intervals within one day.
 type Duration int16
 
+// Month represents the number of the month starting from January 2001
+type Month int16
+
 const (
 	Minute Duration = 1
 	Hour            = 60 * Minute
@@ -51,12 +54,19 @@ func CurrentDayTime() Duration {
 	return Hour*Duration(now.Hour()) + Minute*Duration(now.Minute())
 }
 
+func MonthFromNow(deltaMonth byte) Month {
+	return ParseMonth(time.Now().In(cfg.Location)) + Month(deltaMonth)
+}
+
+func ParseMonth(t time.Time) Month {
+	return (Month(t.Year())-2001)*12 + Month(t.Month())
+}
+
 func ShowDate(date time.Time) string {
 	return date.Format("02.01.2006")
 }
 
 func Today() time.Time {
-	now := time.Now().In(cfg.Location)
-	year, month, day := now.Date()
+	year, month, day := time.Now().In(cfg.Location).Date()
 	return time.Date(year, month, day, 0, 0, 0, 0, cfg.Location)
 }

@@ -80,7 +80,7 @@ func MakeSchedule(barberID int64) (err error) {
 		return err
 	}
 	if latestWorkDate.After(barber.LastWorkdate) {
-		dateRangeToDelete := ent.DateRange{StartDate: barber.LastWorkdate.Add(24 * time.Hour), EndDate: latestWorkDate}
+		dateRangeToDelete := ent.DateRange{FirstDate: barber.LastWorkdate.Add(24 * time.Hour), LastDate: latestWorkDate}
 		if err := cp.RepoWithContext.DeleteWorkdaysByDateRange(barber.ID, dateRangeToDelete); err != nil {
 			return err
 		}

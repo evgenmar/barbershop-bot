@@ -200,7 +200,7 @@ func (s *Storage) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64,
 	defer func() { err = e.WrapIfErr("can't delete workdays", err) }()
 	q := `DELETE FROM workdays WHERE barber_id = ? AND date BETWEEN ? AND ?`
 	s.rwMutex.Lock()
-	_, err = s.db.ExecContext(ctx, q, barberID, dateRange.StartDate, dateRange.EndDate)
+	_, err = s.db.ExecContext(ctx, q, barberID, dateRange.FirstDate, dateRange.LastDate)
 	s.rwMutex.Unlock()
 	if err != nil {
 		if errors.Is(err, sqlite3.CONSTRAINT) {
@@ -286,7 +286,7 @@ func (s *Storage) GetAppointmentsByDateRange(ctx context.Context, barberID int64
 		FROM appointments a JOIN workdays w ON a.workday_id = w.id
 		WHERE w.barber_id = ? AND w.date BETWEEN ? AND ? ORDER BY w.date, a.time`
 	s.rwMutex.RLock()
-	rows, err := s.db.QueryContext(ctx, q, barberID, dateRange.StartDate, dateRange.EndDate)
+	rows, err := s.db.QueryContext(ctx, q, barberID, dateRange.FirstDate, dateRange.LastDate)
 	s.rwMutex.RUnlock()
 	if err != nil {
 		return nil, err
@@ -481,7 +481,7 @@ func (s *Storage) GetWorkdaysByDateRange(ctx context.Context, barberID int64, da
 	defer func() { err = e.WrapIfErr("can't get workdays", err) }()
 	q := `SELECT id, date, start_time, end_time FROM workdays WHERE barber_id = ? AND date BETWEEN ? AND ? ORDER BY date ASC`
 	s.rwMutex.RLock()
-	rows, err := s.db.QueryContext(ctx, q, barberID, dateRange.StartDate, dateRange.EndDate)
+	rows, err := s.db.QueryContext(ctx, q, barberID, dateRange.FirstDate, dateRange.LastDate)
 	s.rwMutex.RUnlock()
 	if err != nil {
 		return nil, err

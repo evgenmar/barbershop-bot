@@ -135,8 +135,8 @@ type Barber struct {
 }
 
 type DateRange struct {
-	StartDate string
-	EndDate   string
+	FirstDate string
+	LastDate  string
 }
 
 type Service struct {

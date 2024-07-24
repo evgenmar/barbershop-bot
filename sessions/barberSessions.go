@@ -29,7 +29,7 @@ type EditedService struct {
 }
 
 type LastWorkDate struct {
-	LastShownDate time.Time
+	LastShownMonth tm.Month
 }
 
 type NewService struct {

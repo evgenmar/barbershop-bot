@@ -66,7 +66,8 @@ var monthNames = []string{
 
 var (
 	markupEmpty = &tele.ReplyMarkup{}
-	btnEmpty    = markupEmpty.Data("-", endpntNoAction)
+	btnEmpty    = markupEmpty.Data(" ", endpntNoAction)
+	btnDash     = markupEmpty.Data("-", endpntNoAction)
 	rowWeekdays = tele.Row{
 		markupEmpty.Data("Пн", endpntNoAction),
 		markupEmpty.Data("Вт", endpntNoAction),
@@ -98,17 +99,17 @@ func btnService(serv ent.Service, endpnt string) tele.Btn {
 	return markupEmpty.Data(serv.BtnSignature(), endpnt, strconv.Itoa(serv.ID))
 }
 
-func btnsSwitchMonth(current time.Time, period ent.DateRange, endpnt string) (prev, next tele.Btn) {
-	if period.StartDate.Equal(period.EndDate) {
+func btnsSwitchMonth(current tm.Month, period monthRange, endpnt string) (prev, next tele.Btn) {
+	if period.firstMonth == period.lastMonth {
 		prev = btnEmpty
 		next = btnEmpty
 		return
 	}
 	switch current {
-	case period.StartDate:
+	case period.firstMonth:
 		prev = btnEmpty
 		next = btnNext(endpnt)
-	case period.EndDate:
+	case period.lastMonth:
 		prev = btnPrev(endpnt)
 		next = btnEmpty
 	default:
@@ -152,14 +153,14 @@ func markupSelectTimeForAppointment(freeTimes []tm.Duration, endpntTime, endpntM
 
 func markupSelectWorkdayForAppointment(
 	dateRange ent.DateRange,
-	monthRange ent.DateRange,
+	monthRange monthRange,
 	appointment sess.Appointment,
 	endpntWorkday string,
 	endpntMonth string,
 	endpntBackToMain string,
 ) (*tele.ReplyMarkup, error) {
 	markup := &tele.ReplyMarkup{}
-	btnPrevMonth, btnNextMonth := btnsSwitchMonth(dateRange.EndDate, monthRange, endpntMonth)
+	btnPrevMonth, btnNextMonth := btnsSwitchMonth(tm.ParseMonth(dateRange.LastDate), monthRange, endpntMonth)
 	rowSelectMonth := markup.Row(btnPrevMonth, btnMonth(dateRange.Month()), btnNextMonth)
 	rowsSelectWorkday, err := rowsSelectWorkdayForAppointment(dateRange, appointment, endpntWorkday)
 	if err != nil {
@@ -206,15 +207,15 @@ func rowsSelectWorkdayForAppointment(dateRange ent.DateRange, appointment sess.A
 	for i := 1; i < dateRange.StartWeekday(); i++ {
 		btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnEmpty)
 	}
-	for date := dateRange.StartDate; date.Compare(dateRange.EndDate) <= 0; date = date.Add(24 * time.Hour) {
+	for date := dateRange.FirstDate; date.Compare(dateRange.LastDate) <= 0; date = date.Add(24 * time.Hour) {
 		workday, ok := workdays[date.Day()]
 		if !ok {
-			btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnEmpty)
+			btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnDash)
 		} else {
 			if haveFreeTimeForAppointment(workday, appointments[workday.ID], appointment) {
 				btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnWorkday(workday, endpntWorkday))
 			} else {
-				btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnEmpty)
+				btnsWorkdaysToSelect = append(btnsWorkdaysToSelect, btnDash)
 			}
 		}
 	}

@@ -39,8 +39,8 @@ func (e EntityToStorageMapper) Date(date time.Time) string {
 
 func (e EntityToStorageMapper) DateRange(dateRange ent.DateRange) st.DateRange {
 	return st.DateRange{
-		StartDate: e.Date(dateRange.StartDate),
-		EndDate:   e.Date(dateRange.EndDate),
+		FirstDate: e.Date(dateRange.FirstDate),
+		LastDate:  e.Date(dateRange.LastDate),
 	}
 }
 
