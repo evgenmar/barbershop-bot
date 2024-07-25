@@ -41,8 +41,7 @@ const (
 Номер должен начинаться с "+7" или с "8". Региональный код можно по желанию заключить в скобки, также допустимо разделять пробелами или тире группы цифр.
 Пожалуйста, попробуйте ввести номер телефона еще раз. При необходимости вернуться в главное меню воспользуйтесь командой /start`
 
-	backToSelectWorkday = "Назад к выбору даты"
-	backToMain          = "Вернуться в главное меню"
+	backToMain = "Вернуться в главное меню"
 
 	unknownCommand = "Неизвестная команда. Пожалуйста, выберите команду из меню. Для вызова главного меню воспользуйтесь командой /start"
 
@@ -142,7 +141,7 @@ func markupSelectService(services []ent.Service, endpntService, endpntBackToMain
 func markupSelectTimeForAppointment(freeTimes []tm.Duration, endpntTime, endpntMonth, endpntBackToMain string) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 	rowsSelectTime := rowsSelectTimeForAppointment(freeTimes, endpntTime)
-	rowBackToSelectWorkday := markup.Row(markup.Data(backToSelectWorkday, endpntMonth, "0"))
+	rowBackToSelectWorkday := markup.Row(markup.Data("Назад к выбору даты", endpntMonth, "0"))
 	rowBackToMain := markup.Row(markup.Data(backToMain, endpntBackToMain))
 	var rows []tele.Row
 	rows = append(rows, rowsSelectTime...)

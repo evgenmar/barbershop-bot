@@ -132,6 +132,15 @@ func earlestDateWithFreeTime(appointment sess.Appointment, dateRange ent.DateRan
 	return time.Time{}, nil
 }
 
+func excludePastAppointments(appointments []ent.Appointment, currentDayTime tm.Duration) []ent.Appointment {
+	for i, appointment := range appointments {
+		if appointment.Time+appointment.Duration > currentDayTime {
+			return appointments[i:]
+		}
+	}
+	return nil
+}
+
 func freeTimesForAppointment(workday ent.Workday, appointments []ent.Appointment, appt sess.Appointment) (freeTimes []tm.Duration) {
 	analyzedTime, appointments := prepareAnalizedTimeAndAppointments(workday, appointments, appt.ID)
 	analyzedApptIndex := 0
@@ -154,15 +163,6 @@ func freeTimesForAppointment(workday ent.Workday, appointments []ent.Appointment
 		}
 	}
 	return
-}
-
-func getFutureAppointments(appointments []ent.Appointment, currentDayTime tm.Duration) []ent.Appointment {
-	for i, appointment := range appointments {
-		if appointment.Time > currentDayTime {
-			return appointments[i:]
-		}
-	}
-	return nil
 }
 
 func getNullServiceInfo(serviceID int, appointmentDuration tm.Duration) string {
@@ -239,7 +239,7 @@ func prepareAnalizedTimeAndAppointments(workday ent.Workday, appointments []ent.
 		currentDayTime := tm.CurrentDayTime()
 		if currentDayTime > workday.StartTime {
 			analyzedTime = currentDayTime.RoundUpToMultipleOf30()
-			appointments = getFutureAppointments(appointments, currentDayTime)
+			appointments = excludePastAppointments(appointments, currentDayTime)
 		}
 	}
 	return analyzedTime, appointments
@@ -247,13 +247,6 @@ func prepareAnalizedTimeAndAppointments(workday ent.Workday, appointments []ent.
 
 func workdayHaveFreeTimeForAppointment(workday ent.Workday, appointments []ent.Appointment, appt sess.Appointment) bool {
 	analyzedTime, appointments := prepareAnalizedTimeAndAppointments(workday, appointments, appt.ID)
-	if workday.Date.Equal(tm.Today()) {
-		currentDayTime := tm.CurrentDayTime()
-		if currentDayTime > workday.StartTime {
-			analyzedTime = currentDayTime
-			appointments = getFutureAppointments(appointments, currentDayTime)
-		}
-	}
 	for _, appointment := range appointments {
 		if (appointment.Time - analyzedTime) >= appt.Duration {
 			return true

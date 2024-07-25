@@ -168,6 +168,18 @@ func onSelectMonthFromScheduleCalendar(ctx tele.Context) error {
 	return calculateAndShowScheduleCalendar(ctx, int8(delta), appointment)
 }
 
+func onSelectWorkdayFromScheduleCalendar(ctx tele.Context) error {
+	workdayID, err := strconv.Atoi(ctx.Callback().Data)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, "can't show schedule workday menu", err)
+	}
+	barberID := ctx.Sender().ID
+	appointment := sess.GetAppointmentBarber(barberID)
+	appointment.WorkdayID = workdayID
+	sess.UpdateAppointmentAndBarberState(barberID, appointment, sess.StateStart)
+	return showScheduledWorkdayMenue(ctx, appointment)
+}
+
 func onBarberSettings(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
 	return ctx.Edit(settingsMenu, markupBarberSettings)
@@ -1050,6 +1062,26 @@ func showNewServOptsWithSendMsg(ctx tele.Context, newService sess.NewService) er
 		return ctx.Send(enterServiceParams+newService.Info()+readyToCreateService, markupReadyToCreateService, tele.ModeMarkdown)
 	}
 	return ctx.Send(enterServiceParams+newService.Info(), markupEnterServiceParams, tele.ModeMarkdown)
+}
+
+func showScheduledWorkdayMenue(ctx tele.Context, appointment sess.Appointment) error {
+	workday, appointments, err := getWorkdayAndAppointments(appointment.WorkdayID)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, "can't show schedule workday menu", err)
+	}
+	if len(appointments) == 0 {
+		return ctx.Edit(
+			fmt.Sprintf(workdayIsFree, tm.ShowDate(workday.Date), workday.StartTime.ShortString(), workday.EndTime.ShortString()),
+			markupWorkdayIsFree(workday.ID),
+		)
+	}
+	if workday.Date.Equal(tm.Today()) {
+		appointments = excludePastAppointments(appointments, tm.CurrentDayTime())
+	}
+	return ctx.Edit(
+		fmt.Sprintf(selectAppointment, tm.ShowDate(workday.Date), workday.StartTime.ShortString(), workday.EndTime.ShortString()),
+		markupSelectAppointment(appointments),
+	)
 }
 
 func showToBarberFreeWorkdaysForAppointment(

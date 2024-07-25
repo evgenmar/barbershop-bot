@@ -25,6 +25,8 @@ const (
 
 	scheduleCalendarIsEmpty = "В Вашем графике работы нет ни одного рабочего дня."
 	selectWorkday           = "Выберите рабочий день для просмотра.\nВы также можете добавить новый рабочий день в свой график или, наоборот, сделать день выходным."
+	selectAppointment       = "Рабочий день %s с %s до %s.\nВыберите запись для просмотра, редактирования или удаления.\nВы также можете изменить время начала и конца рабочего дня."
+	workdayIsFree           = "Рабочий день %s с %s до %s.\nПоскольку на этот рабочий день пока что не запланировано ни одной записи, Вы можете сделать его выходным.\nВы также можете изменить время начала и конца рабочего дня."
 
 	listOfNecessarySettings = `Прежде чем клиенты получат возможность записаться к Вам на стрижку через этот бот, Вы должны произвести необходимый минимум подготовительных настроек.
 Это необходимо для того, чтобы предоставить Вашим клиентам максимально комфортный пользовательский опыт обращения с этим ботом.
@@ -148,6 +150,8 @@ const (
 
 	endpntSelectMonthFromScheduleCalendar   = "select_month_from_schedule_calendar"
 	endpntSelectWorkdayFromScheduleCalendar = "select_workday_from_schedule_calendar"
+	endpntSelectAppointment                 = "select_appointment"
+	endpntAddСertainNonWorkday              = "add_certain_nonworkday"
 
 	endpntSelectMonthOfLastWorkDate = "select_month_of_last_work_date"
 	endpntSelectLastWorkDate        = "select_last_work_date"
@@ -182,6 +186,10 @@ var (
 
 	btnAddWorkday    = markupEmpty.Data("Добавить рабочий день", "add_workday")
 	btnAddNonWorkday = markupEmpty.Data("Сделать день выходным", "add_nonworkday")
+
+	btnBackToSelectWorkday = markupEmpty.Data("Назад к выбору рабочего дня", endpntSelectMonthFromScheduleCalendar, "0")
+	btnUpdWorkdayStartTime = markupEmpty.Data("Изменить начало рабочего дня", "upd_workday_start_time")
+	btnUpdWorkdayEndTime   = markupEmpty.Data("Изменить конец рабочего дня", "upd_workday_end_time")
 
 	markupBarberSettings       = &tele.ReplyMarkup{}
 	btnListOfNecessarySettings = markupEmpty.Data("Перечень необходимых настроек", "list_of_necessary_settings")
@@ -417,6 +425,14 @@ func init() {
 	)
 }
 
+func btnAppointment(appt ent.Appointment) tele.Btn {
+	return markupEmpty.Data(
+		appt.Time.ShortString()+" - "+(appt.Time+appt.Duration).ShortString(),
+		endpntSelectAppointment,
+		strconv.Itoa(appt.ID),
+	)
+}
+
 func btnDate(date time.Time, endpnt string) tele.Btn {
 	return markupEmpty.Data(strconv.Itoa(date.Day()), endpnt, date.Format(time.DateOnly))
 }
@@ -431,6 +447,21 @@ func markupConfirmServiceDeletion(serviceID int) *tele.ReplyMarkup {
 		markup.Row(markup.Data("Подтвердить удаление", endpntSureToDeleteService, strconv.Itoa(serviceID))),
 		markup.Row(btnBarberBackToMain),
 	)
+	return markup
+}
+
+func markupSelectAppointment(appointments []ent.Appointment) *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{}
+	var rows []tele.Row
+	rows = append(rows, rowsSelectAppointment(appointments)...)
+	rows = append(
+		rows,
+		markup.Row(btnUpdWorkdayStartTime),
+		markup.Row(btnUpdWorkdayEndTime),
+		markup.Row(btnBackToSelectWorkday),
+		markup.Row(btnBarberBackToMain),
+	)
+	markup.Inline(rows...)
 	return markup
 }
 
@@ -493,6 +524,29 @@ func markupSelectWorkdayFromScheduleCalendar(dateRange ent.DateRange, monthRange
 	rows = append(rows, markup.Row(btnAddWorkday), markup.Row(btnAddNonWorkday), markup.Row(btnBarberBackToMain))
 	markup.Inline(rows...)
 	return markup, nil
+}
+
+func markupWorkdayIsFree(workdayID int) *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{}
+	markup.Inline(
+		markup.Row(markup.Data("Сделать этот день выходным", endpntAddСertainNonWorkday, strconv.Itoa(workdayID))),
+		markup.Row(btnUpdWorkdayStartTime),
+		markup.Row(btnUpdWorkdayEndTime),
+		markup.Row(btnBackToSelectWorkday),
+		markup.Row(btnBarberBackToMain),
+	)
+	return markup
+}
+
+func rowsSelectAppointment(appointments []ent.Appointment) []tele.Row {
+	var btnsAppointmentsToSelect []tele.Btn
+	for _, appointment := range appointments {
+		btnsAppointmentsToSelect = append(btnsAppointmentsToSelect, btnAppointment(appointment))
+	}
+	for i := 1; i <= (3-len(appointments)%3)%3; i++ {
+		btnsAppointmentsToSelect = append(btnsAppointmentsToSelect, btnEmpty)
+	}
+	return markupEmpty.Split(3, btnsAppointmentsToSelect)
 }
 
 func rowsSelectLastWorkDate(dateRange ent.DateRange) []tele.Row {
