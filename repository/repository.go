@@ -103,7 +103,7 @@ func (r Repository) CreateWorkdays(ctx context.Context, wds ...ent.Workday) (err
 	}()
 	var workdays []st.Workday
 	for _, workday := range wds {
-		wd, err := m.MapToStorage.Workday(workday)
+		wd, err := m.MapToStorage.WorkdayForCreate(workday)
 		if err != nil {
 			if errors.Is(err, m.ErrInvalidEntity) {
 				return ErrInvalidWorkday
@@ -321,6 +321,7 @@ func (r Repository) GetWorkdaysByDateRange(ctx context.Context, barberID int64, 
 	return workdays, nil
 }
 
+// UpdateAppointment updates only non-empty fields of Appointment. UserID, ServiceID, Duration, CreatedAt fields never updates.
 func (r Repository) UpdateAppointment(ctx context.Context, appointment ent.Appointment) (err error) {
 	defer func() {
 		if errors.Is(err, st.ErrNonUniqueData) {
@@ -381,4 +382,16 @@ func (r Repository) UpdateUser(ctx context.Context, user ent.User) (err error) {
 		return err
 	}
 	return r.Storage.UpdateUser(ctx, ur)
+}
+
+// UpdateWorkday updates only non-empty fields of Workday. BarberID and Date fields never updates.
+func (r Repository) UpdateWorkday(ctx context.Context, workday ent.Workday) (err error) {
+	wd, err := m.MapToStorage.WorkdayForUpdate(workday)
+	if err != nil {
+		if errors.Is(err, m.ErrInvalidEntity) {
+			return ErrInvalidWorkday
+		}
+		return err
+	}
+	return r.Storage.UpdateWorkday(ctx, wd)
 }

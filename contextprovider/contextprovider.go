@@ -218,3 +218,10 @@ func (c ContextProvider) UpdateUser(user ent.User) (err error) {
 	defer cancel()
 	return c.repo.UpdateUser(ctx, user)
 }
+
+func (c ContextProvider) UpdateWorkday(workday ent.Workday) (err error) {
+	defer func() { err = e.WrapIfErr("can't update workday", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
+	defer cancel()
+	return c.repo.UpdateWorkday(ctx, workday)
+}

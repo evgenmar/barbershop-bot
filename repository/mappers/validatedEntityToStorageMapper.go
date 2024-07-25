@@ -99,8 +99,15 @@ func (v ValidatedEntityToStorageMapper) User(user ent.User) (st.User, error) {
 	return v.EntityToStorageMapper.User(user), nil
 }
 
-func (v ValidatedEntityToStorageMapper) Workday(workday ent.Workday) (st.Workday, error) {
+func (v ValidatedEntityToStorageMapper) WorkdayForCreate(workday ent.Workday) (st.Workday, error) {
 	if workday.BarberID == 0 || workday.Date.Equal(time.Time{}) || workday.StartTime < 0 || workday.EndTime <= workday.StartTime {
+		return st.Workday{}, ErrInvalidEntity
+	}
+	return v.EntityToStorageMapper.Workday(workday), nil
+}
+
+func (v ValidatedEntityToStorageMapper) WorkdayForUpdate(workday ent.Workday) (st.Workday, error) {
+	if workday.ID < 1 {
 		return st.Workday{}, ErrInvalidEntity
 	}
 	return v.EntityToStorageMapper.Workday(workday), nil

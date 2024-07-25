@@ -695,3 +695,28 @@ func (s *Storage) UpdateUser(ctx context.Context, user st.User) error {
 	}
 	return nil
 }
+
+// UpdateWorkday updates non-niladic fields of Workday. ID field must be non-niladic and remains not updated.
+// UpdateWorkday also doesn't updates BarberID and Date fields even if non-niladic.
+func (s *Storage) UpdateWorkday(ctx context.Context, workday st.Workday) (err error) {
+	defer func() { err = e.WrapIfErr("can't update workday", err) }()
+	query := make([]string, 0, 2)
+	args := make([]interface{}, 0, 2)
+	if workday.StartTime != 0 {
+		query = append(query, "start_time = ?")
+		args = append(args, workday.StartTime)
+	}
+	if workday.EndTime != 0 {
+		query = append(query, "end_time = ?")
+		args = append(args, workday.EndTime)
+	}
+	args = append(args, workday.ID)
+	q := fmt.Sprintf(`UPDATE workdays SET %s WHERE id = ?`, strings.Join(query, " , "))
+	s.rwMutex.Lock()
+	_, err = s.db.ExecContext(ctx, q, args...)
+	s.rwMutex.Unlock()
+	if err != nil {
+		return err
+	}
+	return nil
+}

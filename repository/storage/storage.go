@@ -108,6 +108,10 @@ type Storage interface {
 
 	// UpdateUser updates valid fields of User. ID field must be non-niladic and remains not updated.
 	UpdateUser(ctx context.Context, user User) error
+
+	// UpdateWorkday updates non-niladic fields of Workday. ID field must be non-niladic and remains not updated.
+	// UpdateWorkday also doesn't updates BarberID and Date fields even if non-niladic.
+	UpdateWorkday(ctx context.Context, workday Workday) error
 }
 
 type Appointment struct {
