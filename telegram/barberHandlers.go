@@ -180,6 +180,18 @@ func onSelectWorkdayFromScheduleCalendar(ctx tele.Context) error {
 	return showScheduledWorkdayMenue(ctx, appointment)
 }
 
+func onMakeThisDayNonWorking(ctx tele.Context) error {
+	appointment := sess.GetAppointmentBarber(ctx.Sender().ID)
+	ok, err := checkAndDeleteWorkday(appointment.WorkdayID)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, "can't add certain non-working day from schedule calendar", err)
+	}
+	if ok {
+		return calculateAndShowScheduleCalendar(ctx, 0, appointment)
+	}
+	return showScheduledWorkdayMenue(ctx, appointment)
+}
+
 func onBarberSettings(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
 	return ctx.Edit(settingsMenu, markupBarberSettings)
@@ -931,6 +943,24 @@ func checkAndCreateAppointmentByBarber(appointment sess.Appointment) (ok bool, e
 	return
 }
 
+func checkAndDeleteWorkday(workdayID int) (ok bool, err error) {
+	appointmentsMutex.Lock()
+	defer appointmentsMutex.Unlock()
+	workday, appointments, err := getWorkdayAndAppointments(workdayID)
+	if err != nil {
+		return
+	}
+	ok = len(appointments) == 0
+	if !ok {
+		return
+	}
+	err = cp.RepoWithContext.DeleteWorkdaysByDateRange(
+		workday.BarberID,
+		ent.DateRange{FirstDate: workday.Date, LastDate: workday.Date},
+	)
+	return
+}
+
 func calculateDisplayedRangesForScheduleCalendar(deltaDisplayedMonth int8, appointment sess.Appointment) (
 	displayedDateRange ent.DateRange, displayedMonthRange monthRange, err error,
 ) {
@@ -1072,7 +1102,7 @@ func showScheduledWorkdayMenue(ctx tele.Context, appointment sess.Appointment) e
 	if len(appointments) == 0 {
 		return ctx.Edit(
 			fmt.Sprintf(workdayIsFree, tm.ShowDate(workday.Date), workday.StartTime.ShortString(), workday.EndTime.ShortString()),
-			markupWorkdayIsFree(workday.ID),
+			markupWorkdayIsFree,
 		)
 	}
 	if workday.Date.Equal(tm.Today()) {

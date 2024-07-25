@@ -148,10 +148,10 @@ const (
 	endpntBarberSelectWorkdayForAppointment = "barber_select_workday_for_appointment"
 	endpntBarberSelectTimeForAppointment    = "barber_select_time_for_appointment"
 
-	endpntSelectMonthFromScheduleCalendar   = "select_month_from_schedule_calendar"
-	endpntSelectWorkdayFromScheduleCalendar = "select_workday_from_schedule_calendar"
-	endpntSelectAppointment                 = "select_appointment"
-	endpntAddСertainNonWorkday              = "add_certain_nonworkday"
+	endpntSelectMonthFromScheduleCalendar          = "select_month_from_schedule_calendar"
+	endpntSelectWorkdayFromScheduleCalendar        = "select_workday_from_schedule_calendar"
+	endpntSelectAppointment                        = "select_appointment"
+	endpntAddСertainNonWorkdayFromScheduleCalendar = "add_certain_nonworkday_from_schedule_calendar"
 
 	endpntSelectMonthOfLastWorkDate = "select_month_of_last_work_date"
 	endpntSelectLastWorkDate        = "select_last_work_date"
@@ -187,9 +187,11 @@ var (
 	btnAddWorkday    = markupEmpty.Data("Добавить рабочий день", "add_workday")
 	btnAddNonWorkday = markupEmpty.Data("Сделать день выходным", "add_nonworkday")
 
-	btnBackToSelectWorkday = markupEmpty.Data("Назад к выбору рабочего дня", endpntSelectMonthFromScheduleCalendar, "0")
-	btnUpdWorkdayStartTime = markupEmpty.Data("Изменить начало рабочего дня", "upd_workday_start_time")
-	btnUpdWorkdayEndTime   = markupEmpty.Data("Изменить конец рабочего дня", "upd_workday_end_time")
+	markupWorkdayIsFree      = &tele.ReplyMarkup{}
+	btnMakeThisDayNonWorking = markupEmpty.Data("Сделать этот день выходным", endpntAddСertainNonWorkdayFromScheduleCalendar)
+	btnUpdWorkdayStartTime   = markupEmpty.Data("Изменить начало рабочего дня", "upd_workday_start_time")
+	btnUpdWorkdayEndTime     = markupEmpty.Data("Изменить конец рабочего дня", "upd_workday_end_time")
+	btnBackToSelectWorkday   = markupEmpty.Data("Назад к выбору рабочего дня", endpntSelectMonthFromScheduleCalendar, "0")
 
 	markupBarberSettings       = &tele.ReplyMarkup{}
 	btnListOfNecessarySettings = markupEmpty.Data("Перечень необходимых настроек", "list_of_necessary_settings")
@@ -291,6 +293,14 @@ func init() {
 
 	markupUpdNote.Inline(
 		markupEmpty.Row(btnUpdNote),
+		markupEmpty.Row(btnBarberBackToMain),
+	)
+
+	markupWorkdayIsFree.Inline(
+		markupEmpty.Row(btnMakeThisDayNonWorking),
+		markupEmpty.Row(btnUpdWorkdayStartTime),
+		markupEmpty.Row(btnUpdWorkdayEndTime),
+		markupEmpty.Row(btnBackToSelectWorkday),
 		markupEmpty.Row(btnBarberBackToMain),
 	)
 
@@ -524,18 +534,6 @@ func markupSelectWorkdayFromScheduleCalendar(dateRange ent.DateRange, monthRange
 	rows = append(rows, markup.Row(btnAddWorkday), markup.Row(btnAddNonWorkday), markup.Row(btnBarberBackToMain))
 	markup.Inline(rows...)
 	return markup, nil
-}
-
-func markupWorkdayIsFree(workdayID int) *tele.ReplyMarkup {
-	markup := &tele.ReplyMarkup{}
-	markup.Inline(
-		markup.Row(markup.Data("Сделать этот день выходным", endpntAddСertainNonWorkday, strconv.Itoa(workdayID))),
-		markup.Row(btnUpdWorkdayStartTime),
-		markup.Row(btnUpdWorkdayEndTime),
-		markup.Row(btnBackToSelectWorkday),
-		markup.Row(btnBarberBackToMain),
-	)
-	return markup
 }
 
 func rowsSelectAppointment(appointments []ent.Appointment) []tele.Row {
