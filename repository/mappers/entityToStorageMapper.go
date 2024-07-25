@@ -69,6 +69,7 @@ func (e EntityToStorageMapper) User(user ent.User) st.User {
 
 func (e EntityToStorageMapper) Workday(workday ent.Workday) st.Workday {
 	return st.Workday{
+		ID:        workday.ID,
 		BarberID:  workday.BarberID,
 		Date:      e.Date(workday.Date),
 		StartTime: e.Duration(workday.StartTime),

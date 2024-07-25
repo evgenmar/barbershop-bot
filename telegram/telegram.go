@@ -61,7 +61,12 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	barbers.Handle(&btnMyWorkSchedule, onMyWorkSchedule)
 	barbers.Handle(callbackUnique(endpntSelectMonthFromScheduleCalendar), onSelectMonthFromScheduleCalendar)
 	barbers.Handle(callbackUnique(endpntSelectWorkdayFromScheduleCalendar), onSelectWorkdayFromScheduleCalendar)
+
 	barbers.Handle(&btnMakeThisDayNonWorking, onMakeThisDayNonWorking)
+	barbers.Handle(&btnUpdWorkdayStartTime, onUpdWorkdayStartTime)
+	barbers.Handle(callbackUnique(endpntSelectWorkdayStartTime), onSelectWorkdayStartTime)
+	barbers.Handle(&btnUpdWorkdayEndTime, onUpdWorkdayEndTime)
+	barbers.Handle(callbackUnique(endpntSelectWorkdayEndTime), onSelectWorkdayEndTime)
 
 	barbers.Handle(&btnBarberSettings, onBarberSettings)
 

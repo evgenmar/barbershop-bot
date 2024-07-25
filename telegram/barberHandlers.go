@@ -192,6 +192,66 @@ func onMakeThisDayNonWorking(ctx tele.Context) error {
 	return showScheduledWorkdayMenue(ctx, appointment)
 }
 
+func onUpdWorkdayStartTime(ctx tele.Context) error {
+	appointment := sess.GetAppointmentBarber(ctx.Sender().ID)
+	latestStart, err := latestPossibleStart(appointment.WorkdayID)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, "can't define latest possible start time for workday", err)
+	}
+	return ctx.Edit(
+		fmt.Sprintf(selectWorkdayStartTime, ent.EarlestStart.ShortString()),
+		markupSelectWorkdayStartOrEndTime(ent.EarlestStart, latestStart, endpntSelectWorkdayStartTime),
+	)
+}
+
+func onSelectWorkdayStartTime(ctx tele.Context) error {
+	errMsg := "can't update workday start time"
+	start, err := strconv.ParseUint(ctx.Callback().Data, 10, 64)
+	if err != nil {
+		return logAndMsgErrUser(ctx, errMsg, err)
+	}
+	startTime := tm.Duration(start)
+	appointment := sess.GetAppointmentBarber(ctx.Sender().ID)
+	ok, err := checkAndUpdateWorkdayStartTime(startTime, appointment.WorkdayID)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	if ok {
+		return showScheduledWorkdayMenue(ctx, appointment)
+	}
+	return ctx.Edit(failToUpdateWorkdayStartTime, markupBackToWorkdayInfo(appointment.WorkdayID))
+}
+
+func onUpdWorkdayEndTime(ctx tele.Context) error {
+	appointment := sess.GetAppointmentBarber(ctx.Sender().ID)
+	earlestEnd, err := earlestPossibleEnd(appointment.WorkdayID)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, "can't define earlest possible end time for workday", err)
+	}
+	return ctx.Edit(
+		fmt.Sprintf(selectWorkdayEndTime, ent.LatestEnd.ShortString()),
+		markupSelectWorkdayStartOrEndTime(earlestEnd, ent.LatestEnd, endpntSelectWorkdayEndTime),
+	)
+}
+
+func onSelectWorkdayEndTime(ctx tele.Context) error {
+	errMsg := "can't update workday end time"
+	end, err := strconv.ParseUint(ctx.Callback().Data, 10, 64)
+	if err != nil {
+		return logAndMsgErrUser(ctx, errMsg, err)
+	}
+	endTime := tm.Duration(end)
+	appointment := sess.GetAppointmentBarber(ctx.Sender().ID)
+	ok, err := checkAndUpdateWorkdayEndTime(endTime, appointment.WorkdayID)
+	if err != nil {
+		return logAndMsgErrBarber(ctx, errMsg, err)
+	}
+	if ok {
+		return showScheduledWorkdayMenue(ctx, appointment)
+	}
+	return ctx.Edit(failToUpdateWorkdayEndTime, markupBackToWorkdayInfo(appointment.WorkdayID))
+}
+
 func onBarberSettings(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
 	return ctx.Edit(settingsMenu, markupBarberSettings)
@@ -981,6 +1041,36 @@ func calculateDisplayedRangesForScheduleCalendar(deltaDisplayedMonth int8, appoi
 	return
 }
 
+func checkAndUpdateWorkdayEndTime(endTime tm.Duration, workdayID int) (ok bool, err error) {
+	appointmentsMutex.Lock()
+	defer appointmentsMutex.Unlock()
+	earlestEnd, err := earlestPossibleEnd(workdayID)
+	if err != nil {
+		return
+	}
+	ok = endTime >= earlestEnd
+	if !ok {
+		return
+	}
+	err = cp.RepoWithContext.UpdateWorkday(ent.Workday{ID: workdayID, EndTime: endTime})
+	return
+}
+
+func checkAndUpdateWorkdayStartTime(startTime tm.Duration, workdayID int) (ok bool, err error) {
+	appointmentsMutex.Lock()
+	defer appointmentsMutex.Unlock()
+	latestStart, err := latestPossibleStart(workdayID)
+	if err != nil {
+		return
+	}
+	ok = startTime <= latestStart
+	if !ok {
+		return
+	}
+	err = cp.RepoWithContext.UpdateWorkday(ent.Workday{ID: workdayID, StartTime: startTime})
+	return
+}
+
 func defineDisplayedDateRangeForLastWorkDate(
 	firstDisplayedDateRange ent.DateRange,
 	displayedMonthRange monthRange,
@@ -1038,6 +1128,17 @@ func defineFirstDisplayedDateRangeForScheduleCalendar(barberID int64) (firstDisp
 	return
 }
 
+func earlestPossibleEnd(workdayID int) (tm.Duration, error) {
+	workday, appointments, err := getWorkdayAndAppointments(workdayID)
+	if err != nil {
+		return 0, err
+	}
+	if len(appointments) == 0 {
+		return workday.StartTime + 30*tm.Minute, nil
+	}
+	return appointments[len(appointments)-1].Time + appointments[len(appointments)-1].Duration, nil
+}
+
 func earlestScheduledDate(barberID int64, dateRange ent.DateRange) (earlestWorkDate time.Time, err error) {
 	workdays, err := cp.RepoWithContext.GetWorkdaysByDateRange(barberID, dateRange)
 	if err != nil {
@@ -1053,6 +1154,17 @@ func earlestScheduledDate(barberID int64, dateRange ent.DateRange) (earlestWorkD
 		return time.Time{}, nil
 	}
 	return workdays[0].Date, nil
+}
+
+func latestPossibleStart(workdayID int) (tm.Duration, error) {
+	workday, appointments, err := getWorkdayAndAppointments(workdayID)
+	if err != nil {
+		return 0, err
+	}
+	if len(appointments) == 0 {
+		return workday.EndTime - 30*tm.Minute, nil
+	}
+	return appointments[0].Time, nil
 }
 
 func logAndMsgErrBarber(ctx tele.Context, msg string, err error) error {

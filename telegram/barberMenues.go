@@ -27,6 +27,16 @@ const (
 	selectWorkday           = "Выберите рабочий день для просмотра.\nВы также можете добавить новый рабочий день в свой график или, наоборот, сделать день выходным."
 	selectAppointment       = "Рабочий день %s с %s до %s.\nВыберите запись для просмотра, редактирования или удаления.\nВы также можете изменить время начала и конца рабочего дня."
 	workdayIsFree           = "Рабочий день %s с %s до %s.\nПоскольку на этот рабочий день пока что не запланировано ни одной записи, Вы можете сделать его выходным.\nВы также можете изменить время начала и конца рабочего дня."
+	selectWorkdayStartTime  = `Выберите новое время начала рабочего дня. Для выбора доступны варианты:
+- не раньше %s;
+- не позже начала самой ранней записи клиента;
+- не позже, чем за 30 минут до конца рабочего дня.`
+	selectWorkdayEndTime = `Выберите новое время конца рабочего дня. Для выбора доступны варианты:
+- не позже %s;
+- не раньше окончания самой поздней записи клиента;
+- не раньше, чем через 30 минут после начала рабочего дня.`
+	failToUpdateWorkdayStartTime = "ВНИМАНИЕ!!! Не удалось изменить начало рабочего дня, поскольку появилась новая запись клиента на более раннее время."
+	failToUpdateWorkdayEndTime   = "ВНИМАНИЕ!!! Не удалось изменить конец рабочего дня, поскольку появилась новая запись клиента на более позднее время."
 
 	listOfNecessarySettings = `Прежде чем клиенты получат возможность записаться к Вам на стрижку через этот бот, Вы должны произвести необходимый минимум подготовительных настроек.
 Это необходимо для того, чтобы предоставить Вашим клиентам максимально комфортный пользовательский опыт обращения с этим ботом.
@@ -148,10 +158,13 @@ const (
 	endpntBarberSelectWorkdayForAppointment = "barber_select_workday_for_appointment"
 	endpntBarberSelectTimeForAppointment    = "barber_select_time_for_appointment"
 
-	endpntSelectMonthFromScheduleCalendar          = "select_month_from_schedule_calendar"
-	endpntSelectWorkdayFromScheduleCalendar        = "select_workday_from_schedule_calendar"
+	endpntSelectMonthFromScheduleCalendar   = "select_month_from_schedule_calendar"
+	endpntSelectWorkdayFromScheduleCalendar = "select_workday_from_schedule_calendar"
+
 	endpntSelectAppointment                        = "select_appointment"
 	endpntAddСertainNonWorkdayFromScheduleCalendar = "add_certain_nonworkday_from_schedule_calendar"
+	endpntSelectWorkdayStartTime                   = "select_workday_start_time"
+	endpntSelectWorkdayEndTime                     = "select_workday_end_time"
 
 	endpntSelectMonthOfLastWorkDate = "select_month_of_last_work_date"
 	endpntSelectLastWorkDate        = "select_last_work_date"
@@ -451,6 +464,19 @@ func btnDuration(dur tm.Duration, endpnt string) tele.Btn {
 	return markupEmpty.Data(dur.LongString(), endpnt, strconv.FormatUint(uint64(dur), 10))
 }
 
+func markupBackToWorkdayInfo(workdayID int) *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{}
+	markup.Inline(
+		markup.Row(markup.Data(
+			"Назад к рабочему дню",
+			endpntSelectWorkdayFromScheduleCalendar,
+			strconv.Itoa(workdayID)),
+		),
+		markup.Row(btnBarberBackToMain),
+	)
+	return markup
+}
+
 func markupConfirmServiceDeletion(serviceID int) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 	markup.Inline(
@@ -536,6 +562,15 @@ func markupSelectWorkdayFromScheduleCalendar(dateRange ent.DateRange, monthRange
 	return markup, nil
 }
 
+func markupSelectWorkdayStartOrEndTime(earlestTime, latestTime tm.Duration, endpntTime string) *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{}
+	var rows []tele.Row
+	rows = append(rows, rowsSelectStartOrEndTime(earlestTime, latestTime, endpntTime)...)
+	rows = append(rows, markup.Row(btnBackToSelectWorkday), markup.Row(btnBarberBackToMain))
+	markup.Inline(rows...)
+	return markup
+}
+
 func rowsSelectAppointment(appointments []ent.Appointment) []tele.Row {
 	var btnsAppointmentsToSelect []tele.Btn
 	for _, appointment := range appointments {
@@ -559,6 +594,19 @@ func rowsSelectLastWorkDate(dateRange ent.DateRange) []tele.Row {
 		btnsDatesToSelect = append(btnsDatesToSelect, btnEmpty)
 	}
 	return markupEmpty.Split(7, btnsDatesToSelect)
+}
+
+func rowsSelectStartOrEndTime(earlestTime, latestTime tm.Duration, endpntTime string) []tele.Row {
+	var btnsTimesToSelect []tele.Btn
+	timesNumber := 0
+	for time := earlestTime; time <= latestTime; time += 30 * tm.Minute {
+		btnsTimesToSelect = append(btnsTimesToSelect, btnTime(time, endpntTime))
+		timesNumber++
+	}
+	for i := 1; i <= (4-timesNumber%4)%4; i++ {
+		btnsTimesToSelect = append(btnsTimesToSelect, btnEmpty)
+	}
+	return markupEmpty.Split(4, btnsTimesToSelect)
 }
 
 func rowsSelectWorkdayFromScheduleCalendar(dateRange ent.DateRange, barberID int64) ([]tele.Row, error) {
