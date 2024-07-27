@@ -38,5 +38,9 @@ func (s Service) BtnSignature() string {
 }
 
 func (s Service) Info() string {
-	return fmt.Sprintf("%s\n%s, %s\n%s", s.Name, s.Price.String(), s.Duration.LongString(), s.Desciption)
+	return fmt.Sprintf("%s, %s, %s\n%s", s.Name, s.Price.String(), s.Duration.LongString(), s.Desciption)
+}
+
+func (s Service) ShortInfo() string {
+	return fmt.Sprintf("%s, %s, %s", s.Name, s.Price.String(), s.Duration.LongString())
 }

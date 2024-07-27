@@ -115,7 +115,7 @@ func onUserSelectTimeForAppointment(ctx tele.Context) error {
 			markupUserConfirmNewAppointment,
 		)
 	}
-	serviceInfo := getNullServiceInfo(appointment.ServiceID, appointment.Duration)
+	serviceInfo := nullServiceInfo(appointment.ServiceID, appointment.Duration)
 	return ctx.Edit(
 		fmt.Sprintf(confirmRescheduleAppointment, serviceInfo, tm.ShowDate(workday.Date), appointmentTime.ShortString()),
 		markupUserConfirmRescheduleAppointment,
@@ -401,7 +401,7 @@ func calculateAndShowToUserFreeTimesForAppointment(ctx tele.Context, workday ent
 		return calculateAndShowToUserFreeWorkdaysForAppointment(ctx, 0, appointment)
 	}
 	sess.UpdateAppointmentAndUserState(ctx.Sender().ID, appointment, sess.StateStart)
-	serviceInfo := getNullServiceInfo(appointment.ServiceID, appointment.Duration)
+	serviceInfo := nullServiceInfo(appointment.ServiceID, appointment.Duration)
 	return ctx.Edit(
 		fmt.Sprintf(selectTimeForAppointment, serviceInfo, tm.ShowDate(workday.Date)),
 		markupSelectTimeForAppointment(
@@ -474,7 +474,7 @@ func checkAndRescheduleAppointmentByUser(appointment sess.Appointment) (ok bool,
 
 func getAppointmentInfo(appointment ent.Appointment) (serviceInfo, barberName, date, time string, err error) {
 	defer func() { err = e.WrapIfErr("can't get appointment info", err) }()
-	serviceInfo = getNullServiceInfo(appointment.ServiceID, appointment.Duration)
+	serviceInfo = nullServiceInfo(appointment.ServiceID, appointment.Duration)
 	workday, err := cp.RepoWithContext.GetWorkdayByID(appointment.WorkdayID)
 	if err != nil {
 		return
@@ -534,6 +534,14 @@ func logAndMsgErrUser(ctx tele.Context, msg string, err error) error {
 	return ctx.Send(errorUser, markupUserBackToMain)
 }
 
+func nullServiceInfo(serviceID int, appointmentDuration tm.Duration) string {
+	service, err := cp.RepoWithContext.GetServiceByID(serviceID)
+	if err != nil {
+		return "Длительность услуги: " + appointmentDuration.LongString()
+	}
+	return service.Info()
+}
+
 func showBarbersForAppointment(ctx tele.Context, userID int64) error {
 	workingBarbers, err := getWorkingBarbers()
 	if err != nil {
@@ -563,7 +571,7 @@ func showToUserFreeWorkdaysForAppointment(ctx tele.Context, displayedDateRange e
 	if err != nil {
 		return logAndMsgErrUser(ctx, "can't show to user free workdays for appointment", err)
 	}
-	serviceInfo := getNullServiceInfo(appointment.ServiceID, appointment.Duration)
+	serviceInfo := nullServiceInfo(appointment.ServiceID, appointment.Duration)
 	return ctx.Edit(fmt.Sprintf(selectDateForAppointment, serviceInfo), markupSelectWorkday)
 }
 

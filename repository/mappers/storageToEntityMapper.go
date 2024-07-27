@@ -88,7 +88,7 @@ func mapNameToEntity(name sql.NullString) string {
 
 func mapNoteToEntity(note sql.NullString) string {
 	if !note.Valid {
-		return ent.NoNote
+		return ""
 	}
 	return note.String
 }

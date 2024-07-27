@@ -165,14 +165,6 @@ func freeTimesForAppointment(workday ent.Workday, appointments []ent.Appointment
 	return
 }
 
-func getNullServiceInfo(serviceID int, appointmentDuration tm.Duration) string {
-	service, err := cp.RepoWithContext.GetServiceByID(serviceID)
-	if err != nil {
-		return "Длительность услуги: " + appointmentDuration.LongString()
-	}
-	return service.Info()
-}
-
 func getWorkdayAndAppointments(workdayID int) (ent.Workday, []ent.Appointment, error) {
 	workday, err := cp.RepoWithContext.GetWorkdayByID(workdayID)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	cfg "barbershop-bot/lib/config"
 	tm "barbershop-bot/lib/time"
 	"strconv"
+	"strings"
 	"time"
 
 	tele "gopkg.in/telebot.v3"
@@ -37,6 +38,8 @@ const (
 - не раньше, чем через 30 минут после начала рабочего дня.`
 	failToUpdateWorkdayStartTime = "ВНИМАНИЕ!!! Не удалось изменить начало рабочего дня, поскольку появилась новая запись клиента на более раннее время."
 	failToUpdateWorkdayEndTime   = "ВНИМАНИЕ!!! Не удалось изменить конец рабочего дня, поскольку появилась новая запись клиента на более позднее время."
+
+	appointmentInfoForBarber = "Информация о записи:\n\n%s\n\nВремя записи: %s в %s.\n\n%s\n\nВыберите действие."
 
 	listOfNecessarySettings = `Прежде чем клиенты получат возможность записаться к Вам на стрижку через этот бот, Вы должны произвести необходимый минимум подготовительных настроек.
 Это необходимо для того, чтобы предоставить Вашим клиентам максимально комфортный пользовательский опыт обращения с этим ботом.
@@ -195,7 +198,7 @@ var (
 	btnBarberSelectAnotherTimeForAppointment        = markupEmpty.Data("Выбрать другое время", "barber_select_another_time_for_appointment")
 
 	markupUpdNote = &tele.ReplyMarkup{}
-	btnUpdNote    = markupEmpty.Data("Добавить заметку", "upd_note")
+	btnAddNote    = markupEmpty.Data("Добавить заметку", "add_note")
 
 	btnAddWorkday    = markupEmpty.Data("Добавить рабочий день", "add_workday")
 	btnAddNonWorkday = markupEmpty.Data("Сделать день выходным", "add_nonworkday")
@@ -205,6 +208,11 @@ var (
 	btnUpdWorkdayStartTime   = markupEmpty.Data("Изменить начало рабочего дня", "upd_workday_start_time")
 	btnUpdWorkdayEndTime     = markupEmpty.Data("Изменить конец рабочего дня", "upd_workday_end_time")
 	btnBackToSelectWorkday   = markupEmpty.Data("Назад к выбору рабочего дня", endpntSelectMonthFromScheduleCalendar, "0")
+
+	btnBarberRescheduleAppointment       = markupEmpty.Data("Перенести запись", "barber_reschedule_appointment")
+	btnBarberCancelAppointment           = markupEmpty.Data("Отменить запись", "barber_cancel_appointment")
+	btnCancelAppointmentWithNotification = markupEmpty.Data("Отменить и уведомить клиента", "cancel_appointment_with_notification")
+	btnUpdNote                           = markupEmpty.Data("Добавить/обновить заметку", "upd_note")
 
 	markupBarberSettings       = &tele.ReplyMarkup{}
 	btnListOfNecessarySettings = markupEmpty.Data("Перечень необходимых настроек", "list_of_necessary_settings")
@@ -305,7 +313,7 @@ func init() {
 	)
 
 	markupUpdNote.Inline(
-		markupEmpty.Row(btnUpdNote),
+		markupEmpty.Row(btnAddNote),
 		markupEmpty.Row(btnBarberBackToMain),
 	)
 
@@ -452,7 +460,14 @@ func btnAppointment(appt ent.Appointment) tele.Btn {
 	return markupEmpty.Data(
 		appt.Time.ShortString()+" - "+(appt.Time+appt.Duration).ShortString(),
 		endpntSelectAppointment,
-		strconv.Itoa(appt.ID),
+		strings.Join(
+			[]string{
+				strconv.Itoa(appt.ID),
+				strconv.FormatUint(uint64(appt.Time), 10),
+				strconv.FormatUint(uint64(appt.Duration), 10),
+			},
+			"|",
+		),
 	)
 }
 
@@ -481,6 +496,23 @@ func markupConfirmServiceDeletion(serviceID int) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 	markup.Inline(
 		markup.Row(markup.Data("Подтвердить удаление", endpntSureToDeleteService, strconv.Itoa(serviceID))),
+		markup.Row(btnBarberBackToMain),
+	)
+	return markup
+}
+
+func markupEditAppointment(workdayID int) *tele.ReplyMarkup {
+	markup := &tele.ReplyMarkup{}
+	markup.Inline(
+		markup.Row(btnBarberRescheduleAppointment),
+		markup.Row(btnBarberCancelAppointment),
+		markup.Row(btnCancelAppointmentWithNotification),
+		markup.Row(btnUpdNote),
+		markup.Row(markup.Data(
+			"Назад к рабочему дню",
+			endpntSelectWorkdayFromScheduleCalendar,
+			strconv.Itoa(workdayID)),
+		),
 		markup.Row(btnBarberBackToMain),
 	)
 	return markup

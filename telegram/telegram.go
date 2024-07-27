@@ -56,7 +56,7 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	barbers.Handle(callbackUnique(endpntBarberSelectTimeForAppointment), onBarberSelectTimeForAppointment)
 	barbers.Handle(&btnBarberConfirmNewAppointment, onBarberConfirmNewAppointment)
 	barbers.Handle(&btnBarberSelectAnotherTimeForAppointment, onBarberSelectAnotherTimeForAppointment)
-	barbers.Handle(&btnUpdNote, onUpdNote)
+	barbers.Handle(&btnAddNote, onAddNote)
 
 	barbers.Handle(&btnMyWorkSchedule, onMyWorkSchedule)
 	barbers.Handle(callbackUnique(endpntSelectMonthFromScheduleCalendar), onSelectMonthFromScheduleCalendar)
@@ -67,6 +67,7 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	barbers.Handle(callbackUnique(endpntSelectWorkdayStartTime), onSelectWorkdayStartTime)
 	barbers.Handle(&btnUpdWorkdayEndTime, onUpdWorkdayEndTime)
 	barbers.Handle(callbackUnique(endpntSelectWorkdayEndTime), onSelectWorkdayEndTime)
+	barbers.Handle(callbackUnique(endpntSelectAppointment), onSelectAppointment)
 
 	barbers.Handle(&btnBarberSettings, onBarberSettings)
 

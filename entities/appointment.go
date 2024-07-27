@@ -16,7 +16,3 @@ type Appointment struct {
 	//CreatedAt has a format of Unix time
 	CreatedAt int64
 }
-
-const (
-	NoNote = "Нет заметки"
-)

@@ -414,7 +414,7 @@ func (s *Storage) GetUpcomingAppointment(ctx context.Context, userID int64) (app
 	defer func() { err = e.WrapIfErr("can't get appointment", err) }()
 	q := `SELECT a.id, a.workday_id, a.service_id, a.time, a.duration, a.note, a.created_at, w.date 
 		FROM appointments a JOIN workdays w ON a.workday_id = w.id
-		WHERE a.user_id = ? AND (w.date > ? OR (w.date = ? AND a.time > ?))`
+		WHERE a.user_id = ? AND (w.date > ? OR (w.date = ? AND a.time + a.duration > ?))`
 	today := m.MapToStorage.Date(tm.Today())
 	currentTime := m.MapToStorage.Duration(tm.CurrentDayTime())
 	var date string
