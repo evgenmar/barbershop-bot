@@ -12,7 +12,5 @@ type Appointment struct {
 	Duration       tm.Duration
 	BarberID       int64
 	LastShownMonth tm.Month
+	HashStr        string
 }
-
-//TODO: it's better to store appointment info in button's data instead of session
-// to avoid errors that occur when accessing multiple menu instances at the same time

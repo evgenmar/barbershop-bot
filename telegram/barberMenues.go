@@ -5,6 +5,9 @@ import (
 	ent "barbershop-bot/entities"
 	cfg "barbershop-bot/lib/config"
 	tm "barbershop-bot/lib/time"
+	"crypto/md5"
+	"encoding/binary"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -456,6 +459,13 @@ func init() {
 	)
 }
 
+func appointmentHashStr(appt ent.Appointment) string {
+	bytes := append(intToBytes(appt.ID), intToBytes(appt.WorkdayID)...)
+	bytes = append(bytes, appt.Time.Bytes()...)
+	bytes = append(bytes, appt.Duration.Bytes()...)
+	return fmt.Sprintf("%x", md5.Sum(bytes))
+}
+
 func btnAppointment(appt ent.Appointment) tele.Btn {
 	return markupEmpty.Data(
 		appt.Time.ShortString()+" - "+(appt.Time+appt.Duration).ShortString(),
@@ -463,8 +473,7 @@ func btnAppointment(appt ent.Appointment) tele.Btn {
 		strings.Join(
 			[]string{
 				strconv.Itoa(appt.ID),
-				strconv.FormatUint(uint64(appt.Time), 10),
-				strconv.FormatUint(uint64(appt.Duration), 10),
+				appointmentHashStr(appt),
 			},
 			"|",
 		),
@@ -477,6 +486,12 @@ func btnDate(date time.Time, endpnt string) tele.Btn {
 
 func btnDuration(dur tm.Duration, endpnt string) tele.Btn {
 	return markupEmpty.Data(dur.LongString(), endpnt, strconv.FormatUint(uint64(dur), 10))
+}
+
+func intToBytes(num int) []byte {
+	bytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(bytes, uint32(num))
+	return bytes
 }
 
 func markupBackToWorkdayInfo(workdayID int) *tele.ReplyMarkup {

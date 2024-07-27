@@ -2,6 +2,7 @@ package time
 
 import (
 	cfg "barbershop-bot/lib/config"
+	"encoding/binary"
 	"fmt"
 	"time"
 )
@@ -17,6 +18,12 @@ const (
 	Minute Duration = 1
 	Hour            = 60 * Minute
 )
+
+func (d Duration) Bytes() []byte {
+	bytes := make([]byte, 2)
+	binary.BigEndian.PutUint16(bytes, uint16(d))
+	return bytes
+}
 
 func (d Duration) LongString() string {
 	if d == 0 {

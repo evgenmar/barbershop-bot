@@ -125,6 +125,8 @@ func onUserSelectTimeForAppointment(ctx tele.Context) error {
 func onUserConfirmNewAppointment(ctx tele.Context) error {
 	errMsg := "can't confirm new appointment for user"
 	userID := ctx.Sender().ID
+	appointmentsMutex.Lock()
+	defer appointmentsMutex.Unlock()
 	upcomingAppointment, err := cp.RepoWithContext.GetUpcomingAppointment(userID)
 	if err != nil {
 		if errors.Is(err, rep.ErrNoSavedAppointment) {
@@ -165,23 +167,14 @@ func onUserSelectAnotherTimeForAppointment(ctx tele.Context) error {
 }
 
 func onRescheduleOrCancelAppointment(ctx tele.Context) error {
-	errMsg := "can't handle reschedule or cancel appointment"
-	userID := ctx.Sender().ID
-	upcomingAppointment, err := cp.RepoWithContext.GetUpcomingAppointment(userID)
+	upcomingAppointment, err := cp.RepoWithContext.GetUpcomingAppointment(ctx.Sender().ID)
 	if err != nil {
 		if errors.Is(err, rep.ErrNoSavedAppointment) {
 			return ctx.Edit(youHaveNoAppointments, markupUserBackToMain)
 		}
-		return logAndMsgErrUser(ctx, errMsg, err)
+		return logAndMsgErrUser(ctx, "can't handle reschedule or cancel appointment", err)
 	}
-	serviceInfo, barberName, date, time, err := getAppointmentInfo(upcomingAppointment)
-	if err != nil {
-		return logAndMsgErrUser(ctx, errMsg, err)
-	}
-	return ctx.Edit(
-		fmt.Sprintf(rescheduleOrCancelAppointment, barberName, date, time, serviceInfo),
-		markupRescheduleOrCancelAppointment,
-	)
+	return showRescheduleOrCancelAppointmentMenue(ctx, upcomingAppointment)
 }
 
 func onUserRescheduleAppointment(ctx tele.Context) error {
@@ -194,6 +187,10 @@ func onUserRescheduleAppointment(ctx tele.Context) error {
 		}
 		return logAndMsgErrUser(ctx, errMsg, err)
 	}
+	appointment := sess.GetAppointmentUser(userID)
+	if appointmentHashStr(upcomingAppointment) != appointment.HashStr {
+		showRescheduleOrCancelAppointmentMenue(ctx, upcomingAppointment)
+	}
 	workday, err := cp.RepoWithContext.GetWorkdayByID(upcomingAppointment.WorkdayID)
 	if err != nil {
 		return logAndMsgErrUser(ctx, errMsg, err)
@@ -202,18 +199,18 @@ func onUserRescheduleAppointment(ctx tele.Context) error {
 	if err != nil {
 		return logAndMsgErrUser(ctx, errMsg, err)
 	}
-	editedAppointment := sess.Appointment{
-		ID:        upcomingAppointment.ID,
-		ServiceID: upcomingAppointment.ServiceID,
-		Duration:  upcomingAppointment.Duration,
-		BarberID:  barber.ID,
-	}
-	return calculateAndShowToUserFreeWorkdaysForAppointment(ctx, 0, editedAppointment)
+	appointment.ID = upcomingAppointment.ID
+	appointment.ServiceID = upcomingAppointment.ServiceID
+	appointment.Duration = upcomingAppointment.Duration
+	appointment.BarberID = barber.ID
+	return calculateAndShowToUserFreeWorkdaysForAppointment(ctx, 0, appointment)
 }
 
 func onUserConfirmRescheduleAppointment(ctx tele.Context) error {
 	errMsg := "can't confirm reschedule appointment for user"
 	userID := ctx.Sender().ID
+	appointmentsMutex.Lock()
+	defer appointmentsMutex.Unlock()
 	_, err := cp.RepoWithContext.GetUpcomingAppointment(userID)
 	if err != nil {
 		if errors.Is(err, rep.ErrNoSavedAppointment) {
@@ -267,6 +264,8 @@ func onUserCancelAppointment(ctx tele.Context) error {
 func onUserConfirmCancelAppointment(ctx tele.Context) error {
 	errMsg := "can't confirm cancel appointment for user"
 	userID := ctx.Sender().ID
+	appointmentsMutex.Lock()
+	defer appointmentsMutex.Unlock()
 	upcomingAppointment, err := cp.RepoWithContext.GetUpcomingAppointment(userID)
 	if err != nil {
 		if errors.Is(err, rep.ErrNoSavedAppointment) {
@@ -427,8 +426,6 @@ func calculateAndShowToUserFreeWorkdaysForAppointment(ctx tele.Context, deltaDis
 }
 
 func checkAndCreateAppointmentByUser(userID int64, appointment sess.Appointment) (ok bool, err error) {
-	appointmentsMutex.Lock()
-	defer appointmentsMutex.Unlock()
 	workday, appointments, err := getWorkdayAndAppointments(appointment.WorkdayID)
 	if err != nil {
 		return
@@ -454,8 +451,6 @@ func checkAndCreateAppointmentByUser(userID int64, appointment sess.Appointment)
 }
 
 func checkAndRescheduleAppointmentByUser(appointment sess.Appointment) (ok bool, err error) {
-	appointmentsMutex.Lock()
-	defer appointmentsMutex.Unlock()
 	workday, appointments, err := getWorkdayAndAppointments(appointment.WorkdayID)
 	if err != nil {
 		return
@@ -557,6 +552,22 @@ func showBarbersForAppointment(ctx tele.Context, userID int64) error {
 		sess.UpdateUserState(userID, sess.StateStart)
 		return ctx.Edit(selectBarberForAppointment, markupSelectBarberForAppointment(workingBarbers))
 	}
+}
+
+func showRescheduleOrCancelAppointmentMenue(ctx tele.Context, upcomingAppointment ent.Appointment) error {
+	sess.UpdateAppointmentAndUserState(
+		ctx.Sender().ID,
+		sess.Appointment{HashStr: appointmentHashStr(upcomingAppointment)},
+		sess.StateStart,
+	)
+	serviceInfo, barberName, date, time, err := getAppointmentInfo(upcomingAppointment)
+	if err != nil {
+		return logAndMsgErrUser(ctx, "can't show reschedule or cancel appointment menue", err)
+	}
+	return ctx.Edit(
+		fmt.Sprintf(rescheduleOrCancelAppointment, barberName, date, time, serviceInfo),
+		markupRescheduleOrCancelAppointment,
+	)
 }
 
 func showToUserFreeWorkdaysForAppointment(ctx tele.Context, displayedDateRange ent.DateRange, displayedMonthRange monthRange, appointment sess.Appointment) error {

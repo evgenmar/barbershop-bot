@@ -255,15 +255,18 @@ func onSelectWorkdayEndTime(ctx tele.Context) error {
 
 func onSelectAppointment(ctx tele.Context) error {
 	errMsg := "can't show appointment options menue"
-	barberID := ctx.Sender().ID
-	appointment := sess.GetAppointmentBarber(barberID)
-	apptFromBtn, err := appointmentFromBtn(ctx.Callback().Data)
+	splitData := strings.Split(ctx.Callback().Data, "|")
+	if len(splitData) != 2 {
+		return logAndMsgErrBarber(ctx, errMsg, errors.New("invalid appointment data"))
+	}
+	apptID, err := strconv.Atoi(splitData[0])
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
 	}
-	appointment.ID = apptFromBtn.ID
-	appointment.Time = apptFromBtn.Time
-	appointment.Duration = apptFromBtn.Duration
+	barberID := ctx.Sender().ID
+	appointment := sess.GetAppointmentBarber(barberID)
+	appointment.ID = apptID
+	appointment.HashStr = splitData[1]
 	editedAppointment, err := getVeryfiedAppointment(appointment)
 	if err != nil {
 		return logAndMsgErrBarber(ctx, errMsg, err)
@@ -271,7 +274,6 @@ func onSelectAppointment(ctx tele.Context) error {
 	if editedAppointment.ID == 0 {
 		return showScheduledWorkdayMenue(ctx, appointment)
 	}
-	appointment.ServiceID = editedAppointment.ServiceID
 	sess.UpdateAppointmentAndBarberState(barberID, appointment, sess.StateStart)
 	return showAppointmentOptionsMenue(ctx, editedAppointment)
 }
@@ -953,30 +955,6 @@ func onAddNewBarber(ctx tele.Context) error {
 	return ctx.Send(addedNewBarberWithSсhedule, markupBarberBackToMain)
 }
 
-func appointmentFromBtn(data string) (ent.Appointment, error) {
-	splitData := strings.Split(data, "|")
-	if len(splitData) != 3 {
-		return ent.Appointment{}, errors.New("invalid appointment data")
-	}
-	apptID, err := strconv.Atoi(splitData[0])
-	if err != nil {
-		return ent.Appointment{}, err
-	}
-	time, err := strconv.ParseUint(splitData[1], 10, 64)
-	if err != nil {
-		return ent.Appointment{}, err
-	}
-	duration, err := strconv.ParseUint(splitData[2], 10, 64)
-	if err != nil {
-		return ent.Appointment{}, err
-	}
-	return ent.Appointment{
-		ID:       apptID,
-		Time:     tm.Duration(time),
-		Duration: tm.Duration(duration),
-	}, nil
-}
-
 func calculateAndShowScheduleCalendar(ctx tele.Context, deltaDisplayedMonth int8, appointment sess.Appointment) error {
 	errMsg := "can't show schedule calendar"
 	displayedDateRange, displayedMonthRange, err := calculateDisplayedRangesForScheduleCalendar(deltaDisplayedMonth, appointment)
@@ -1212,9 +1190,7 @@ func getVeryfiedAppointment(target sess.Appointment) (ent.Appointment, error) {
 		}
 		return ent.Appointment{}, err
 	}
-	if appointment.WorkdayID != target.WorkdayID ||
-		appointment.Time != target.Time ||
-		appointment.Duration != target.Duration {
+	if appointmentHashStr(appointment) != target.HashStr {
 		return ent.Appointment{}, nil
 	}
 	workday, err := cp.RepoWithContext.GetWorkdayByID(appointment.WorkdayID)
