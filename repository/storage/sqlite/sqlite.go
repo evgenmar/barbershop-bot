@@ -95,23 +95,9 @@ func (s *Storage) CreateService(ctx context.Context, service st.Service) (err er
 // CreateUser saves new user to storage.
 func (s *Storage) CreateUser(ctx context.Context, user st.User) (err error) {
 	defer func() { err = e.WrapIfErr("can't save user", err) }()
-	columns := ""
-	placeholders := ""
-	args := make([]interface{}, 0, 3)
-	args = append(args, user.ID)
-	if user.Name.Valid {
-		columns += ", name"
-		placeholders += ", ?"
-		args = append(args, user.Name)
-	}
-	if user.Phone.Valid {
-		columns += ", phone"
-		placeholders += ", ?"
-		args = append(args, user.Phone)
-	}
-	q := fmt.Sprintf(`INSERT INTO users (id%s) VALUES (?%s)`, columns, placeholders)
+	q := `INSERT INTO users (id, message_id, chat_id) VALUES (?, ?, ?)`
 	s.rwMutex.Lock()
-	_, err = s.db.ExecContext(ctx, q, args...)
+	_, err = s.db.ExecContext(ctx, q, user.ID, user.MessageID, user.ChatID)
 	s.rwMutex.Unlock()
 	if err != nil {
 		if errors.Is(err, sqlite3.CONSTRAINT) {
@@ -214,7 +200,7 @@ func (s *Storage) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64,
 // GetAllBarbers return a slice of all barbers.
 func (s *Storage) GetAllBarbers(ctx context.Context) (barbers []st.Barber, err error) {
 	defer func() { err = e.WrapIfErr("can't get barbers", err) }()
-	q := `SELECT id, name, phone, last_workdate FROM barbers`
+	q := `SELECT id, name, phone, last_workdate, message_id, chat_id FROM barbers`
 	s.rwMutex.RLock()
 	rows, err := s.db.QueryContext(ctx, q)
 	s.rwMutex.RUnlock()
@@ -225,7 +211,7 @@ func (s *Storage) GetAllBarbers(ctx context.Context) (barbers []st.Barber, err e
 
 	for rows.Next() {
 		var barber st.Barber
-		if err := rows.Scan(&barber.ID, &barber.Name, &barber.Phone, &barber.LastWorkDate); err != nil {
+		if err := rows.Scan(&barber.ID, &barber.Name, &barber.Phone, &barber.LastWorkDate, &barber.MessageID, &barber.ChatID); err != nil {
 			return nil, err
 		}
 		barbers = append(barbers, barber)
@@ -309,10 +295,16 @@ func (s *Storage) GetAppointmentsByDateRange(ctx context.Context, barberID int64
 
 // GetBarberByID returns barber with specified ID.
 func (s *Storage) GetBarberByID(ctx context.Context, barberID int64) (st.Barber, error) {
-	q := `SELECT name, phone, last_workdate FROM barbers WHERE id = ?`
+	q := `SELECT name, phone, last_workdate, message_id, chat_id FROM barbers WHERE id = ?`
 	var barber st.Barber
 	s.rwMutex.RLock()
-	err := s.db.QueryRowContext(ctx, q, barberID).Scan(&barber.Name, &barber.Phone, &barber.LastWorkDate)
+	err := s.db.QueryRowContext(ctx, q, barberID).Scan(
+		&barber.Name,
+		&barber.Phone,
+		&barber.LastWorkDate,
+		&barber.MessageID,
+		&barber.ChatID,
+	)
 	s.rwMutex.RUnlock()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -416,7 +408,10 @@ func (s *Storage) GetUpcomingAppointment(ctx context.Context, userID int64) (app
 		FROM appointments a JOIN workdays w ON a.workday_id = w.id
 		WHERE a.user_id = ? AND (w.date > ? OR (w.date = ? AND a.time + a.duration > ?))`
 	today := m.MapToStorage.Date(tm.Today())
-	currentTime := m.MapToStorage.Duration(tm.CurrentDayTime())
+	currentTime, err := m.MapToStorage.Duration(tm.CurrentDayTime())
+	if err != nil {
+		return st.Appointment{}, err
+	}
 	var date string
 	s.rwMutex.RLock()
 	err = s.db.QueryRowContext(ctx, q, userID, today, today, currentTime).Scan(
@@ -443,9 +438,9 @@ func (s *Storage) GetUpcomingAppointment(ctx context.Context, userID int64) (app
 // GetUserByID returns user with specified ID.
 func (s *Storage) GetUserByID(ctx context.Context, userID int64) (user st.User, err error) {
 	defer func() { err = e.WrapIfErr("can't get user", err) }()
-	q := `SELECT name, phone FROM users WHERE id = ?`
+	q := `SELECT name, phone, message_id, chat_id FROM users WHERE id = ?`
 	s.rwMutex.RLock()
-	err = s.db.QueryRowContext(ctx, q, userID).Scan(&user.Name, &user.Phone)
+	err = s.db.QueryRowContext(ctx, q, userID).Scan(&user.Name, &user.Phone, &user.MessageID, &user.ChatID)
 	s.rwMutex.RUnlock()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -510,7 +505,9 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 	q := `CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY, 
 		name TEXT, 
-		phone TEXT
+		phone TEXT,
+		message_id TEXT NOT NULL,
+		chat_id INTEGER NOT NULL
 		)`
 	_, err = s.db.ExecContext(ctx, q)
 	if err != nil {
@@ -520,7 +517,9 @@ func (s *Storage) Init(ctx context.Context) (err error) {
 		id INTEGER PRIMARY KEY, 
 		name TEXT UNIQUE, 
 		phone TEXT UNIQUE, 
-		last_workdate TEXT DEFAULT '` + cfg.InfiniteWorkDate + `'
+		last_workdate TEXT DEFAULT '` + cfg.InfiniteWorkDate + `',
+		message_id TEXT DEFAULT '',
+		chat_id INTEGER DEFAULT 0
 		)`
 	_, err = s.db.ExecContext(ctx, q)
 	if err != nil {
@@ -609,8 +608,8 @@ func (s *Storage) UpdateAppointment(ctx context.Context, appointment st.Appointm
 // UpdateBarber updates valid and non-niladic fields of Barber. ID field must be non-niladic and remains not updated.
 func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) (err error) {
 	defer func() { err = e.WrapIfErr("can't update barber", err) }()
-	query := make([]string, 0, 3)
-	args := make([]interface{}, 0, 3)
+	query := make([]string, 0, 5)
+	args := make([]interface{}, 0, 5)
 	if barber.Name.Valid {
 		query = append(query, "name = ?")
 		args = append(args, barber.Name)
@@ -622,6 +621,14 @@ func (s *Storage) UpdateBarber(ctx context.Context, barber st.Barber) (err error
 	if barber.LastWorkDate != "" {
 		query = append(query, "last_workdate = ?")
 		args = append(args, barber.LastWorkDate)
+	}
+	if barber.MessageID != "" {
+		query = append(query, "message_id = ?")
+		args = append(args, barber.MessageID)
+	}
+	if barber.ChatID != 0 {
+		query = append(query, "chat_id = ?")
+		args = append(args, barber.ChatID)
 	}
 	args = append(args, barber.ID)
 	q := fmt.Sprintf(`UPDATE barbers SET %s WHERE id = ?`, strings.Join(query, " , "))
@@ -675,8 +682,8 @@ func (s *Storage) UpdateService(ctx context.Context, service st.Service) (err er
 
 // UpdateUser updates valid fields of User. ID field must be non-niladic and remains not updated.
 func (s *Storage) UpdateUser(ctx context.Context, user st.User) error {
-	query := make([]string, 0, 2)
-	args := make([]interface{}, 0, 2)
+	query := make([]string, 0, 4)
+	args := make([]interface{}, 0, 4)
 	if user.Name.Valid {
 		query = append(query, "name = ?")
 		args = append(args, user.Name)
@@ -684,6 +691,14 @@ func (s *Storage) UpdateUser(ctx context.Context, user st.User) error {
 	if user.Phone.Valid {
 		query = append(query, "phone = ?")
 		args = append(args, user.Phone)
+	}
+	if user.MessageID != "" {
+		query = append(query, "message_id = ?")
+		args = append(args, user.MessageID)
+	}
+	if user.ChatID != 0 {
+		query = append(query, "chat_id = ?")
+		args = append(args, user.ChatID)
 	}
 	args = append(args, user.ID)
 	q := fmt.Sprintf(`UPDATE users SET %s WHERE id = ?`, strings.Join(query, " , "))

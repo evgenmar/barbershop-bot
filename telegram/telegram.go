@@ -10,15 +10,16 @@ import (
 	mw "gopkg.in/telebot.v3/middleware"
 )
 
-var appointmentsMutex sync.Mutex
+var (
+	mutex sync.Mutex
+)
 
 var Bot *tele.Bot
 
 func InitBot() {
-	Bot = setHandlers(setMiddleware(newBot()))
+	Bot = withHandlers(withMiddleware(newBot()))
 }
 
-// botWithMiddleware creates bot with Recover(), AutoRespond() and withStorage(rep) global middleware.
 func newBot() *tele.Bot {
 	pref := tele.Settings{
 		Token: os.Getenv("TOKEN"),
@@ -32,13 +33,13 @@ func newBot() *tele.Bot {
 	return bot
 }
 
-func setMiddleware(bot *tele.Bot) *tele.Bot {
+func withMiddleware(bot *tele.Bot) *tele.Bot {
 	bot.Use(mw.Recover())
 	bot.Use(mw.AutoRespond())
 	return bot
 }
 
-func setHandlers(bot *tele.Bot) *tele.Bot {
+func withHandlers(bot *tele.Bot) *tele.Bot {
 	barbers := bot.Group()
 	barbers.Use(whitelist())
 	users := bot.Group()
@@ -150,7 +151,6 @@ func setHandlers(bot *tele.Bot) *tele.Bot {
 	users.Handle(&btnUserUpdPhone, onUserUpdPhone)
 
 	users.Handle(&btnUserBackToMain, onUserBackToMain)
-	users.Handle(&btnUserBackToMainSend, onUserBackToMainSend)
 	//TODO userHandlers
 
 	return bot

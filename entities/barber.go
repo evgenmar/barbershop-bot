@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"time"
+
+	tele "gopkg.in/telebot.v3"
 )
 
 type Barber struct {
@@ -17,6 +19,7 @@ type Barber struct {
 
 	//LastWorkdate is a date in local time zone with HH:MM:SS set to 00:00:00. Default is '3000-01-01'.
 	LastWorkdate time.Time
+	tele.StoredMessage
 }
 
 const (

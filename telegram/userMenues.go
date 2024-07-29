@@ -79,9 +79,6 @@ var (
 
 	markupUserBackToMain = &tele.ReplyMarkup{}
 	btnUserBackToMain    = markupEmpty.Data(backToMain, endpntUserBackToMain)
-
-	markupUserBackToMainSend = &tele.ReplyMarkup{}
-	btnUserBackToMainSend    = markupEmpty.Data(backToMain, "user_back_to_main_send")
 )
 
 func init() {
@@ -140,10 +137,6 @@ func init() {
 
 	markupUserBackToMain.Inline(
 		markupEmpty.Row(btnUserBackToMain),
-	)
-
-	markupUserBackToMainSend.Inline(
-		markupEmpty.Row(btnUserBackToMainSend),
 	)
 }
 

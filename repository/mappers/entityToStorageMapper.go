@@ -7,6 +7,8 @@ import (
 	"database/sql"
 	"time"
 	"unicode"
+
+	tele "gopkg.in/telebot.v3"
 )
 
 type EntityToStorageMapper struct{}
@@ -26,10 +28,11 @@ func (e EntityToStorageMapper) Appointment(appointment ent.Appointment) st.Appoi
 
 func (e EntityToStorageMapper) Barber(barber ent.Barber) st.Barber {
 	return st.Barber{
-		ID:           barber.ID,
-		Name:         mapStrToNullStr(barber.Name),
-		Phone:        mapStrToNullStr(normalizePhone(barber.Phone)),
-		LastWorkDate: mapDateToStr(barber.LastWorkdate),
+		ID:            barber.ID,
+		Name:          mapStrToNullStr(barber.Name),
+		Phone:         mapStrToNullStr(normalizePhone(barber.Phone)),
+		LastWorkDate:  mapDateToStr(barber.LastWorkdate),
+		StoredMessage: tele.StoredMessage{MessageID: barber.MessageID, ChatID: barber.ChatID},
 	}
 }
 
@@ -44,6 +47,10 @@ func (e EntityToStorageMapper) DateRange(dateRange ent.DateRange) st.DateRange {
 	}
 }
 
+func (e EntityToStorageMapper) Duration(dur tm.Duration) int16 {
+	return int16(dur)
+}
+
 func (e EntityToStorageMapper) Service(service ent.Service) st.Service {
 	return st.Service{
 		ID:         service.ID,
@@ -55,15 +62,12 @@ func (e EntityToStorageMapper) Service(service ent.Service) st.Service {
 	}
 }
 
-func (e EntityToStorageMapper) Duration(dur tm.Duration) int16 {
-	return int16(dur)
-}
-
 func (e EntityToStorageMapper) User(user ent.User) st.User {
 	return st.User{
-		ID:    user.ID,
-		Name:  mapStrToNullStr(user.Name),
-		Phone: mapStrToNullStr(normalizePhone(user.Phone)),
+		ID:            user.ID,
+		Name:          mapStrToNullStr(user.Name),
+		Phone:         mapStrToNullStr(normalizePhone(user.Phone)),
+		StoredMessage: tele.StoredMessage{MessageID: user.MessageID, ChatID: user.ChatID},
 	}
 }
 

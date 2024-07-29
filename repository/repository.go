@@ -22,6 +22,7 @@ var (
 	ErrInvalidBarber      = errors.New("invalid barber")
 	ErrInvalidDateRange   = errors.New("invalid date range")
 	ErrInvalidService     = errors.New("invalid service")
+	ErrInvalidTime        = errors.New("invalid time")
 	ErrInvalidUser        = errors.New("invalid user")
 	ErrInvalidWorkday     = errors.New("invalid workday")
 	ErrNonUniqueData      = st.ErrNonUniqueData
@@ -85,7 +86,7 @@ func (r Repository) CreateUser(ctx context.Context, user ent.User) (err error) {
 			err = ErrAlreadyExists
 		}
 	}()
-	ur, err := m.MapToStorage.User(user)
+	ur, err := m.MapToStorage.UserForCreate(user)
 	if err != nil {
 		if errors.Is(err, m.ErrInvalidEntity) {
 			return ErrInvalidUser
@@ -181,7 +182,14 @@ func (r Repository) GetAppointmentIDByWorkdayIDAndTime(ctx context.Context, work
 			err = ErrNoSavedAppointment
 		}
 	}()
-	return r.Storage.GetAppointmentIDByWorkdayIDAndTime(ctx, workdayID, m.MapToStorage.Duration(time))
+	tm, err := m.MapToStorage.Duration(time)
+	if err != nil {
+		if errors.Is(err, m.ErrInvalidEntity) {
+			return 0, ErrInvalidTime
+		}
+		return 0, err
+	}
+	return r.Storage.GetAppointmentIDByWorkdayIDAndTime(ctx, workdayID, tm)
 }
 
 func (r Repository) GetAppointmentsByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (appointments []ent.Appointment, err error) {
@@ -374,7 +382,7 @@ func (r Repository) UpdateService(ctx context.Context, service ent.Service) (err
 
 // UpdateUser updates only non-empty fields of User
 func (r Repository) UpdateUser(ctx context.Context, user ent.User) (err error) {
-	ur, err := m.MapToStorage.User(user)
+	ur, err := m.MapToStorage.UserForUpdate(user)
 	if err != nil {
 		if errors.Is(err, m.ErrInvalidEntity) {
 			return ErrInvalidUser

@@ -22,7 +22,12 @@ import (
 
 func onStartBarber(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Send(mainMenu, markupBarberMain)
+	mutex.Lock()
+	defer mutex.Unlock()
+	if err := clearOldMenuForBarber(ctx.Sender().ID); err != nil {
+		return logAndMsgErrBarberWithoutMenu(ctx, "can't show main menu", err)
+	}
+	return sendToBarberMenuAndUpdStoredMessage(ctx, mainMenu, markupBarberMain)
 }
 
 func onSignUpClientForAppointment(ctx tele.Context) error {
@@ -34,7 +39,7 @@ func onSignUpClientForAppointment(ctx tele.Context) error {
 	)
 	services, err := cp.RepoWithContext.GetServicesByBarberID(barberID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't show to barber services for new appointment", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't show to barber services for new appointment", err)
 	}
 	return ctx.Edit(
 		barberSelectServiceForAppointment,
@@ -46,11 +51,11 @@ func onBarberSelectServiceForAppointment(ctx tele.Context) error {
 	errMsg := "can't show free workdays for new appointment"
 	serviceID, err := strconv.Atoi(ctx.Callback().Data)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	service, err := cp.RepoWithContext.GetServiceByID(serviceID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	newAppointment := sess.GetAppointmentBarber(ctx.Sender().ID)
 	newAppointment.ServiceID = service.ID
@@ -61,7 +66,7 @@ func onBarberSelectServiceForAppointment(ctx tele.Context) error {
 func onBarberSelectMonthForAppointment(ctx tele.Context) error {
 	delta, err := strconv.ParseInt(ctx.Callback().Data, 10, 8)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't show free workdays for appointment", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't show free workdays for appointment", err)
 	}
 	appointment := sess.GetAppointmentBarber(ctx.Sender().ID)
 	return calculateAndShowToBarberFreeWorkdaysForAppointment(ctx, int8(delta), appointment)
@@ -71,11 +76,11 @@ func onBarberSelectWorkdayForAppointment(ctx tele.Context) error {
 	errMsg := "can't show free time for appointment"
 	workdayID, err := strconv.Atoi(ctx.Callback().Data)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	workday, appointments, err := getWorkdayAndAppointments(workdayID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	appointment := sess.GetAppointmentBarber(ctx.Sender().ID)
 	appointment.WorkdayID = workdayID
@@ -86,7 +91,7 @@ func onBarberSelectTimeForAppointment(ctx tele.Context) error {
 	errMsg := "can't handle select time for new appointment"
 	apptTime, err := strconv.ParseUint(ctx.Callback().Data, 10, 64)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	appointmentTime := tm.Duration(apptTime)
 	barberID := ctx.Sender().ID
@@ -94,7 +99,7 @@ func onBarberSelectTimeForAppointment(ctx tele.Context) error {
 	appointment.Time = appointmentTime
 	workday, appointments, err := getWorkdayAndAppointments(appointment.WorkdayID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	if !isTimeForAppointmentAvailable(workday, appointments, appointment) {
 		return calculateAndShowToBarberFreeTimesForAppointment(ctx, workday, appointments, appointment)
@@ -103,7 +108,7 @@ func onBarberSelectTimeForAppointment(ctx tele.Context) error {
 	if appointment.ID == 0 {
 		service, err := cp.RepoWithContext.GetServiceByID(appointment.ServiceID)
 		if err != nil {
-			return logAndMsgErrBarber(ctx, errMsg, err)
+			return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 		}
 		return ctx.Edit(
 			fmt.Sprintf(confirmNewAppointment, service.Info(), tm.ShowDate(workday.Date), appointmentTime.ShortString()),
@@ -123,13 +128,13 @@ func onBarberConfirmNewAppointment(ctx tele.Context) error {
 	appointment := sess.GetAppointmentBarber(barberID)
 	ok, err := checkAndCreateAppointmentByBarber(appointment)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	if ok {
 		serviceInfo := shortNullServiceInfo(appointment.ServiceID, appointment.Duration)
 		workday, err := cp.RepoWithContext.GetWorkdayByID(appointment.WorkdayID)
 		if err != nil {
-			return logAndMsgErrBarber(ctx, errMsg, err)
+			return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 		}
 		return ctx.Edit(
 			fmt.Sprintf(newAppointmentSavedByBarber, serviceInfo, tm.ShowDate(workday.Date), appointment.Time.ShortString()),
@@ -143,7 +148,7 @@ func onBarberSelectAnotherTimeForAppointment(ctx tele.Context) error {
 	appointment := sess.GetAppointmentBarber(ctx.Sender().ID)
 	workday, appointments, err := getWorkdayAndAppointments(appointment.WorkdayID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't handle select another time for appointment", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't handle select another time for appointment", err)
 	}
 	return calculateAndShowToBarberFreeTimesForAppointment(ctx, workday, appointments, appointment)
 }
@@ -163,7 +168,7 @@ func onMyWorkSchedule(ctx tele.Context) error {
 func onSelectMonthFromScheduleCalendar(ctx tele.Context) error {
 	delta, err := strconv.ParseInt(ctx.Callback().Data, 10, 8)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't show schedule calendar", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't show schedule calendar", err)
 	}
 	appointment := sess.GetAppointmentBarber(ctx.Sender().ID)
 	return calculateAndShowScheduleCalendar(ctx, int8(delta), appointment)
@@ -172,32 +177,32 @@ func onSelectMonthFromScheduleCalendar(ctx tele.Context) error {
 func onSelectWorkdayFromScheduleCalendar(ctx tele.Context) error {
 	workdayID, err := strconv.Atoi(ctx.Callback().Data)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't show schedule workday menu", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't show schedule workday menu", err)
 	}
 	barberID := ctx.Sender().ID
 	appointment := sess.GetAppointmentBarber(barberID)
 	appointment.WorkdayID = workdayID
 	sess.UpdateAppointmentAndBarberState(barberID, appointment, sess.StateStart)
-	return showScheduledWorkdayMenue(ctx, appointment)
+	return showScheduledWorkdayMenu(ctx, appointment)
 }
 
 func onMakeThisDayNonWorking(ctx tele.Context) error {
 	appointment := sess.GetAppointmentBarber(ctx.Sender().ID)
 	ok, err := checkAndDeleteWorkday(appointment.WorkdayID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't add certain non-working day from schedule calendar", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't add certain non-working day from schedule calendar", err)
 	}
 	if ok {
 		return calculateAndShowScheduleCalendar(ctx, 0, appointment)
 	}
-	return showScheduledWorkdayMenue(ctx, appointment)
+	return showScheduledWorkdayMenu(ctx, appointment)
 }
 
 func onUpdWorkdayStartTime(ctx tele.Context) error {
 	appointment := sess.GetAppointmentBarber(ctx.Sender().ID)
 	latestStart, err := latestPossibleStart(appointment.WorkdayID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't define latest possible start time for workday", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't define latest possible start time for workday", err)
 	}
 	return ctx.Edit(
 		fmt.Sprintf(selectWorkdayStartTime, ent.EarlestStart.ShortString()),
@@ -209,16 +214,16 @@ func onSelectWorkdayStartTime(ctx tele.Context) error {
 	errMsg := "can't update workday start time"
 	start, err := strconv.ParseUint(ctx.Callback().Data, 10, 64)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	startTime := tm.Duration(start)
 	appointment := sess.GetAppointmentBarber(ctx.Sender().ID)
 	ok, err := checkAndUpdateWorkdayStartTime(startTime, appointment.WorkdayID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	if ok {
-		return showScheduledWorkdayMenue(ctx, appointment)
+		return showScheduledWorkdayMenu(ctx, appointment)
 	}
 	return ctx.Edit(failToUpdateWorkdayStartTime, markupBackToWorkdayInfo(appointment.WorkdayID))
 }
@@ -227,7 +232,7 @@ func onUpdWorkdayEndTime(ctx tele.Context) error {
 	appointment := sess.GetAppointmentBarber(ctx.Sender().ID)
 	earlestEnd, err := earlestPossibleEnd(appointment.WorkdayID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't define earlest possible end time for workday", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't define earlest possible end time for workday", err)
 	}
 	return ctx.Edit(
 		fmt.Sprintf(selectWorkdayEndTime, ent.LatestEnd.ShortString()),
@@ -239,29 +244,29 @@ func onSelectWorkdayEndTime(ctx tele.Context) error {
 	errMsg := "can't update workday end time"
 	end, err := strconv.ParseUint(ctx.Callback().Data, 10, 64)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	endTime := tm.Duration(end)
 	appointment := sess.GetAppointmentBarber(ctx.Sender().ID)
 	ok, err := checkAndUpdateWorkdayEndTime(endTime, appointment.WorkdayID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	if ok {
-		return showScheduledWorkdayMenue(ctx, appointment)
+		return showScheduledWorkdayMenu(ctx, appointment)
 	}
 	return ctx.Edit(failToUpdateWorkdayEndTime, markupBackToWorkdayInfo(appointment.WorkdayID))
 }
 
 func onSelectAppointment(ctx tele.Context) error {
-	errMsg := "can't show appointment options menue"
+	errMsg := "can't show appointment options menu"
 	splitData := strings.Split(ctx.Callback().Data, "|")
 	if len(splitData) != 2 {
-		return logAndMsgErrBarber(ctx, errMsg, errors.New("invalid appointment data"))
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, errors.New("invalid appointment data"))
 	}
 	apptID, err := strconv.Atoi(splitData[0])
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	barberID := ctx.Sender().ID
 	appointment := sess.GetAppointmentBarber(barberID)
@@ -269,13 +274,13 @@ func onSelectAppointment(ctx tele.Context) error {
 	appointment.HashStr = splitData[1]
 	editedAppointment, err := getVeryfiedAppointment(appointment)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	if editedAppointment.ID == 0 {
-		return showScheduledWorkdayMenue(ctx, appointment)
+		return showScheduledWorkdayMenu(ctx, appointment)
 	}
 	sess.UpdateAppointmentAndBarberState(barberID, appointment, sess.StateStart)
-	return showAppointmentOptionsMenue(ctx, editedAppointment)
+	return showAppointmentOptionsMenu(ctx, editedAppointment)
 }
 
 func onBarberSettings(ctx tele.Context) error {
@@ -298,7 +303,7 @@ func onBarberCurrentSettings(ctx tele.Context) error {
 	sess.UpdateBarberState(barberID, sess.StateStart)
 	barber, err := cp.RepoWithContext.GetBarberByID(barberID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't show current barber settings", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't show current barber settings", err)
 	}
 	return ctx.Edit(currentSettings+barber.Info(), markupBarberBackToMain)
 }
@@ -308,7 +313,7 @@ func onBarberUpdPersonal(ctx tele.Context) error {
 	barberID := ctx.Sender().ID
 	barber, err := cp.RepoWithContext.GetBarberByID(barberID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't show update personal data options for barber", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't show update personal data options for barber", err)
 	}
 	if barber.Name == ent.NoName && barber.Phone == ent.NoPhone {
 		return ctx.Edit(privacyBarber, markupBarberPrivacy)
@@ -341,11 +346,11 @@ func onSetLastWorkDate(ctx tele.Context) error {
 	barberID := ctx.Sender().ID
 	latestAppointmentDate, err := cp.RepoWithContext.GetLatestAppointmentDate(barberID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	delta, err := strconv.ParseInt(ctx.Callback().Data, 10, 8)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	firstDisplayedDateRange := defineFirstDisplayedDateRangeForLastWorkDate(latestAppointmentDate)
 	displayedMonthRange := monthRange{
@@ -370,29 +375,29 @@ func onSelectLastWorkDate(ctx tele.Context) error {
 	sess.UpdateLastWorkDateAndState(barberID, sess.LastWorkDate{}, sess.StateStart)
 	dateToSave, err := time.ParseInLocation(time.DateOnly, ctx.Callback().Data, cfg.Location)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	barber, err := cp.RepoWithContext.GetBarberByID(barberID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	switch dateToSave.Compare(barber.LastWorkdate) {
 	case 0:
 		return ctx.Edit(lastWorkDateUnchanged, markupBarberBackToMain)
 	case 1:
 		if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, LastWorkdate: dateToSave}); err != nil {
-			return logAndMsgErrBarber(ctx, errMsg, err)
+			return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 		}
 		if err := sched.MakeSchedule(barberID); err != nil {
 			log.Print(e.Wrap(errMsg, err))
 			// TODO: ensure atomicity using outbox pattern
-			return ctx.Send(lastWorkDateSavedWithoutSсhedule, markupBarberBackToMain)
+			return ctx.Edit(lastWorkDateSavedWithoutSсhedule, markupBarberBackToMain)
 		}
 		return ctx.Edit(lastWorkDateSaved, markupBarberBackToMain)
 	case -1:
 		latestWorkDate, err := cp.RepoWithContext.GetLatestWorkDate(barberID)
 		if err != nil {
-			return logAndMsgErrBarber(ctx, errMsg, err)
+			return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 		}
 		dateRangeToDelete := ent.DateRange{FirstDate: dateToSave.Add(24 * time.Hour), LastDate: latestWorkDate}
 		err = cp.RepoWithContext.DeleteWorkdaysByDateRange(barberID, dateRangeToDelete)
@@ -400,11 +405,11 @@ func onSelectLastWorkDate(ctx tele.Context) error {
 			if errors.Is(err, rep.ErrAppointmentsExists) {
 				return ctx.Edit(haveAppointmentAfterDataToSave, markupBarberBackToMain)
 			}
-			return logAndMsgErrBarber(ctx, errMsg, err)
+			return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 		}
 		if err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, LastWorkdate: dateToSave}); err != nil {
 			// TODO: ensure atomicity using outbox pattern
-			return ctx.Send(lastWorkDateNotSavedButScheduleDeleted, markupBarberBackToMain)
+			return ctx.Edit(lastWorkDateNotSavedButScheduleDeleted, markupBarberBackToMain)
 		}
 		return ctx.Edit(lastWorkDateSaved, markupBarberBackToMain)
 	default:
@@ -417,7 +422,7 @@ func onSelfDeleteBarber(ctx tele.Context) error {
 	sess.UpdateBarberState(barberID, sess.StateStart)
 	barberToDelete, err := cp.RepoWithContext.GetBarberByID(barberID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't provide options for barber self deletion", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't provide options for barber self deletion", err)
 	}
 	if barberToDelete.LastWorkdate.Before(tm.Today()) {
 		return ctx.Edit(confirmSelfDeletion, markupConfirmSelfDeletion)
@@ -429,10 +434,10 @@ func onSureToSelfDeleteBarber(ctx tele.Context) error {
 	errMsg := "can't self delete barber"
 	barberIDToDelete := ctx.Sender().ID
 	if err := cp.RepoWithContext.DeletePastAppointments(barberIDToDelete); err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	if err := cp.RepoWithContext.DeleteBarberByID(barberIDToDelete); err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	cfg.Barbers.RemoveID(barberIDToDelete)
 	return ctx.Edit(goodbuyBarber)
@@ -443,7 +448,7 @@ func onManageServices(ctx tele.Context) error {
 	sess.UpdateBarberState(barberID, sess.StateStart)
 	services, err := cp.RepoWithContext.GetServicesByBarberID(barberID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't show manage services menu", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't show manage services menu", err)
 	}
 	if len(services) == 0 {
 		return ctx.Edit(youHaveNoServices, markupManageServicesShort)
@@ -456,7 +461,7 @@ func onShowMyServices(ctx tele.Context) error {
 	sess.UpdateBarberState(barberID, sess.StateStart)
 	services, err := cp.RepoWithContext.GetServicesByBarberID(barberID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't show list of services", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't show list of services", err)
 	}
 	if len(services) == 0 {
 		return ctx.Edit(youHaveNoServices, markupManageServicesShort)
@@ -513,7 +518,7 @@ func onSelectServiceDurationOnEnter(ctx tele.Context) error {
 func onSelectCertainDurationOnEnter(ctx tele.Context) error {
 	dur, err := strconv.ParseUint(ctx.Callback().Data, 10, 64)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't select certain service duration", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't select certain service duration", err)
 	}
 	barberID := ctx.Sender().ID
 	newService := sess.GetNewService(barberID)
@@ -540,7 +545,7 @@ func onSaveNewService(ctx tele.Context) error {
 		if errors.Is(err, rep.ErrAlreadyExists) {
 			return ctx.Edit(nonUniqueServiceName+"\n\n"+newService.Info(), markupEnterServiceName, tele.ModeMarkdown)
 		}
-		return logAndMsgErrBarber(ctx, "can't create service", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't create service", err)
 	}
 	sess.UpdateNewServiceAndState(barberID, sess.NewService{}, sess.StateStart)
 	return ctx.Edit(serviceCreated, markupManageServicesFull)
@@ -568,7 +573,7 @@ func onSelectServiceToEdit(ctx tele.Context) error {
 	sess.UpdateBarberState(barberID, sess.StateStart)
 	services, err := cp.RepoWithContext.GetServicesByBarberID(barberID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't show list of services for editing", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't show list of services for editing", err)
 	}
 	if len(services) == 0 {
 		return ctx.Edit(youHaveNoServices, markupManageServicesShort)
@@ -583,11 +588,11 @@ func onSelectCertainServiceToEdit(ctx tele.Context) error {
 	errMsg := "can't select certain service for editing"
 	serviceID, err := strconv.Atoi(ctx.Callback().Data)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	serviceToEdit, err := cp.RepoWithContext.GetServiceByID(serviceID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	editedService := sess.EditedService{
 		ID: serviceID,
@@ -625,7 +630,7 @@ func onSelectServiceDurationOnEdit(ctx tele.Context) error {
 func onSelectCertainDurationOnEdit(ctx tele.Context) error {
 	dur, err := strconv.ParseUint(ctx.Callback().Data, 10, 64)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't select certain service duration", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't select certain service duration", err)
 	}
 	barberID := ctx.Sender().ID
 	editedService := sess.GetEditedService(barberID)
@@ -652,7 +657,7 @@ func onUpdateService(ctx tele.Context) error {
 		if errors.Is(err, rep.ErrNonUniqueData) {
 			return ctx.Edit(nonUniqueServiceName+"\n\n"+editedService.Info(), markupEditServiceName)
 		}
-		return logAndMsgErrBarber(ctx, "can't update service", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't update service", err)
 	}
 	sess.UpdateEditedServiceAndState(barberID, sess.EditedService{}, sess.StateStart)
 	return ctx.Edit(serviceUpdated, markupManageServicesFull)
@@ -663,7 +668,7 @@ func onDeleteService(ctx tele.Context) error {
 	sess.UpdateBarberState(barberID, sess.StateStart)
 	services, err := cp.RepoWithContext.GetServicesByBarberID(barberID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't show list of services for delete", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't show list of services for delete", err)
 	}
 	if len(services) == 0 {
 		return ctx.Edit(youHaveNoServices, markupManageServicesShort)
@@ -678,11 +683,11 @@ func onSelectCertainServiceToDelete(ctx tele.Context) error {
 	errMsg := "can't select certain service for delete"
 	serviceID, err := strconv.Atoi(ctx.Callback().Data)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	serviceToDelete, err := cp.RepoWithContext.GetServiceByID(serviceID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	return ctx.Edit(fmt.Sprintf(confirmServiceDeletion, serviceToDelete.Info()), markupConfirmServiceDeletion(serviceID))
 }
@@ -691,10 +696,10 @@ func onSureToDeleteService(ctx tele.Context) error {
 	errMsg := "can't delete service"
 	serviceID, err := strconv.Atoi(ctx.Callback().Data)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	if err := cp.RepoWithContext.DeleteServiceByID(serviceID); err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	return ctx.Edit(serviceDeleted, markupBarberBackToMain)
 }
@@ -708,7 +713,7 @@ func onShowAllBarbers(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
 	barbers, err := cp.RepoWithContext.GetAllBarbers()
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't show all barbers", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't show all barbers", err)
 	}
 	barbersInfo := ""
 	for _, barber := range barbers {
@@ -727,7 +732,7 @@ func onDeleteBarber(ctx tele.Context) error {
 	sess.UpdateBarberState(barberID, sess.StateStart)
 	barbers, err := cp.RepoWithContext.GetAllBarbers()
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't suggest actions to delete barber", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't suggest actions to delete barber", err)
 	}
 	if len(barbers) == 1 {
 		return ctx.Edit(onlyOneBarberExists, markupBarberBackToMain)
@@ -744,18 +749,18 @@ func onDeleteCertainBarber(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
 	barberIDToDelete, err := strconv.ParseInt(ctx.Callback().Data, 10, 64)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	barberToDelete, err := cp.RepoWithContext.GetBarberByID(barberIDToDelete)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	if barberToDelete.LastWorkdate.Before(tm.Today()) {
 		if err := cp.RepoWithContext.DeletePastAppointments(barberIDToDelete); err != nil {
-			return logAndMsgErrBarber(ctx, errMsg, err)
+			return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 		}
 		if err := cp.RepoWithContext.DeleteBarberByID(barberIDToDelete); err != nil {
-			return logAndMsgErrBarber(ctx, errMsg, err)
+			return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 		}
 		cfg.Barbers.RemoveID(barberIDToDelete)
 		return ctx.Edit(barberDeleted, markupBarberBackToMain)
@@ -769,6 +774,8 @@ func onBarberBackToMain(ctx tele.Context) error {
 }
 
 func onTextBarber(ctx tele.Context) error {
+	mutex.Lock()
+	defer mutex.Unlock()
 	state := sess.GetBarberState(ctx.Sender().ID)
 	switch state {
 	case sess.StateUpdName:
@@ -806,10 +813,10 @@ func onUpdateBarberName(ctx tele.Context) error {
 			return ctx.Send(notUniqueBarberName)
 		}
 		sess.UpdateBarberState(barberID, sess.StateStart)
-		return logAndMsgErrBarber(ctx, "can't update barber's name", err)
+		return logAndMsgErrBarberWithSend(ctx, "can't update barber's name", err)
 	}
 	sess.UpdateBarberState(barberID, sess.StateStart)
-	return ctx.Send(updNameSuccess, markupBarberPersonal)
+	return sendToBarberMenuAndUpdStoredMessage(ctx, updNameSuccess, markupBarberPersonal)
 }
 
 func onUpdateBarberPhone(ctx tele.Context) error {
@@ -824,10 +831,10 @@ func onUpdateBarberPhone(ctx tele.Context) error {
 			return ctx.Send(notUniqueBarberPhone)
 		}
 		sess.UpdateBarberState(barberID, sess.StateStart)
-		return logAndMsgErrBarber(ctx, "can't update barber's phone", err)
+		return logAndMsgErrBarberWithSend(ctx, "can't update barber's phone", err)
 	}
 	sess.UpdateBarberState(barberID, sess.StateStart)
-	return ctx.Send(updPhoneSuccess, markupBarberPersonal)
+	return sendToBarberMenuAndUpdStoredMessage(ctx, updPhoneSuccess, markupBarberPersonal)
 }
 
 func onEnterServName(ctx tele.Context) error {
@@ -912,7 +919,7 @@ func onCreateNote(ctx tele.Context) error {
 	appointment := sess.GetAppointmentBarber(barberID)
 	appointmentID, err := cp.RepoWithContext.GetAppointmentIDByWorkdayIDAndTime(appointment.WorkdayID, appointment.Time)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithSend(ctx, errMsg, err)
 	}
 	if err := cp.RepoWithContext.UpdateAppointment(ent.Appointment{ID: appointmentID, Note: ctx.Message().Text}); err != nil {
 		if errors.Is(err, rep.ErrInvalidAppointment) {
@@ -920,13 +927,15 @@ func onCreateNote(ctx tele.Context) error {
 			return ctx.Send(invalidNote)
 		}
 		sess.UpdateBarberState(barberID, sess.StateStart)
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithSend(ctx, errMsg, err)
 	}
 	sess.UpdateBarberState(barberID, sess.StateStart)
-	return ctx.Send(updNoteSuccess, markupBarberBackToMain)
+	return sendToBarberMenuAndUpdStoredMessage(ctx, updNoteSuccess, markupBarberBackToMain)
 }
 
 func onContactBarber(ctx tele.Context) error {
+	mutex.Lock()
+	defer mutex.Unlock()
 	state := sess.GetBarberState(ctx.Sender().ID)
 	switch state {
 	case sess.StateAddBarber:
@@ -942,24 +951,24 @@ func onAddNewBarber(ctx tele.Context) error {
 	newBarberID := ctx.Message().Contact.UserID
 	if err := cp.RepoWithContext.CreateBarber(newBarberID); err != nil {
 		if errors.Is(err, rep.ErrAlreadyExists) {
-			return ctx.Send(userIsAlreadyBarber, markupBarberBackToMain)
+			return sendToBarberMenuAndUpdStoredMessage(ctx, userIsAlreadyBarber, markupBarberBackToMain)
 		}
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithSend(ctx, errMsg, err)
 	}
 	cfg.Barbers.AddID(newBarberID)
 	if err := sched.MakeSchedule(newBarberID); err != nil {
 		log.Print(e.Wrap(errMsg, err))
 		// TODO: ensure atomicity using outbox pattern
-		return ctx.Send(addedNewBarberWithoutSсhedule, markupBarberBackToMain)
+		return sendToBarberMenuAndUpdStoredMessage(ctx, addedNewBarberWithoutSсhedule, markupBarberBackToMain)
 	}
-	return ctx.Send(addedNewBarberWithSсhedule, markupBarberBackToMain)
+	return sendToBarberMenuAndUpdStoredMessage(ctx, addedNewBarberWithSсhedule, markupBarberBackToMain)
 }
 
 func calculateAndShowScheduleCalendar(ctx tele.Context, deltaDisplayedMonth int8, appointment sess.Appointment) error {
 	errMsg := "can't show schedule calendar"
 	displayedDateRange, displayedMonthRange, err := calculateDisplayedRangesForScheduleCalendar(deltaDisplayedMonth, appointment)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	if displayedMonthRange.firstMonth > displayedMonthRange.lastMonth {
 		return ctx.Edit(scheduleCalendarIsEmpty, markupBarberBackToMain)
@@ -972,7 +981,7 @@ func calculateAndShowScheduleCalendar(ctx tele.Context, deltaDisplayedMonth int8
 		appointment.BarberID,
 	)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	return ctx.Edit(selectWorkday, markupSelectWorkday)
 }
@@ -998,7 +1007,7 @@ func calculateAndShowToBarberFreeTimesForAppointment(ctx tele.Context, workday e
 func calculateAndShowToBarberFreeWorkdaysForAppointment(ctx tele.Context, deltaDisplayedMonth int8, appointment sess.Appointment) error {
 	displayedDateRange, displayedMonthRange, err := calculateDisplayedRangesForAppointment(deltaDisplayedMonth, appointment)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't show to barber free workdays for new appointment", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't show to barber free workdays for new appointment", err)
 	}
 	if displayedMonthRange.lastMonth == 0 {
 		return ctx.Edit(informBarberNoFreeTimeForAppointment, markupBarberBackToMain)
@@ -1009,8 +1018,8 @@ func calculateAndShowToBarberFreeWorkdaysForAppointment(ctx tele.Context, deltaD
 }
 
 func checkAndCreateAppointmentByBarber(appointment sess.Appointment) (ok bool, err error) {
-	appointmentsMutex.Lock()
-	defer appointmentsMutex.Unlock()
+	mutex.Lock()
+	defer mutex.Unlock()
 	workday, appointments, err := getWorkdayAndAppointments(appointment.WorkdayID)
 	if err != nil {
 		return
@@ -1030,8 +1039,8 @@ func checkAndCreateAppointmentByBarber(appointment sess.Appointment) (ok bool, e
 }
 
 func checkAndDeleteWorkday(workdayID int) (ok bool, err error) {
-	appointmentsMutex.Lock()
-	defer appointmentsMutex.Unlock()
+	mutex.Lock()
+	defer mutex.Unlock()
 	workday, appointments, err := getWorkdayAndAppointments(workdayID)
 	if err != nil {
 		return
@@ -1068,8 +1077,8 @@ func calculateDisplayedRangesForScheduleCalendar(deltaDisplayedMonth int8, appoi
 }
 
 func checkAndUpdateWorkdayEndTime(endTime tm.Duration, workdayID int) (ok bool, err error) {
-	appointmentsMutex.Lock()
-	defer appointmentsMutex.Unlock()
+	mutex.Lock()
+	defer mutex.Unlock()
 	earlestEnd, err := earlestPossibleEnd(workdayID)
 	if err != nil {
 		return
@@ -1083,8 +1092,8 @@ func checkAndUpdateWorkdayEndTime(endTime tm.Duration, workdayID int) (ok bool, 
 }
 
 func checkAndUpdateWorkdayStartTime(startTime tm.Duration, workdayID int) (ok bool, err error) {
-	appointmentsMutex.Lock()
-	defer appointmentsMutex.Unlock()
+	mutex.Lock()
+	defer mutex.Unlock()
 	latestStart, err := latestPossibleStart(workdayID)
 	if err != nil {
 		return
@@ -1095,6 +1104,20 @@ func checkAndUpdateWorkdayStartTime(startTime tm.Duration, workdayID int) (ok bo
 	}
 	err = cp.RepoWithContext.UpdateWorkday(ent.Workday{ID: workdayID, StartTime: startTime})
 	return
+}
+
+func clearOldMenuForBarber(barberID int64) error {
+	barber, err := cp.RepoWithContext.GetBarberByID(barberID)
+	if err != nil {
+		return err
+	}
+	if barber.ChatID != 0 {
+		if _, err := Bot.Edit(barber.StoredMessage, textReplacingMenu); err != nil {
+			return err
+		}
+		Bot.Delete(barber.StoredMessage)
+	}
+	return nil
 }
 
 func defineDisplayedDateRangeForLastWorkDate(
@@ -1216,9 +1239,38 @@ func latestPossibleStart(workdayID int) (tm.Duration, error) {
 	return appointments[0].Time, nil
 }
 
-func logAndMsgErrBarber(ctx tele.Context, msg string, err error) error {
+func logAndMsgErrBarberWithEdit(ctx tele.Context, msg string, err error) error {
 	log.Print(e.Wrap(msg, err))
-	return ctx.Send(errorBarber, markupBarberBackToMain)
+	return ctx.Edit(errorBarber, markupBarberBackToMain)
+}
+
+func logAndMsgErrBarberWithSend(ctx tele.Context, msg string, err error) error {
+	log.Print(e.Wrap(msg, err))
+	return sendToBarberMenuAndUpdStoredMessage(ctx, errorBarber, markupBarberBackToMain)
+}
+
+func logAndMsgErrBarberWithoutMenu(ctx tele.Context, msg string, err error) error {
+	log.Print(e.Wrap(msg, err))
+	return ctx.Send(errorBarber)
+}
+
+func sendToBarberMenuAndUpdStoredMessage(ctx tele.Context, what interface{}, opts ...interface{}) error {
+	errMsg := "can't send menu to barber"
+	message, err := Bot.Send(ctx.Recipient(), what, opts...)
+	if err != nil {
+		return logAndMsgErrBarberWithoutMenu(ctx, errMsg, err)
+	}
+	storedMessage := tele.StoredMessage{MessageID: strconv.Itoa(message.ID), ChatID: message.Chat.ID}
+	if err := cp.RepoWithContext.UpdateBarber(ent.Barber{
+		ID:            ctx.Sender().ID,
+		StoredMessage: storedMessage,
+	}); err != nil {
+		if err := Bot.Delete(storedMessage); err != nil {
+			return logAndMsgErrBarberWithoutMenu(ctx, errMsg, err)
+		}
+		return logAndMsgErrBarberWithoutMenu(ctx, errMsg, err)
+	}
+	return nil
 }
 
 func shortNullServiceInfo(serviceID int, appointmentDuration tm.Duration) string {
@@ -1229,16 +1281,16 @@ func shortNullServiceInfo(serviceID int, appointmentDuration tm.Duration) string
 	return service.ShortInfo()
 }
 
-func showAppointmentOptionsMenue(ctx tele.Context, appointment ent.Appointment) error {
-	errMsg := "can't show appointment options menue"
+func showAppointmentOptionsMenu(ctx tele.Context, appointment ent.Appointment) error {
+	errMsg := "can't show appointment options menu"
 	serviceInfo := shortNullServiceInfo(appointment.ServiceID, appointment.Duration)
 	workday, err := cp.RepoWithContext.GetWorkdayByID(appointment.WorkdayID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	userInfo, err := userInfo(appointment)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	return ctx.Edit(
 		fmt.Sprintf(appointmentInfoForBarber, serviceInfo, tm.ShowDate(workday.Date), appointment.Time.ShortString(), userInfo),
@@ -1262,9 +1314,9 @@ func showEditServOptsWithSendMsg(ctx tele.Context, editedService sess.EditedServ
 		editedService.UpdService.Desciption != "" ||
 		editedService.UpdService.Price != 0 ||
 		editedService.UpdService.Duration != 0 {
-		return ctx.Send(editServiceParams+editedService.Info()+readyToUpdateService, markupReadyToUpdateService)
+		return sendToBarberMenuAndUpdStoredMessage(ctx, editServiceParams+editedService.Info()+readyToUpdateService, markupReadyToUpdateService)
 	}
-	return ctx.Send(editServiceParams+editedService.Info(), markupEditServiceParams)
+	return sendToBarberMenuAndUpdStoredMessage(ctx, editServiceParams+editedService.Info(), markupEditServiceParams)
 }
 
 func showNewServOptsWithEditMsg(ctx tele.Context, newService sess.NewService) error {
@@ -1276,15 +1328,23 @@ func showNewServOptsWithEditMsg(ctx tele.Context, newService sess.NewService) er
 
 func showNewServOptsWithSendMsg(ctx tele.Context, newService sess.NewService) error {
 	if newService.Name != "" && newService.Desciption != "" && newService.Price != 0 && newService.Duration != 0 {
-		return ctx.Send(enterServiceParams+newService.Info()+readyToCreateService, markupReadyToCreateService, tele.ModeMarkdown)
+		return sendToBarberMenuAndUpdStoredMessage(ctx,
+			enterServiceParams+newService.Info()+readyToCreateService,
+			markupReadyToCreateService,
+			tele.ModeMarkdown,
+		)
 	}
-	return ctx.Send(enterServiceParams+newService.Info(), markupEnterServiceParams, tele.ModeMarkdown)
+	return sendToBarberMenuAndUpdStoredMessage(ctx,
+		enterServiceParams+newService.Info(),
+		markupEnterServiceParams,
+		tele.ModeMarkdown,
+	)
 }
 
-func showScheduledWorkdayMenue(ctx tele.Context, appointment sess.Appointment) error {
+func showScheduledWorkdayMenu(ctx tele.Context, appointment sess.Appointment) error {
 	workday, appointments, err := getWorkdayAndAppointments(appointment.WorkdayID)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't show schedule workday menu", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't show schedule workday menu", err)
 	}
 	if len(appointments) == 0 {
 		return ctx.Edit(
@@ -1316,7 +1376,7 @@ func showToBarberFreeWorkdaysForAppointment(
 		endpntBarberBackToMain,
 	)
 	if err != nil {
-		return logAndMsgErrBarber(ctx, "can't show to barber free workdays for appointment", err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't show to barber free workdays for appointment", err)
 	}
 	serviceInfo := shortNullServiceInfo(appointment.ServiceID, appointment.Duration)
 	return ctx.Edit(fmt.Sprintf(selectDateForAppointment, serviceInfo), markupSelectWorkday)

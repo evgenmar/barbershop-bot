@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+
+	tele "gopkg.in/telebot.v3"
 )
 
 var (
@@ -136,6 +138,7 @@ type Barber struct {
 
 	//LastWorkdate is a date in YYYY-MM-DD format in local time zone. Default is '3000-01-01'.
 	LastWorkDate string `db:"last_workdate"`
+	tele.StoredMessage
 }
 
 type DateRange struct {
@@ -159,6 +162,7 @@ type User struct {
 
 	//Format of phone number is +71234567890.
 	Phone sql.NullString `db:"phone"`
+	tele.StoredMessage
 }
 
 type Workday struct {

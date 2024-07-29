@@ -8,6 +8,8 @@ import (
 	st "barbershop-bot/repository/storage"
 	"database/sql"
 	"time"
+
+	tele "gopkg.in/telebot.v3"
 )
 
 type StorageToEntityMapper struct{}
@@ -28,18 +30,17 @@ func (s StorageToEntityMapper) Appointment(appointment st.Appointment) ent.Appoi
 }
 
 func (s StorageToEntityMapper) Barber(barber st.Barber) (ent.Barber, error) {
-	var br ent.Barber
-	br.ID = barber.ID
-	br.Name = mapNameToEntity(barber.Name)
-	br.Phone = mapPhoneToEntity(barber.Phone)
-
-	//st.Barber.LastWorkDate is always valid because default is not null.
 	lastWorkDate, err := s.Date(barber.LastWorkDate)
 	if err != nil {
 		return ent.Barber{}, e.Wrap("can't map barber's last workdate to entity", err)
 	}
-	br.LastWorkdate = lastWorkDate
-	return br, nil
+	return ent.Barber{
+		ID:            barber.ID,
+		Name:          mapNameToEntity(barber.Name),
+		Phone:         mapPhoneToEntity(barber.Phone),
+		LastWorkdate:  lastWorkDate,
+		StoredMessage: tele.StoredMessage{MessageID: barber.MessageID, ChatID: barber.ChatID},
+	}, nil
 }
 
 func (s StorageToEntityMapper) Date(date string) (time.Time, error) {
@@ -59,9 +60,10 @@ func (s StorageToEntityMapper) Service(service st.Service) ent.Service {
 
 func (s StorageToEntityMapper) User(user st.User) ent.User {
 	return ent.User{
-		ID:    user.ID,
-		Name:  mapNameToEntity(user.Name),
-		Phone: mapPhoneToEntity(user.Phone),
+		ID:            user.ID,
+		Name:          mapNameToEntity(user.Name),
+		Phone:         mapPhoneToEntity(user.Phone),
+		StoredMessage: tele.StoredMessage{MessageID: user.MessageID, ChatID: user.ChatID},
 	}
 }
 
