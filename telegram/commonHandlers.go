@@ -40,6 +40,23 @@ func callbackUnique(endpnt string) string {
 	return "\f" + endpnt
 }
 
+func checkAndRescheduleAppointment(appointment sess.Appointment) (ok bool, err error) {
+	workday, appointments, err := getWorkdayAndAppointments(appointment.WorkdayID)
+	if err != nil {
+		return
+	}
+	ok = isTimeForAppointmentAvailable(workday, appointments, appointment)
+	if !ok {
+		return
+	}
+	err = cp.RepoWithContext.UpdateAppointment(ent.Appointment{
+		ID:        appointment.ID,
+		WorkdayID: appointment.WorkdayID,
+		Time:      appointment.Time,
+	})
+	return
+}
+
 func defineDisplayedDateRangeForAppointment(
 	firstDisplayedDateRange ent.DateRange,
 	displayedMonthRange monthRange,
@@ -54,7 +71,8 @@ func defineDisplayedDateRangeForAppointment(
 	}
 	if deltaDisplayedMonth == 0 {
 		if appointment.WorkdayID != 0 {
-			if appointment.LastShownMonth > tm.ParseMonth(firstDisplayedDateRange.LastDate) {
+			if appointment.LastShownMonth > tm.ParseMonth(firstDisplayedDateRange.LastDate) &&
+				appointment.LastShownMonth <= displayedMonthRange.lastMonth {
 				return ent.Month(appointment.LastShownMonth)
 			}
 		}

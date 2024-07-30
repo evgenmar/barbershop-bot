@@ -114,7 +114,7 @@ func onBarberSelectTimeForAppointment(ctx tele.Context) error {
 			return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 		}
 		return ctx.Edit(
-			fmt.Sprintf(confirmNewAppointment, service.Info(), tm.ShowDate(workday.Date), appointmentTime.ShortString()),
+			fmt.Sprintf(confirmNewAppointment, service.ShortInfo(), tm.ShowDate(workday.Date), appointmentTime.ShortString()),
 			markupBarberConfirmNewAppointment,
 		)
 	}
@@ -284,6 +284,49 @@ func onSelectAppointment(ctx tele.Context) error {
 	}
 	sess.UpdateAppointmentAndBarberState(barberID, appointment, sess.StateStart)
 	return showAppointmentOptionsMenu(ctx, editedAppointment)
+}
+
+func onBarberRescheduleAppointment(ctx tele.Context) error {
+	errMsg := "can't show to barber free workdays for reschedule appointment"
+	barberID := ctx.Sender().ID
+	appointment := sess.GetAppointmentBarber(barberID)
+	editedAppointment, err := getVeryfiedAppointment(appointment)
+	if err != nil {
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
+	}
+	if editedAppointment.ID == 0 {
+		return showScheduledWorkdayMenu(ctx, appointment)
+	}
+	appointment.ServiceID = editedAppointment.ServiceID
+	appointment.Duration = editedAppointment.Duration
+	return calculateAndShowToBarberFreeWorkdaysForAppointment(ctx, 0, appointment)
+}
+
+func onBarberConfirmRescheduleAppointment(ctx tele.Context) error {
+	errMsg := "can't confirm reschedule appointment for barber"
+	barberID := ctx.Sender().ID
+	appointment := sess.GetAppointmentBarber(barberID)
+	mutex.Lock()
+	defer mutex.Unlock()
+	editedAppointment, err := getVeryfiedAppointment(appointment)
+	if err != nil {
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
+	}
+	if editedAppointment.ID == 0 {
+		return ctx.Edit(noNeedToRwscheduleAppointment, markupBarberBackToMain)
+	}
+	ok, err := checkAndRescheduleAppointment(appointment)
+	if err != nil {
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
+	}
+	if ok {
+		editedAppointment.WorkdayID = appointment.WorkdayID
+		editedAppointment.Time = appointment.Time
+		appointment.HashStr = appointmentHashStr(editedAppointment)
+		sess.UpdateAppointmentAndBarberState(barberID, appointment, sess.StateStart)
+		return showAppointmentOptionsMenu(ctx, editedAppointment)
+	}
+	return ctx.Edit(failedToRescheduleAppointment, markupBarberFailedToSaveOrRescheduleAppointment)
 }
 
 func onBarberSettings(ctx tele.Context) error {
@@ -1020,6 +1063,26 @@ func calculateAndShowToBarberFreeWorkdaysForAppointment(ctx tele.Context, deltaD
 	return showToBarberFreeWorkdaysForAppointment(ctx, displayedDateRange, displayedMonthRange, appointment)
 }
 
+func calculateDisplayedRangesForScheduleCalendar(deltaDisplayedMonth int8, appointment sess.Appointment) (
+	displayedDateRange ent.DateRange, displayedMonthRange monthRange, err error,
+) {
+	firstDisplayedDateRange, err := defineFirstDisplayedDateRangeForScheduleCalendar(appointment.BarberID)
+	if err != nil {
+		return
+	}
+	displayedMonthRange = monthRange{
+		firstMonth: tm.ParseMonth(firstDisplayedDateRange.LastDate),
+		lastMonth:  tm.MonthFromNow(cfg.ScheduledWeeks * 7 / 30),
+	}
+	displayedDateRange = defineDisplayedDateRangeForAppointment(
+		firstDisplayedDateRange,
+		displayedMonthRange,
+		deltaDisplayedMonth,
+		appointment,
+	)
+	return
+}
+
 func checkAndCreateAppointmentByBarber(appointment sess.Appointment) (ok bool, err error) {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -1055,26 +1118,6 @@ func checkAndDeleteWorkday(workdayID int) (ok bool, err error) {
 	err = cp.RepoWithContext.DeleteWorkdaysByDateRange(
 		workday.BarberID,
 		ent.DateRange{FirstDate: workday.Date, LastDate: workday.Date},
-	)
-	return
-}
-
-func calculateDisplayedRangesForScheduleCalendar(deltaDisplayedMonth int8, appointment sess.Appointment) (
-	displayedDateRange ent.DateRange, displayedMonthRange monthRange, err error,
-) {
-	firstDisplayedDateRange, err := defineFirstDisplayedDateRangeForScheduleCalendar(appointment.BarberID)
-	if err != nil {
-		return
-	}
-	displayedMonthRange = monthRange{
-		firstMonth: tm.ParseMonth(firstDisplayedDateRange.LastDate),
-		lastMonth:  tm.MonthFromNow(cfg.ScheduledWeeks * 7 / 30),
-	}
-	displayedDateRange = defineDisplayedDateRangeForAppointment(
-		firstDisplayedDateRange,
-		displayedMonthRange,
-		deltaDisplayedMonth,
-		appointment,
 	)
 	return
 }
@@ -1355,7 +1398,11 @@ func showScheduledWorkdayMenu(ctx tele.Context, appointment sess.Appointment) er
 			markupWorkdayIsFree,
 		)
 	}
-	if workday.Date.Equal(tm.Today()) {
+	today := tm.Today()
+	if workday.Date.Before(today) {
+		return calculateAndShowScheduleCalendar(ctx, 0, appointment)
+	}
+	if workday.Date.Equal(today) {
 		appointments = excludePastAppointments(appointments, tm.CurrentDayTime())
 	}
 	return ctx.Edit(

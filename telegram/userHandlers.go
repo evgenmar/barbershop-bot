@@ -192,7 +192,7 @@ func onRescheduleOrCancelAppointment(ctx tele.Context) error {
 }
 
 func onUserRescheduleAppointment(ctx tele.Context) error {
-	errMsg := "can't show free workdays for reschedule appointment"
+	errMsg := "can't show to user free workdays for reschedule appointment"
 	userID := ctx.Sender().ID
 	upcomingAppointment, err := cp.RepoWithContext.GetUpcomingAppointment(userID)
 	if err != nil {
@@ -203,7 +203,7 @@ func onUserRescheduleAppointment(ctx tele.Context) error {
 	}
 	appointment := sess.GetAppointmentUser(userID)
 	if appointmentHashStr(upcomingAppointment) != appointment.HashStr {
-		showRescheduleOrCancelAppointmentMenu(ctx, upcomingAppointment)
+		return showRescheduleOrCancelAppointmentMenu(ctx, upcomingAppointment)
 	}
 	workday, err := cp.RepoWithContext.GetWorkdayByID(upcomingAppointment.WorkdayID)
 	if err != nil {
@@ -233,7 +233,7 @@ func onUserConfirmRescheduleAppointment(ctx tele.Context) error {
 		return logAndMsgErrUserWithEdit(ctx, errMsg, err)
 	}
 	appointment := sess.GetAppointmentUser(userID)
-	ok, err := checkAndRescheduleAppointmentByUser(appointment)
+	ok, err := checkAndRescheduleAppointment(appointment)
 	if err != nil {
 		return logAndMsgErrUserWithEdit(ctx, errMsg, err)
 	}
@@ -264,6 +264,10 @@ func onUserCancelAppointment(ctx tele.Context) error {
 			return ctx.Edit(youHaveNoAppointments, markupUserBackToMain)
 		}
 		return logAndMsgErrUserWithEdit(ctx, errMsg, err)
+	}
+	appointment := sess.GetAppointmentUser(userID)
+	if appointmentHashStr(upcomingAppointment) != appointment.HashStr {
+		return showRescheduleOrCancelAppointmentMenu(ctx, upcomingAppointment)
 	}
 	serviceInfo, barberName, date, time, err := getAppointmentInfo(upcomingAppointment)
 	if err != nil {
@@ -430,23 +434,6 @@ func checkAndCreateAppointmentByUser(userID int64, appointment sess.Appointment)
 		Time:      appointment.Time,
 		Duration:  appointment.Duration,
 		CreatedAt: time.Now().Unix(),
-	})
-	return
-}
-
-func checkAndRescheduleAppointmentByUser(appointment sess.Appointment) (ok bool, err error) {
-	workday, appointments, err := getWorkdayAndAppointments(appointment.WorkdayID)
-	if err != nil {
-		return
-	}
-	ok = isTimeForAppointmentAvailable(workday, appointments, appointment)
-	if !ok {
-		return
-	}
-	err = cp.RepoWithContext.UpdateAppointment(ent.Appointment{
-		ID:        appointment.ID,
-		WorkdayID: appointment.WorkdayID,
-		Time:      appointment.Time,
 	})
 	return
 }
