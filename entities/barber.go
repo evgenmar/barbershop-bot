@@ -37,6 +37,10 @@ func init() {
 	infiniteWorkDate = infWorkDate
 }
 
+func (b Barber) Contacts() string {
+	return fmt.Sprintf("Контакты для связи:\nТелефон: %s\n[Ссылка на профиль](tg://user?id=%d)", b.Phone, b.ID)
+}
+
 func (b Barber) Info() string {
 	var lastWorkDate string
 	if b.LastWorkdate.Equal(infiniteWorkDate) {

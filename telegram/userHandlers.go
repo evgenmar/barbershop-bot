@@ -438,6 +438,20 @@ func checkAndCreateAppointmentByUser(userID int64, appointment sess.Appointment)
 	return
 }
 
+func getAppointmentInfo(appointment ent.Appointment) (serviceInfo, barberName, date, time string, err error) {
+	defer func() { err = e.WrapIfErr("can't get appointment info", err) }()
+	serviceInfo = nullServiceInfo(appointment.ServiceID, appointment.Duration)
+	workday, err := cp.RepoWithContext.GetWorkdayByID(appointment.WorkdayID)
+	if err != nil {
+		return
+	}
+	barber, err := cp.RepoWithContext.GetBarberByID(workday.BarberID)
+	if err != nil {
+		return
+	}
+	return serviceInfo, barber.Name, tm.ShowDate(workday.Date), appointment.Time.ShortString(), nil
+}
+
 func getWorkingBarbers() (workingBarbers []ent.Barber, err error) {
 	barbers, err := cp.RepoWithContext.GetAllBarbers()
 	if err != nil {
@@ -476,7 +490,7 @@ func informUserNoFreeTime(ctx tele.Context, barberID int64) error {
 		return logAndMsgErrUserWithEdit(ctx, "can't inform user no free time for appointment", err)
 	}
 	return ctx.Edit(
-		fmt.Sprintf(informUserNoFreeTimeForAppointment, barber.Phone, barber.ID),
+		fmt.Sprintf(informUserNoFreeTimeForAppointment, barber.Name, barber.Contacts()),
 		markupUserBackToMain, tele.ModeMarkdown,
 	)
 }

@@ -43,13 +43,19 @@ const (
 	failToUpdateWorkdayStartTime = "ВНИМАНИЕ!!! Не удалось изменить начало рабочего дня, поскольку появилась новая запись клиента на более раннее время."
 	failToUpdateWorkdayEndTime   = "ВНИМАНИЕ!!! Не удалось изменить конец рабочего дня, поскольку появилась новая запись клиента на более позднее время."
 
-	appointmentInfoForBarber       = "Информация о записи:\n\n%s\n\nВремя записи: %s в %s.\n\n%s\n\nВыберите действие."
-	appointmentNotRescheduled      = "Перенос записи не выполнен по одной из причин:\n"
-	appointmentNotCanceled         = "Отмена записи не выполнена по одной из причин:\n"
-	reasons                        = "- время записи завершилось и запись перенесена в архив;\nили\n- клиент перенес запись на другое время или отменил ее."
-	appointmentRescheduledByBarber = "Уведомляем Вас о переносе записи на новое время.\nИнформация о перенесенной записи:\n\n%s\n\nЗапись перенесена барбером на новое время. Барбер %s ждет Вас %s в %s."
-	barberConfirmCancelAppointment = "Информация о записи:\n\n%s\n\nДата: %s\nВремя: %s\n\nПодтвердите отмену записи или вернитесь в главное меню."
-	appointmentCanceledByBarber    = "Уведомляем Вас об отмене записи.\nИнформация об отмененной записи:\n\n%s\n\nЗапись отменена барбером %s. Время отмененной записи: %s в %s."
+	appointmentInfoForBarber               = "Информация о записи:\n\n%s\n\nВремя записи: %s в %s.\n\n%s\n\nВыберите действие."
+	appointmentNotRescheduled              = "Перенос записи не выполнен по одной из причин:\n"
+	appointmentNotCanceled                 = "Отмена записи не выполнена по одной из причин:\n"
+	reasons                                = "- время записи завершилось и запись перенесена в архив;\nили\n- клиент перенес запись на другое время или отменил ее."
+	appointmentRescheduledByBarber         = "Уведомляем Вас о переносе записи на новое время.\nИнформация о перенесенной записи:\n\n%s\n\nЗапись перенесена барбером на новое время. Барбер %s ждет Вас %s в %s."
+	barberConfirmCancelAppointment         = "Информация о записи:\n\n%s\n\nДата: %s\nВремя: %s\n\nПодтвердите отмену записи или вернитесь в главное меню."
+	appointmentCanceledByBarber            = "Уведомляем Вас об отмене записи.\nИнформация об отмененной записи:\n\n%s\n\nЗапись отменена барбером %s. Время отмененной записи: %s в %s."
+	appointmentCanceledByBarberWithApology = `Ваша запись на %s в %s отменена в связи с непредвиденными обстоятельствами. Барбер %s приносит свои извинения.
+Для уточнения подробностей Вы можете связаться с барбером лично.
+%s
+Вы также можете записаться повторно через наш бот на любое свободное время.
+Информация об отмененной записи:
+%s`
 
 	barbersMemo = `Прежде чем клиенты получат возможность записаться к Вам на стрижку через этот бот, Вы должны произвести необходимый минимум подготовительных настроек.
 Это необходимо для того, чтобы предоставить Вашим клиентам максимально комфортный пользовательский опыт обращения с этим ботом.
@@ -216,6 +222,9 @@ var (
 	markupBarberConfirmCancelAppointment = &tele.ReplyMarkup{}
 	btnBarberConfirmCancelAppointment    = markupEmpty.Data("Подтвердить отмену записи", "barber_confirm_cancel_appointment")
 
+	markupConfirmCancelAppointmentAndApology = &tele.ReplyMarkup{}
+	btnConfirmCancelAppointmentAndApology    = markupEmpty.Data("Подтвердить отмену записи", "confirm_cancel_appointment_and_apology")
+
 	markupBarberFailedToSaveOrRescheduleAppointment = &tele.ReplyMarkup{}
 	btnBarberSelectAnotherTimeForAppointment        = markupEmpty.Data("Выбрать другое время", "barber_select_another_time_for_appointment")
 
@@ -334,6 +343,11 @@ func init() {
 
 	markupBarberConfirmCancelAppointment.Inline(
 		markupEmpty.Row(btnBarberConfirmCancelAppointment),
+		markupEmpty.Row(btnBarberBackToMain),
+	)
+
+	markupConfirmCancelAppointmentAndApology.Inline(
+		markupEmpty.Row(btnConfirmCancelAppointmentAndApology),
 		markupEmpty.Row(btnBarberBackToMain),
 	)
 

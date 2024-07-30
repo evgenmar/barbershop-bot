@@ -4,7 +4,6 @@ import (
 	cp "barbershop-bot/contextprovider"
 	ent "barbershop-bot/entities"
 	cfg "barbershop-bot/lib/config"
-	"barbershop-bot/lib/e"
 	tm "barbershop-bot/lib/time"
 	sess "barbershop-bot/sessions"
 	"time"
@@ -182,20 +181,6 @@ func freeTimesForAppointment(workday ent.Workday, appointments []ent.Appointment
 		}
 	}
 	return
-}
-
-func getAppointmentInfo(appointment ent.Appointment) (serviceInfo, barberName, date, time string, err error) {
-	defer func() { err = e.WrapIfErr("can't get appointment info", err) }()
-	serviceInfo = nullServiceInfo(appointment.ServiceID, appointment.Duration)
-	workday, err := cp.RepoWithContext.GetWorkdayByID(appointment.WorkdayID)
-	if err != nil {
-		return
-	}
-	barber, err := cp.RepoWithContext.GetBarberByID(workday.BarberID)
-	if err != nil {
-		return
-	}
-	return serviceInfo, barber.Name, tm.ShowDate(workday.Date), appointment.Time.ShortString(), nil
 }
 
 func getWorkdayAndAppointments(workdayID int) (ent.Workday, []ent.Appointment, error) {

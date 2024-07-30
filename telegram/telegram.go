@@ -74,6 +74,8 @@ func withHandlers(bot *tele.Bot) *tele.Bot {
 	barbers.Handle(&btnBarberConfirmRescheduleAppointment, onBarberConfirmRescheduleAppointment)
 	barbers.Handle(callbackUnique(endpntBarberCancelAppointment), onBarberCancelAppointment)
 	barbers.Handle(&btnBarberConfirmCancelAppointment, onBarberConfirmCancelAppointment)
+	barbers.Handle(&btnCancelAppointmentAndApology, onCancelAppointmentAndApology)
+	barbers.Handle(&btnConfirmCancelAppointmentAndApology, onConfirmCancelAppointmentAndApology)
 
 	barbers.Handle(&btnBarberSettings, onBarberSettings)
 
