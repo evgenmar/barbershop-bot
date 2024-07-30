@@ -274,7 +274,7 @@ func onUserCancelAppointment(ctx tele.Context) error {
 		return logAndMsgErrUserWithEdit(ctx, errMsg, err)
 	}
 	return ctx.Edit(
-		fmt.Sprintf(confirmCancelAppointment, barberName, date, time, serviceInfo),
+		fmt.Sprintf(userConfirmCancelAppointment, barberName, date, time, serviceInfo),
 		markupUserConfirmCancelAppointment,
 	)
 }
@@ -436,20 +436,6 @@ func checkAndCreateAppointmentByUser(userID int64, appointment sess.Appointment)
 		CreatedAt: time.Now().Unix(),
 	})
 	return
-}
-
-func getAppointmentInfo(appointment ent.Appointment) (serviceInfo, barberName, date, time string, err error) {
-	defer func() { err = e.WrapIfErr("can't get appointment info", err) }()
-	serviceInfo = nullServiceInfo(appointment.ServiceID, appointment.Duration)
-	workday, err := cp.RepoWithContext.GetWorkdayByID(appointment.WorkdayID)
-	if err != nil {
-		return
-	}
-	barber, err := cp.RepoWithContext.GetBarberByID(workday.BarberID)
-	if err != nil {
-		return
-	}
-	return serviceInfo, barber.Name, tm.ShowDate(workday.Date), appointment.Time.ShortString(), nil
 }
 
 func getWorkingBarbers() (workingBarbers []ent.Barber, err error) {

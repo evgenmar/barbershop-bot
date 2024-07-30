@@ -70,8 +70,10 @@ func withHandlers(bot *tele.Bot) *tele.Bot {
 	barbers.Handle(callbackUnique(endpntSelectWorkdayEndTime), onSelectWorkdayEndTime)
 	barbers.Handle(callbackUnique(endpntSelectAppointment), onSelectAppointment)
 
-	barbers.Handle(&btnBarberRescheduleAppointment, onBarberRescheduleAppointment)
+	barbers.Handle(callbackUnique(endpntBarberRescheduleAppointment), onBarberRescheduleAppointment)
 	barbers.Handle(&btnBarberConfirmRescheduleAppointment, onBarberConfirmRescheduleAppointment)
+	barbers.Handle(callbackUnique(endpntBarberCancelAppointment), onBarberCancelAppointment)
+	barbers.Handle(&btnBarberConfirmCancelAppointment, onBarberConfirmCancelAppointment)
 
 	barbers.Handle(&btnBarberSettings, onBarberSettings)
 

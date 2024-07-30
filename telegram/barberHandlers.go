@@ -287,12 +287,10 @@ func onSelectAppointment(ctx tele.Context) error {
 }
 
 func onBarberRescheduleAppointment(ctx tele.Context) error {
-	errMsg := "can't show to barber free workdays for reschedule appointment"
-	barberID := ctx.Sender().ID
-	appointment := sess.GetAppointmentBarber(barberID)
+	appointment := sess.GetAppointmentBarber(ctx.Sender().ID)
 	editedAppointment, err := getVeryfiedAppointment(appointment)
 	if err != nil {
-		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
+		return logAndMsgErrBarberWithEdit(ctx, "can't show to barber free workdays for reschedule appointment", err)
 	}
 	if editedAppointment.ID == 0 {
 		return showScheduledWorkdayMenu(ctx, appointment)
@@ -313,7 +311,7 @@ func onBarberConfirmRescheduleAppointment(ctx tele.Context) error {
 		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
 	}
 	if editedAppointment.ID == 0 {
-		return ctx.Edit(noNeedToRwscheduleAppointment, markupBarberBackToMain)
+		return ctx.Edit(appointmentNotRescheduled+reasons, markupBarberBackToMain)
 	}
 	ok, err := checkAndRescheduleAppointment(appointment)
 	if err != nil {
@@ -324,9 +322,55 @@ func onBarberConfirmRescheduleAppointment(ctx tele.Context) error {
 		editedAppointment.Time = appointment.Time
 		appointment.HashStr = appointmentHashStr(editedAppointment)
 		sess.UpdateAppointmentAndBarberState(barberID, appointment, sess.StateStart)
+		if err := sendToUserRescheduleOrCancelNotification(editedAppointment, appointmentRescheduledByBarber); err != nil {
+			return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
+		}
 		return showAppointmentOptionsMenu(ctx, editedAppointment)
 	}
 	return ctx.Edit(failedToRescheduleAppointment, markupBarberFailedToSaveOrRescheduleAppointment)
+}
+
+func onBarberCancelAppointment(ctx tele.Context) error {
+	errMsg := "can't handle barber cancel appointment"
+	appointment := sess.GetAppointmentBarber(ctx.Sender().ID)
+	editedAppointment, err := getVeryfiedAppointment(appointment)
+	if err != nil {
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
+	}
+	if editedAppointment.ID == 0 {
+		return showScheduledWorkdayMenu(ctx, appointment)
+	}
+	serviceInfo := shortNullServiceInfo(editedAppointment.ServiceID, editedAppointment.Duration)
+	workday, err := cp.RepoWithContext.GetWorkdayByID(editedAppointment.WorkdayID)
+	if err != nil {
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
+	}
+	return ctx.Edit(
+		fmt.Sprintf(barberConfirmCancelAppointment, serviceInfo, tm.ShowDate(workday.Date), editedAppointment.Time.ShortString()),
+		markupBarberConfirmCancelAppointment,
+	)
+}
+
+func onBarberConfirmCancelAppointment(ctx tele.Context) error {
+	errMsg := "can't confirm cancel appointment for barber"
+	barberID := ctx.Sender().ID
+	appointment := sess.GetAppointmentBarber(barberID)
+	mutex.Lock()
+	defer mutex.Unlock()
+	editedAppointment, err := getVeryfiedAppointment(appointment)
+	if err != nil {
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
+	}
+	if editedAppointment.ID == 0 {
+		return ctx.Edit(appointmentNotCanceled+reasons, markupBarberBackToMain)
+	}
+	if err := cp.RepoWithContext.DeleteAppointmentByID(editedAppointment.ID); err != nil {
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
+	}
+	if err := sendToUserRescheduleOrCancelNotification(editedAppointment, appointmentCanceledByBarber); err != nil {
+		return logAndMsgErrBarberWithEdit(ctx, errMsg, err)
+	}
+	return showScheduledWorkdayMenu(ctx, appointment)
 }
 
 func onBarberSettings(ctx tele.Context) error {
@@ -1319,6 +1363,23 @@ func sendToBarberMenuAndUpdStoredMessage(ctx tele.Context, what interface{}, opt
 	return nil
 }
 
+func sendToUserRescheduleOrCancelNotification(appointment ent.Appointment, text string) error {
+	if appointment.UserID != 0 {
+		user, err := cp.RepoWithContext.GetUserByID(appointment.UserID)
+		if err != nil {
+			return err
+		}
+		serviceInfo, barberName, date, time, err := getAppointmentInfo(appointment)
+		if err != nil {
+			return err
+		}
+		if _, err := Bot.Send(user, fmt.Sprintf(text, serviceInfo, barberName, date, time)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func shortNullServiceInfo(serviceID int, appointmentDuration tm.Duration) string {
 	service, err := cp.RepoWithContext.GetServiceByID(serviceID)
 	if err != nil {
@@ -1340,7 +1401,7 @@ func showAppointmentOptionsMenu(ctx tele.Context, appointment ent.Appointment) e
 	}
 	return ctx.Edit(
 		fmt.Sprintf(appointmentInfoForBarber, serviceInfo, tm.ShowDate(workday.Date), appointment.Time.ShortString(), userInfo),
-		markupEditAppointment(appointment.WorkdayID),
+		markupEditAppointment(appointment.WorkdayID, appointment.UserID),
 		tele.ModeMarkdown,
 	)
 }

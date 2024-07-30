@@ -43,11 +43,13 @@ const (
 	failToUpdateWorkdayStartTime = "ВНИМАНИЕ!!! Не удалось изменить начало рабочего дня, поскольку появилась новая запись клиента на более раннее время."
 	failToUpdateWorkdayEndTime   = "ВНИМАНИЕ!!! Не удалось изменить конец рабочего дня, поскольку появилась новая запись клиента на более позднее время."
 
-	appointmentInfoForBarber      = "Информация о записи:\n\n%s\n\nВремя записи: %s в %s.\n\n%s\n\nВыберите действие."
-	noNeedToRwscheduleAppointment = `Перенос записи не выполнен по одной из причин:
-- время записи завершилось и запись перенесена в архив;
-или
-- клиент сам уже перенес запись на другое время.`
+	appointmentInfoForBarber       = "Информация о записи:\n\n%s\n\nВремя записи: %s в %s.\n\n%s\n\nВыберите действие."
+	appointmentNotRescheduled      = "Перенос записи не выполнен по одной из причин:\n"
+	appointmentNotCanceled         = "Отмена записи не выполнена по одной из причин:\n"
+	reasons                        = "- время записи завершилось и запись перенесена в архив;\nили\n- клиент перенес запись на другое время или отменил ее."
+	appointmentRescheduledByBarber = "Уведомляем Вас о переносе записи на новое время.\nИнформация о перенесенной записи:\n\n%s\n\nЗапись перенесена барбером на новое время. Барбер %s ждет Вас %s в %s."
+	barberConfirmCancelAppointment = "Информация о записи:\n\n%s\n\nДата: %s\nВремя: %s\n\nПодтвердите отмену записи или вернитесь в главное меню."
+	appointmentCanceledByBarber    = "Уведомляем Вас об отмене записи.\nИнформация об отмененной записи:\n\n%s\n\nЗапись отменена барбером %s. Время отмененной записи: %s в %s."
 
 	barbersMemo = `Прежде чем клиенты получат возможность записаться к Вам на стрижку через этот бот, Вы должны произвести необходимый минимум подготовительных настроек.
 Это необходимо для того, чтобы предоставить Вашим клиентам максимально комфортный пользовательский опыт обращения с этим ботом.
@@ -183,6 +185,9 @@ const (
 	endpntSelectWorkdayStartTime                   = "select_workday_start_time"
 	endpntSelectWorkdayEndTime                     = "select_workday_end_time"
 
+	endpntBarberRescheduleAppointment = "barber_reschedule_appointment"
+	endpntBarberCancelAppointment     = "barber_cancel_appointment"
+
 	endpntSelectMonthOfLastWorkDate = "select_month_of_last_work_date"
 	endpntSelectLastWorkDate        = "select_last_work_date"
 
@@ -208,6 +213,9 @@ var (
 	markupBarberConfirmRescheduleAppointment = &tele.ReplyMarkup{}
 	btnBarberConfirmRescheduleAppointment    = markupEmpty.Data("Подтвердить перенос записи", "barber_confirm_reschedule_appointment")
 
+	markupBarberConfirmCancelAppointment = &tele.ReplyMarkup{}
+	btnBarberConfirmCancelAppointment    = markupEmpty.Data("Подтвердить отмену записи", "barber_confirm_cancel_appointment")
+
 	markupBarberFailedToSaveOrRescheduleAppointment = &tele.ReplyMarkup{}
 	btnBarberSelectAnotherTimeForAppointment        = markupEmpty.Data("Выбрать другое время", "barber_select_another_time_for_appointment")
 
@@ -223,10 +231,8 @@ var (
 	btnUpdWorkdayEndTime     = markupEmpty.Data("Изменить конец рабочего дня", "upd_workday_end_time")
 	btnBackToSelectWorkday   = markupEmpty.Data("Назад к выбору рабочего дня", endpntSelectMonthFromScheduleCalendar, "0")
 
-	btnBarberRescheduleAppointment       = markupEmpty.Data("Перенести запись", "barber_reschedule_appointment")
-	btnBarberCancelAppointment           = markupEmpty.Data("Отменить запись", "barber_cancel_appointment")
-	btnCancelAppointmentWithNotification = markupEmpty.Data("Отменить и уведомить клиента", "cancel_appointment_with_notification")
-	btnUpdNote                           = markupEmpty.Data("Добавить/обновить заметку", "upd_note")
+	btnCancelAppointmentAndApology = markupEmpty.Data("Отменить и извиниться", "cancel_appointment_and_apology")
+	btnUpdNote                     = markupEmpty.Data("Добавить/обновить заметку", "upd_note")
 
 	markupBarberSettings   = &tele.ReplyMarkup{}
 	btnBarbersMemo         = markupEmpty.Data("Памятка барбера", "barbers_memo")
@@ -323,6 +329,11 @@ func init() {
 
 	markupBarberConfirmRescheduleAppointment.Inline(
 		markupEmpty.Row(btnBarberConfirmRescheduleAppointment),
+		markupEmpty.Row(btnBarberBackToMain),
+	)
+
+	markupBarberConfirmCancelAppointment.Inline(
+		markupEmpty.Row(btnBarberConfirmCancelAppointment),
 		markupEmpty.Row(btnBarberBackToMain),
 	)
 
@@ -527,12 +538,25 @@ func markupConfirmServiceDeletion(serviceID int) *tele.ReplyMarkup {
 	return markup
 }
 
-func markupEditAppointment(workdayID int) *tele.ReplyMarkup {
+func markupEditAppointment(workdayID int, userID int64) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
-	markup.Inline(
-		markup.Row(btnBarberRescheduleAppointment),
-		markup.Row(btnBarberCancelAppointment),
-		markup.Row(btnCancelAppointmentWithNotification),
+	var rows []tele.Row
+	if userID != 0 {
+		rows = append(
+			rows,
+			markup.Row(markup.Data("Перенести и уведомить", endpntBarberRescheduleAppointment)),
+			markup.Row(markup.Data("Отменить и уведомить", endpntBarberCancelAppointment)),
+			markup.Row(btnCancelAppointmentAndApology),
+		)
+	} else {
+		rows = append(
+			rows,
+			markup.Row(markup.Data("Перенести", endpntBarberRescheduleAppointment)),
+			markup.Row(markup.Data("Отменить", endpntBarberCancelAppointment)),
+		)
+	}
+	rows = append(
+		rows,
 		markup.Row(btnUpdNote),
 		markup.Row(markup.Data(
 			"Назад к рабочему дню",
@@ -541,6 +565,7 @@ func markupEditAppointment(workdayID int) *tele.ReplyMarkup {
 		),
 		markup.Row(btnBarberBackToMain),
 	)
+	markup.Inline(rows...)
 	return markup
 }
 
