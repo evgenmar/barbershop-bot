@@ -72,7 +72,7 @@ func withHandlers(bot *tele.Bot) *tele.Bot {
 
 	barbers.Handle(&btnBarberSettings, onBarberSettings)
 
-	barbers.Handle(&btnListOfNecessarySettings, onListOfNecessarySettings)
+	barbers.Handle(&btnBarbersMemo, onBarbersMemo)
 
 	barbers.Handle(&btnBarberManageAccount, onBarberManageAccount)
 

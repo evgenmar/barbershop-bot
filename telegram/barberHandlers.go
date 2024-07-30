@@ -41,6 +41,9 @@ func onSignUpClientForAppointment(ctx tele.Context) error {
 	if err != nil {
 		return logAndMsgErrBarberWithEdit(ctx, "can't show to barber services for new appointment", err)
 	}
+	if len(services) == 0 {
+		return ctx.Edit(createServiceFirst, markupBarberBackToMain)
+	}
 	return ctx.Edit(
 		barberSelectServiceForAppointment,
 		markupSelectService(services, endpntBarberSelectServiceForAppointment, endpntBarberBackToMain),
@@ -288,9 +291,9 @@ func onBarberSettings(ctx tele.Context) error {
 	return ctx.Edit(settingsMenu, markupBarberSettings)
 }
 
-func onListOfNecessarySettings(ctx tele.Context) error {
+func onBarbersMemo(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
-	return ctx.Edit(listOfNecessarySettings, markupShortBarberSettings)
+	return ctx.Edit(barbersMemo, markupShortBarberSettings)
 }
 
 func onBarberManageAccount(ctx tele.Context) error {
