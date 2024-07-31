@@ -50,22 +50,3 @@ func Month(m tm.Month) DateRange {
 		LastDate:  time.Date(year, month+1, 0, 0, 0, 0, 0, cfg.Location),
 	}
 }
-
-// MonthFromNow returns the date range for the month defined relative to the current date (0 corresponds to the current month, 1 to the next month, and so on).
-// FirstDate sets to current date for current month and to first day of month for the rest cases.
-// LastDate always sets to last day of month.
-// func MonthFromNow(deltaMonth byte) DateRange {
-// 	now := time.Now().In(cfg.Location)
-// 	year, month, day := now.Date()
-// 	var firstDate, lastDate time.Time
-// 	if deltaMonth == 0 {
-// 		firstDate = time.Date(year, month, day, 0, 0, 0, 0, cfg.Location)
-// 	} else {
-// 		firstDate = time.Date(year, month+time.Month(deltaMonth), 1, 0, 0, 0, 0, cfg.Location)
-// 	}
-// 	lastDate = time.Date(year, month+time.Month(deltaMonth)+1, 0, 0, 0, 0, 0, cfg.Location)
-// 	return DateRange{
-// 		FirstDate: firstDate,
-// 		LastDate:  lastDate,
-// 	}
-// }
