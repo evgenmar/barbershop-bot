@@ -27,11 +27,11 @@ func calculateDisplayedRangesForAppointment(deltaDisplayedMonth int8, appointmen
 	if err != nil {
 		return
 	}
-	displayedDateRange = defineDisplayedDateRangeForAppointment(
+	displayedDateRange = defineDisplayedDateRange(
 		firstDisplayedDateRange,
 		displayedMonthRange,
 		deltaDisplayedMonth,
-		appointment,
+		appointment.LastShownMonth,
 	)
 	return
 }
@@ -57,11 +57,11 @@ func checkAndRescheduleAppointment(appointment sess.Appointment) (ok bool, err e
 	return
 }
 
-func defineDisplayedDateRangeForAppointment(
+func defineDisplayedDateRange(
 	firstDisplayedDateRange ent.DateRange,
 	displayedMonthRange monthRange,
 	deltaDisplayedMonth int8,
-	appointment sess.Appointment,
+	lastShownMonth tm.Month,
 ) ent.DateRange {
 	if displayedMonthRange.lastMonth == 0 {
 		return ent.DateRange{}
@@ -69,16 +69,7 @@ func defineDisplayedDateRangeForAppointment(
 	if displayedMonthRange.firstMonth == displayedMonthRange.lastMonth {
 		return firstDisplayedDateRange
 	}
-	if deltaDisplayedMonth == 0 {
-		if appointment.WorkdayID != 0 {
-			if appointment.LastShownMonth > tm.ParseMonth(firstDisplayedDateRange.LastDate) &&
-				appointment.LastShownMonth <= displayedMonthRange.lastMonth {
-				return ent.Month(appointment.LastShownMonth)
-			}
-		}
-		return firstDisplayedDateRange
-	}
-	newDisplayedMonth := appointment.LastShownMonth + tm.Month(deltaDisplayedMonth)
+	newDisplayedMonth := lastShownMonth + tm.Month(deltaDisplayedMonth)
 	if newDisplayedMonth > displayedMonthRange.lastMonth {
 		return ent.Month(displayedMonthRange.lastMonth)
 	}

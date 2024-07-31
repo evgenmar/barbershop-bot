@@ -93,6 +93,13 @@ func (c ContextProvider) DeleteServiceByID(serviceID int) (err error) {
 	return c.repo.DeleteServiceByID(ctx, serviceID)
 }
 
+func (c ContextProvider) DeleteWorkdayByID(workdayID int) (err error) {
+	defer func() { err = e.WrapIfErr("can't delete workday", err) }()
+	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)
+	defer cancel()
+	return c.repo.DeleteWorkdayByID(ctx, workdayID)
+}
+
 func (c ContextProvider) DeleteWorkdaysByDateRange(barberID int64, dateRangeToDelete ent.DateRange) (err error) {
 	defer func() { err = e.WrapIfErr("can't delete workdays", err) }()
 	ctx, cancel := context.WithTimeout(context.Background(), timoutWrite)

@@ -180,6 +180,22 @@ func (s *Storage) DeleteServiceByID(ctx context.Context, serviceID int) error {
 	return nil
 }
 
+// DeleteWorkdayByID removes workday with specified ID.
+func (s *Storage) DeleteWorkdayByID(ctx context.Context, workdayID int) (err error) {
+	defer func() { err = e.WrapIfErr("can't delete workday", err) }()
+	q := `DELETE FROM workdays WHERE id = ?`
+	s.rwMutex.Lock()
+	_, err = s.db.ExecContext(ctx, q, workdayID)
+	s.rwMutex.Unlock()
+	if err != nil {
+		if errors.Is(err, sqlite3.CONSTRAINT) {
+			return st.ErrAppointmentsExists
+		}
+		return err
+	}
+	return nil
+}
+
 // DeleteWorkdaysByDateRange removes working days that fall within the date range.
 // It only removes working days for barber with specified barberID.
 func (s *Storage) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange st.DateRange) (err error) {

@@ -28,6 +28,12 @@ const (
 Пожалуйста, попробуйте ввести заметку еще раз. При необходимости вернуться в главное меню воспользуйтесь командой /start`
 	updNoteSuccess = "Заметка успешно добавлена/обновлена."
 
+	noDaysOff             = "В вашем графике нет ни одного выходного дня, который можно было бы сделать рабочим."
+	noWorkdays            = "В вашем графике нет ни одного рабочего дня, который можно было бы сделать выходным."
+	selectNonWorkingDay   = "Перед Вами календарь, в котором отображены только выходные дни. Нажатие на день в календаре сделает его рабочим днем."
+	selectWorkingDay      = "Перед Вами календарь, в котором отображены только рабочие дни, на которые в настоящий момент нет ни одной записи клиента. Нажатие на день в календаре сделает его выходным днем."
+	failedToDeleteWorkday = "Не удалось сделать день выходным, так как клиент записался на этот день."
+
 	scheduleCalendarIsEmpty = "В Вашем графике работы нет ни одного рабочего дня."
 	selectWorkday           = "Выберите рабочий день для просмотра.\nВы также можете добавить новый рабочий день в свой график или, наоборот, сделать день выходным."
 	selectAppointment       = "Рабочий день %s с %s до %s.\nВыберите запись для просмотра, редактирования или удаления.\nВы также можете изменить время начала и конца рабочего дня."
@@ -179,10 +185,17 @@ const (
 	errorBarber = `Произошла ошибка обработки команды. Команда не была выполнена. Если ошибка будет повторяться, возможно, потребуется перезапуск сервиса.
 Пожалуйста, перейдите в главное меню и попробуйте выполнить команду заново.`
 
+	endpntMyWorkSchedule = "my_work_schedule"
+
 	endpntBarberSelectServiceForAppointment = "barber_select_service_for_appointment"
 	endpntBarberSelectMonthForAppointment   = "barber_select_month_for_appointment"
 	endpntBarberSelectWorkdayForAppointment = "barber_select_workday_for_appointment"
 	endpntBarberSelectTimeForAppointment    = "barber_select_time_for_appointment"
+
+	endpntSelectMonthFromAddWorkdayCalendar    = "select_month_from_add_workday_calendar"
+	endpntSelectMonthFromAddNonWorkdayCalendar = "select_month_from_add_nonworkday_calendar"
+	endpntDeleteWorkday                        = "delete_workday"
+	endpntCreateWorkday                        = "create_workday"
 
 	endpntSelectMonthFromScheduleCalendar   = "select_month_from_schedule_calendar"
 	endpntSelectWorkdayFromScheduleCalendar = "select_workday_from_schedule_calendar"
@@ -211,7 +224,7 @@ const (
 var (
 	markupBarberMain              = &tele.ReplyMarkup{}
 	btnSignUpClientForAppointment = markupEmpty.Data("Записать клиента на стрижку", "sign_up_client_for_appointment")
-	btnMyWorkSchedule             = markupEmpty.Data("Мой график работы", "my_work_schedule")
+	btnMyWorkSchedule             = markupEmpty.Data("Мой график работы", endpntMyWorkSchedule)
 	btnBarberSettings             = markupEmpty.Data("Настройки", "barber_settings")
 
 	markupBarberConfirmNewAppointment = &tele.ReplyMarkup{}
@@ -232,8 +245,11 @@ var (
 	markupUpdNote = &tele.ReplyMarkup{}
 	btnAddNote    = markupEmpty.Data("Добавить заметку", "add_note")
 
-	btnAddWorkday    = markupEmpty.Data("Добавить рабочий день", "add_workday")
-	btnAddNonWorkday = markupEmpty.Data("Сделать день выходным", "add_nonworkday")
+	btnAddWorkday    = markupEmpty.Data("Добавить рабочий день", endpntSelectMonthFromAddWorkdayCalendar, "0")
+	btnAddNonWorkday = markupEmpty.Data("Добавить выходной день", endpntSelectMonthFromAddNonWorkdayCalendar, "0")
+
+	markupBackToMyWorkSchedule = &tele.ReplyMarkup{}
+	btnBackToMyWorkSchedule    = markupEmpty.Data("Назад к графику работы", endpntMyWorkSchedule)
 
 	markupWorkdayIsFree      = &tele.ReplyMarkup{}
 	btnMakeThisDayNonWorking = markupEmpty.Data("Сделать этот день выходным", endpntAddСertainNonWorkdayFromScheduleCalendar)
@@ -354,6 +370,11 @@ func init() {
 
 	markupUpdNote.Inline(
 		markupEmpty.Row(btnAddNote),
+		markupEmpty.Row(btnBarberBackToMain),
+	)
+
+	markupBackToMyWorkSchedule.Inline(
+		markupEmpty.Row(btnBackToMyWorkSchedule),
 		markupEmpty.Row(btnBarberBackToMain),
 	)
 
@@ -613,6 +634,30 @@ func markupSelectBarberToDeletion(senderID int64, barbers []ent.Barber) *tele.Re
 	return markup
 }
 
+func markupSelectDayForDayTypeChange(dateRange ent.DateRange, monthRange monthRange, barberID int64, showWorkdays bool) (*tele.ReplyMarkup, error) {
+	markup := &tele.ReplyMarkup{}
+	var endpntMonth string
+	var rows, rowsSelectDay []tele.Row
+	var err error
+	if showWorkdays {
+		endpntMonth = endpntSelectMonthFromAddNonWorkdayCalendar
+		rowsSelectDay, err = rowsSelectFreeWorkday(dateRange, barberID)
+	} else {
+		endpntMonth = endpntSelectMonthFromAddWorkdayCalendar
+		rowsSelectDay, err = rowsSelectNonWorkingDay(dateRange, barberID)
+	}
+	if err != nil {
+		return nil, err
+	}
+	btnPrevMonth, btnNextMonth := btnsSwitchMonth(tm.ParseMonth(dateRange.LastDate), monthRange, endpntMonth)
+	rowSelectMonth := markup.Row(btnPrevMonth, btnMonth(dateRange.Month()), btnNextMonth)
+	rows = append(rows, rowSelectMonth, rowWeekdays)
+	rows = append(rows, rowsSelectDay...)
+	rows = append(rows, markup.Row(btnBackToMyWorkSchedule), markup.Row(btnBarberBackToMain))
+	markup.Inline(rows...)
+	return markup, nil
+}
+
 func markupSelectLastWorkDate(dateRange ent.DateRange, monthRange monthRange) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 	btnPrevMonth, btnNextMonth := btnsSwitchMonth(tm.ParseMonth(dateRange.LastDate), monthRange, endpntSelectMonthOfLastWorkDate)
@@ -680,6 +725,41 @@ func rowsSelectAppointment(appointments []ent.Appointment) []tele.Row {
 	return markupEmpty.Split(3, btnsAppointmentsToSelect)
 }
 
+func rowsSelectFreeWorkday(dateRange ent.DateRange, barberID int64) ([]tele.Row, error) {
+	wds, err := cp.RepoWithContext.GetWorkdaysByDateRange(barberID, dateRange)
+	if err != nil {
+		return nil, err
+	}
+	workdays := make(map[int]ent.Workday)
+	for _, wd := range wds {
+		workdays[wd.Date.Day()] = wd
+	}
+	appointments := make(map[int][]ent.Appointment)
+	appts, err := cp.RepoWithContext.GetAppointmentsByDateRange(barberID, dateRange)
+	if err != nil {
+		return nil, err
+	}
+	for _, appt := range appts {
+		appointments[appt.WorkdayID] = append(appointments[appt.WorkdayID], appt)
+	}
+	var btnsDaysToSelect []tele.Btn
+	for i := 1; i < dateRange.StartWeekday(); i++ {
+		btnsDaysToSelect = append(btnsDaysToSelect, btnEmpty)
+	}
+	for date := dateRange.FirstDate; date.Compare(dateRange.LastDate) <= 0; date = date.Add(24 * time.Hour) {
+		workday, ok := workdays[date.Day()]
+		if !ok || len(appointments[workday.ID]) > 0 {
+			btnsDaysToSelect = append(btnsDaysToSelect, btnDash)
+		} else {
+			btnsDaysToSelect = append(btnsDaysToSelect, btnWorkday(workday, endpntDeleteWorkday))
+		}
+	}
+	for i := 7; i > dateRange.EndWeekday(); i-- {
+		btnsDaysToSelect = append(btnsDaysToSelect, btnEmpty)
+	}
+	return markupEmpty.Split(7, btnsDaysToSelect), nil
+}
+
 func rowsSelectLastWorkDate(dateRange ent.DateRange) []tele.Row {
 	var btnsDatesToSelect []tele.Btn
 	for i := 1; i < dateRange.StartWeekday(); i++ {
@@ -692,6 +772,33 @@ func rowsSelectLastWorkDate(dateRange ent.DateRange) []tele.Row {
 		btnsDatesToSelect = append(btnsDatesToSelect, btnEmpty)
 	}
 	return markupEmpty.Split(7, btnsDatesToSelect)
+}
+
+func rowsSelectNonWorkingDay(dateRange ent.DateRange, barberID int64) ([]tele.Row, error) {
+	wds, err := cp.RepoWithContext.GetWorkdaysByDateRange(barberID, dateRange)
+	if err != nil {
+		return nil, err
+	}
+	workdays := make(map[int]bool)
+	for _, wd := range wds {
+		workdays[wd.Date.Day()] = true
+	}
+	var btnsDaysToSelect []tele.Btn
+	for i := 1; i < dateRange.StartWeekday(); i++ {
+		btnsDaysToSelect = append(btnsDaysToSelect, btnEmpty)
+	}
+	for date := dateRange.FirstDate; date.Compare(dateRange.LastDate) <= 0; date = date.Add(24 * time.Hour) {
+		_, ok := workdays[date.Day()]
+		if !ok {
+			btnsDaysToSelect = append(btnsDaysToSelect, btnDate(date, endpntCreateWorkday))
+		} else {
+			btnsDaysToSelect = append(btnsDaysToSelect, btnDash)
+		}
+	}
+	for i := 7; i > dateRange.EndWeekday(); i-- {
+		btnsDaysToSelect = append(btnsDaysToSelect, btnEmpty)
+	}
+	return markupEmpty.Split(7, btnsDaysToSelect), nil
 }
 
 func rowsSelectStartOrEndTime(earlestTime, latestTime tm.Duration, endpntTime string) []tele.Row {

@@ -59,7 +59,12 @@ func withHandlers(bot *tele.Bot) *tele.Bot {
 	barbers.Handle(&btnBarberSelectAnotherTimeForAppointment, onBarberSelectAnotherTimeForAppointment)
 	barbers.Handle(&btnAddNote, onAddNote)
 
-	barbers.Handle(&btnMyWorkSchedule, onMyWorkSchedule)
+	barbers.Handle(&btnAddWorkday, onAddWorkday)
+	barbers.Handle(&btnAddNonWorkday, onAddNonWorkday)
+	barbers.Handle(callbackUnique(endpntCreateWorkday), onCreateWorkday)
+	barbers.Handle(callbackUnique(endpntDeleteWorkday), onDeleteWorkday)
+
+	barbers.Handle(callbackUnique(endpntMyWorkSchedule), onMyWorkSchedule)
 	barbers.Handle(callbackUnique(endpntSelectMonthFromScheduleCalendar), onSelectMonthFromScheduleCalendar)
 	barbers.Handle(callbackUnique(endpntSelectWorkdayFromScheduleCalendar), onSelectWorkdayFromScheduleCalendar)
 

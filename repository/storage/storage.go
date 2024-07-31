@@ -44,6 +44,9 @@ type Storage interface {
 	// DeleteServiceByID removes service with specified ID.
 	DeleteServiceByID(ctx context.Context, serviceID int) error
 
+	// DeleteWorkdayByID removes workday with specified ID.
+	DeleteWorkdayByID(ctx context.Context, workdayID int) error
+
 	//DeleteWorkdaysByDateRange removes working days that fall within the date range.
 	//It only removes working days for barber with specified barberID.
 	DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange DateRange) error

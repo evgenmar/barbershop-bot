@@ -132,6 +132,15 @@ func (r Repository) DeleteServiceByID(ctx context.Context, serviceID int) error 
 	return r.Storage.DeleteServiceByID(ctx, serviceID)
 }
 
+func (r Repository) DeleteWorkdayByID(ctx context.Context, workdayID int) (err error) {
+	defer func() {
+		if errors.Is(err, st.ErrAppointmentsExists) {
+			err = ErrAppointmentsExists
+		}
+	}()
+	return r.Storage.DeleteWorkdayByID(ctx, workdayID)
+}
+
 func (r Repository) DeleteWorkdaysByDateRange(ctx context.Context, barberID int64, dateRange ent.DateRange) (err error) {
 	defer func() {
 		if errors.Is(err, st.ErrAppointmentsExists) {
