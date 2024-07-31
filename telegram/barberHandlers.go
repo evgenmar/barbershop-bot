@@ -382,6 +382,11 @@ func onConfirmCancelAppointmentAndApology(ctx tele.Context) error {
 	return showScheduledWorkdayMenu(ctx, appointment)
 }
 
+func onUpdNote(ctx tele.Context) error {
+	sess.UpdateBarberState(ctx.Sender().ID, sess.StateUpdNote)
+	return ctx.Edit(enterNote)
+}
+
 func onBarberSettings(ctx tele.Context) error {
 	sess.UpdateBarberState(ctx.Sender().ID, sess.StateStart)
 	return ctx.Edit(settingsMenu, markupBarberSettings)
@@ -895,6 +900,8 @@ func onTextBarber(ctx tele.Context) error {
 		return onEditServPrice(ctx)
 	case sess.StateAddNote:
 		return onCreateNote(ctx)
+	case sess.StateUpdNote:
+		return onUpdateNote(ctx)
 	default:
 		return ctx.Send(unknownCommand)
 	}
@@ -1013,7 +1020,7 @@ func onEditServPrice(ctx tele.Context) error {
 }
 
 func onCreateNote(ctx tele.Context) error {
-	errMsg := "can't update note"
+	errMsg := "can't create note"
 	barberID := ctx.Sender().ID
 	appointment := sess.GetAppointmentBarber(barberID)
 	appointmentID, err := cp.RepoWithContext.GetAppointmentIDByWorkdayIDAndTime(appointment.WorkdayID, appointment.Time)
@@ -1030,6 +1037,29 @@ func onCreateNote(ctx tele.Context) error {
 	}
 	sess.UpdateBarberState(barberID, sess.StateStart)
 	return sendToBarberMenuAndUpdStoredMessage(ctx, updNoteSuccess, markupBarberBackToMain)
+}
+
+func onUpdateNote(ctx tele.Context) error {
+	errMsg := "can't update note"
+	barberID := ctx.Sender().ID
+	appointment := sess.GetAppointmentBarber(barberID)
+	if err := cp.RepoWithContext.UpdateAppointment(ent.Appointment{ID: appointment.ID, Note: ctx.Message().Text}); err != nil {
+		if errors.Is(err, rep.ErrInvalidAppointment) {
+			log.Print(e.Wrap("invalid note", err))
+			return ctx.Send(invalidNote)
+		}
+		sess.UpdateBarberState(barberID, sess.StateStart)
+		return logAndMsgErrBarberWithSend(ctx, errMsg, err)
+	}
+	sess.UpdateBarberState(barberID, sess.StateStart)
+	editedAppointment, err := getVeryfiedAppointment(appointment)
+	if err != nil {
+		return logAndMsgErrBarberWithSend(ctx, errMsg, err)
+	}
+	if editedAppointment.ID == 0 {
+		return sendToBarberMenuAndUpdStoredMessage(ctx, updNoteSuccessAndAppointmentRescheduled, markupBarberBackToMain)
+	}
+	return sendAppointmentOptionsMenu(ctx, editedAppointment)
 }
 
 func onContactBarber(ctx tele.Context) error {
@@ -1372,6 +1402,24 @@ func logAndMsgErrBarberWithSend(ctx tele.Context, msg string, err error) error {
 func logAndMsgErrBarberWithoutMenu(ctx tele.Context, msg string, err error) error {
 	log.Print(e.Wrap(msg, err))
 	return ctx.Send(errorBarber)
+}
+
+func sendAppointmentOptionsMenu(ctx tele.Context, appointment ent.Appointment) error {
+	errMsg := "can't send appointment options menu"
+	serviceInfo := shortNullServiceInfo(appointment.ServiceID, appointment.Duration)
+	workday, err := cp.RepoWithContext.GetWorkdayByID(appointment.WorkdayID)
+	if err != nil {
+		return logAndMsgErrBarberWithSend(ctx, errMsg, err)
+	}
+	userInfo, err := userInfo(appointment)
+	if err != nil {
+		return logAndMsgErrBarberWithSend(ctx, errMsg, err)
+	}
+	return sendToBarberMenuAndUpdStoredMessage(ctx,
+		fmt.Sprintf(appointmentInfoForBarber, serviceInfo, tm.ShowDate(workday.Date), appointment.Time.ShortString(), userInfo),
+		markupEditAppointment(appointment.WorkdayID, appointment.UserID),
+		tele.ModeMarkdown,
+	)
 }
 
 func sendToBarberMenuAndUpdStoredMessage(ctx tele.Context, what interface{}, opts ...interface{}) error {

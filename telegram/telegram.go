@@ -76,6 +76,7 @@ func withHandlers(bot *tele.Bot) *tele.Bot {
 	barbers.Handle(&btnBarberConfirmCancelAppointment, onBarberConfirmCancelAppointment)
 	barbers.Handle(&btnCancelAppointmentAndApology, onCancelAppointmentAndApology)
 	barbers.Handle(&btnConfirmCancelAppointmentAndApology, onConfirmCancelAppointmentAndApology)
+	barbers.Handle(&btnUpdNote, onUpdNote)
 
 	barbers.Handle(&btnBarberSettings, onBarberSettings)
 
