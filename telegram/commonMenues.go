@@ -131,8 +131,7 @@ func markupSelectService(services []ent.Service, endpntService, endpntBackToMain
 	markup := &tele.ReplyMarkup{}
 	var rows []tele.Row
 	for _, service := range services {
-		row := markup.Row(btnService(service, endpntService))
-		rows = append(rows, row)
+		rows = append(rows, markup.Row(btnService(service, endpntService)))
 	}
 	rows = append(rows, markup.Row(markup.Data(backToMain, endpntBackToMain)))
 	markup.Inline(rows...)
@@ -142,11 +141,12 @@ func markupSelectService(services []ent.Service, endpntService, endpntBackToMain
 func markupSelectTimeForAppointment(freeTimes []tm.Duration, endpntTime, endpntMonth, endpntBackToMain string) *tele.ReplyMarkup {
 	markup := &tele.ReplyMarkup{}
 	rowsSelectTime := rowsSelectTimeForAppointment(freeTimes, endpntTime)
-	rowBackToSelectWorkday := markup.Row(markup.Data("Назад к выбору даты", endpntMonth, "0"))
-	rowBackToMain := markup.Row(markup.Data(backToMain, endpntBackToMain))
 	var rows []tele.Row
 	rows = append(rows, rowsSelectTime...)
-	rows = append(rows, rowBackToSelectWorkday, rowBackToMain)
+	rows = append(rows,
+		markup.Row(markup.Data("Назад к выбору даты", endpntMonth, "0")),
+		markup.Row(markup.Data(backToMain, endpntBackToMain)),
+	)
 	markup.Inline(rows...)
 	return markup
 }
@@ -166,11 +166,10 @@ func markupSelectWorkdayForAppointment(
 	if err != nil {
 		return nil, err
 	}
-	rowBackToMain := markup.Row(markup.Data(backToMain, endpntBackToMain))
 	var rows []tele.Row
 	rows = append(rows, rowSelectMonth, rowWeekdays)
 	rows = append(rows, rowsSelectWorkday...)
-	rows = append(rows, rowBackToMain)
+	rows = append(rows, markup.Row(markup.Data(backToMain, endpntBackToMain)))
 	markup.Inline(rows...)
 	return markup, nil
 }

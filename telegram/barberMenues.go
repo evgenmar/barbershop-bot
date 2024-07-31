@@ -62,6 +62,7 @@ const (
 Вы также можете записаться повторно через наш бот на любое свободное время.
 Информация об отмененной записи:
 %s`
+	appointmentDeletedByUser                = "Запись, к которой Вы пытались добавить заметку, была удалена клиентом."
 	updNoteSuccessAndAppointmentRescheduled = "Заметка успешно добавлена/обновлена. Также обращаем Ваше внимание на то, что клиент перенес запись на другое время, пока Вы добавляли заметку."
 
 	barbersMemo = `Прежде чем клиенты получат возможность записаться к Вам на стрижку через этот бот, Вы должны произвести необходимый минимум подготовительных настроек.
@@ -663,12 +664,10 @@ func markupSelectLastWorkDate(dateRange ent.DateRange, monthRange monthRange) *t
 	btnPrevMonth, btnNextMonth := btnsSwitchMonth(tm.ParseMonth(dateRange.LastDate), monthRange, endpntSelectMonthOfLastWorkDate)
 	rowSelectMonth := markup.Row(btnPrevMonth, btnMonth(dateRange.Month()), btnNextMonth)
 	rowsSelectDate := rowsSelectLastWorkDate(dateRange)
-	rowRestoreDefaultDate := markup.Row(btnInfiniteLastWorkDate)
-	rowBackToMainBarber := markup.Row(btnBarberBackToMain)
 	var rows []tele.Row
 	rows = append(rows, rowSelectMonth, rowWeekdays)
 	rows = append(rows, rowsSelectDate...)
-	rows = append(rows, rowRestoreDefaultDate, rowBackToMainBarber)
+	rows = append(rows, markup.Row(btnInfiniteLastWorkDate), markup.Row(btnBarberBackToMain))
 	markup.Inline(rows...)
 	return markup
 }

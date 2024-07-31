@@ -1113,6 +1113,13 @@ func onUpdateNote(ctx tele.Context) error {
 		return logAndMsgErrBarberWithSend(ctx, errMsg, err)
 	}
 	if editedAppointment.ID == 0 {
+		_, err := cp.RepoWithContext.GetAppointmentByID(appointment.ID)
+		if err != nil {
+			if errors.Is(err, rep.ErrNoSavedAppointment) {
+				return sendToBarberMenuAndUpdStoredMessage(ctx, appointmentDeletedByUser, markupBarberBackToMain)
+			}
+			return logAndMsgErrBarberWithSend(ctx, errMsg, err)
+		}
 		return sendToBarberMenuAndUpdStoredMessage(ctx, updNoteSuccessAndAppointmentRescheduled, markupBarberBackToMain)
 	}
 	return sendAppointmentOptionsMenu(ctx, editedAppointment)
@@ -1374,16 +1381,17 @@ func defineDisplayedMonthRangeForDayTypeChange(firstDisplayedDateRange ent.DateR
 }
 
 func defineFirstDisplayedDateRangeForDayTypeChange(barber ent.Barber, showWorkdays bool) (firstDisplayedDateRange ent.DateRange, err error) {
-	var relativeFirstDisplayedMonth, relativeLastDisplayedMonth byte = 0, cfg.ScheduledWeeks * 7 / 30
-	relativeLastWorkdateMonth := byte(tm.ParseMonth(barber.LastWorkdate) - tm.ParseMonth(tm.Today()))
-	if relativeLastWorkdateMonth < relativeLastDisplayedMonth {
-		relativeLastDisplayedMonth = relativeLastWorkdateMonth
+	firstDisplayedMonth := tm.ParseMonth(tm.Today())
+	lastDisplayedMonth := tm.MonthFromNow(cfg.ScheduledWeeks * 7 / 30)
+	lastWorkdateMonth := tm.ParseMonth(barber.LastWorkdate)
+	if lastWorkdateMonth < lastDisplayedMonth {
+		lastDisplayedMonth = lastWorkdateMonth
 	}
-	firstDisplayedDateRange = ent.MonthFromNow(0)
+	firstDisplayedDateRange = ent.Month(firstDisplayedMonth)
 	if firstDisplayedDateRange.LastDate.After(barber.LastWorkdate) {
 		firstDisplayedDateRange.LastDate = barber.LastWorkdate
 	}
-	for relativeFirstDisplayedMonth <= relativeLastDisplayedMonth {
+	for firstDisplayedMonth <= lastDisplayedMonth {
 		earlestDisplayedDate, err := earlestDisplayedDateForDayTypeChange(barber.ID, showWorkdays, firstDisplayedDateRange)
 		if err != nil {
 			return ent.DateRange{}, err
@@ -1394,8 +1402,8 @@ func defineFirstDisplayedDateRangeForDayTypeChange(barber ent.Barber, showWorkda
 			}
 			break
 		}
-		relativeFirstDisplayedMonth++
-		firstDisplayedDateRange = ent.MonthFromNow(relativeFirstDisplayedMonth)
+		firstDisplayedMonth++
+		firstDisplayedDateRange = ent.Month(firstDisplayedMonth)
 		if firstDisplayedDateRange.LastDate.After(barber.LastWorkdate) {
 			firstDisplayedDateRange.LastDate = barber.LastWorkdate
 		}
@@ -1404,24 +1412,24 @@ func defineFirstDisplayedDateRangeForDayTypeChange(barber ent.Barber, showWorkda
 }
 
 func defineFirstDisplayedDateRangeForLastWorkDate(latestAppointmentDate time.Time) (firstDisplayedDateRange ent.DateRange) {
-	var relativeFirstDisplayedMonth byte = 0
-	for relativeFirstDisplayedMonth <= cfg.MaxAppointmentBookingMonths {
-		firstDisplayedDateRange = ent.MonthFromNow(relativeFirstDisplayedMonth)
+	firstDisplayedMonth := tm.ParseMonth(tm.Today())
+	for firstDisplayedMonth <= tm.MonthFromNow(cfg.MaxAppointmentBookingMonths) {
+		firstDisplayedDateRange = ent.Month(firstDisplayedMonth)
 		if latestAppointmentDate.Compare(firstDisplayedDateRange.LastDate) <= 0 {
 			if latestAppointmentDate.After(firstDisplayedDateRange.FirstDate) {
 				firstDisplayedDateRange.FirstDate = latestAppointmentDate
 			}
 			break
 		}
-		relativeFirstDisplayedMonth++
+		firstDisplayedMonth++
 	}
 	return
 }
 
 func defineFirstDisplayedDateRangeForScheduleCalendar(barberID int64) (firstDisplayedDateRange ent.DateRange, err error) {
-	var relativeFirstDisplayedMonth byte = 0
-	firstDisplayedDateRange = ent.MonthFromNow(relativeFirstDisplayedMonth)
-	for relativeFirstDisplayedMonth <= cfg.ScheduledWeeks*7/30 {
+	firstDisplayedMonth := tm.ParseMonth(tm.Today())
+	firstDisplayedDateRange = ent.Month(firstDisplayedMonth)
+	for firstDisplayedMonth <= tm.MonthFromNow(cfg.ScheduledWeeks*7/30) {
 		earlestWorkDate, err := earlestScheduledDate(barberID, firstDisplayedDateRange)
 		if err != nil {
 			return ent.DateRange{}, err
@@ -1432,8 +1440,8 @@ func defineFirstDisplayedDateRangeForScheduleCalendar(barberID int64) (firstDisp
 			}
 			break
 		}
-		relativeFirstDisplayedMonth++
-		firstDisplayedDateRange = ent.MonthFromNow(relativeFirstDisplayedMonth)
+		firstDisplayedMonth++
+		firstDisplayedDateRange = ent.Month(firstDisplayedMonth)
 	}
 	return
 }

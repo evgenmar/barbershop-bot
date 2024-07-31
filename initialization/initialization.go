@@ -2,7 +2,6 @@ package initialization
 
 import (
 	cp "barbershop-bot/contextprovider"
-	ent "barbershop-bot/entities"
 	cfg "barbershop-bot/lib/config"
 	"barbershop-bot/lib/e"
 	st "barbershop-bot/repository/storage"
@@ -24,53 +23,53 @@ func InitGlobals() {
 		cfg.InitBarberIDs(getBarberIDsFromRepo()...)
 		initBarbersSchedules()
 		tg.InitBot()
-		testInit()
+		//testInit()
 	})
 }
 
-func testInit() {
-	barberID := cfg.Barbers.IDs()[0]
-	services, err := cp.RepoWithContext.GetServicesByBarberID(barberID)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if len(services) == 0 {
-		err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, Name: "Евгений", Phone: "89187591136"})
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = cp.RepoWithContext.CreateService(ent.Service{
-			BarberID:   barberID,
-			Name:       "Бокс и полубокс",
-			Desciption: "Бокс, это ультракороткая макушка и выбритые виски с затылком. За названиями причёсок бокс и полубокс стоит одноименный вид спорта. Полубокс, это более длинная версия стрижки Бокс, для офиса она подойдёт больше. Все варианты боксов смотрятся очень стильно и подходят для более спортивных мужчин",
-			Price:      500,
-			Duration:   30,
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = cp.RepoWithContext.CreateService(ent.Service{
-			BarberID:   barberID,
-			Name:       "Теннис",
-			Desciption: "Стрижка хорошо смотрится на молодых парнях и мужчинах среднего возраста. За счет спортивного стиля она хорошо молодит. Для этой модельной стрижки характерны короткие затылок и виски с постепенным увеличением длины на макушке",
-			Price:      1000,
-			Duration:   60,
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = cp.RepoWithContext.CreateService(ent.Service{
-			BarberID:   barberID,
-			Name:       "Модельная стрижка-Классика",
-			Desciption: "Модельная мужская стрижка в классическом варианте с небольшой долей креатива в оформлении. Данная прическа легко подчеркивает индивидуальные особенности внешности и формирует стиль, это что-то среднее между чем-то эпатажным и новым, и спокойным консервативным. Данная стрижка моделируется и подстраивается под конкретного клиента и его внешние особенности.",
-			Price:      1500,
-			Duration:   90,
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-}
+// func testInit() {
+// 	barberID := cfg.Barbers.IDs()[0]
+// 	services, err := cp.RepoWithContext.GetServicesByBarberID(barberID)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	if len(services) == 0 {
+// 		err := cp.RepoWithContext.UpdateBarber(ent.Barber{ID: barberID, Name: "Евгений", Phone: "89187591136"})
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
+// 		err = cp.RepoWithContext.CreateService(ent.Service{
+// 			BarberID:   barberID,
+// 			Name:       "Бокс и полубокс",
+// 			Desciption: "Бокс, это ультракороткая макушка и выбритые виски с затылком. За названиями причёсок бокс и полубокс стоит одноименный вид спорта. Полубокс, это более длинная версия стрижки Бокс, для офиса она подойдёт больше. Все варианты боксов смотрятся очень стильно и подходят для более спортивных мужчин",
+// 			Price:      500,
+// 			Duration:   30,
+// 		})
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
+// 		err = cp.RepoWithContext.CreateService(ent.Service{
+// 			BarberID:   barberID,
+// 			Name:       "Теннис",
+// 			Desciption: "Стрижка хорошо смотрится на молодых парнях и мужчинах среднего возраста. За счет спортивного стиля она хорошо молодит. Для этой модельной стрижки характерны короткие затылок и виски с постепенным увеличением длины на макушке",
+// 			Price:      1000,
+// 			Duration:   60,
+// 		})
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
+// 		err = cp.RepoWithContext.CreateService(ent.Service{
+// 			BarberID:   barberID,
+// 			Name:       "Модельная стрижка-Классика",
+// 			Desciption: "Модельная мужская стрижка в классическом варианте с небольшой долей креатива в оформлении. Данная прическа легко подчеркивает индивидуальные особенности внешности и формирует стиль, это что-то среднее между чем-то эпатажным и новым, и спокойным консервативным. Данная стрижка моделируется и подстраивается под конкретного клиента и его внешние особенности.",
+// 			Price:      1500,
+// 			Duration:   90,
+// 		})
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
+// 	}
+// }
 
 func createSQLite(path string) *sqlite.Storage {
 	db, err := sqlite.New(path)

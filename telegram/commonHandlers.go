@@ -101,9 +101,9 @@ func defineDisplayedMonthRangeForAppointment(firstDisplayedDateRange ent.DateRan
 }
 
 func defineFirstDisplayedDateRangeForAppointment(appointment sess.Appointment) (firstDisplayedDateRange ent.DateRange, err error) {
-	var relativeFirstDisplayedMonth byte = 0
-	firstDisplayedDateRange = ent.MonthFromNow(0)
-	for relativeFirstDisplayedMonth <= cfg.MaxAppointmentBookingMonths {
+	firstDisplayedMonth := tm.ParseMonth(tm.Today())
+	firstDisplayedDateRange = ent.Month(firstDisplayedMonth)
+	for firstDisplayedMonth <= tm.MonthFromNow(cfg.MaxAppointmentBookingMonths) {
 		earlestFreeDate, err := earlestDateWithFreeTime(appointment, firstDisplayedDateRange)
 		if err != nil {
 			return ent.DateRange{}, err
@@ -114,8 +114,8 @@ func defineFirstDisplayedDateRangeForAppointment(appointment sess.Appointment) (
 			}
 			break
 		}
-		relativeFirstDisplayedMonth++
-		firstDisplayedDateRange = ent.MonthFromNow(relativeFirstDisplayedMonth)
+		firstDisplayedMonth++
+		firstDisplayedDateRange = ent.Month(firstDisplayedMonth)
 	}
 	return
 }
