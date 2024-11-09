@@ -1,4 +1,4 @@
-module barbershop-bot
+module github.com/evgenmar/barbershop-bot
 
 go 1.22.0
 
