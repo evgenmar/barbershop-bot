@@ -1,16 +1,17 @@
 package telegram
 
 import (
-	cp "barbershop-bot/contextprovider"
-	ent "barbershop-bot/entities"
-	cfg "barbershop-bot/lib/config"
-	tm "barbershop-bot/lib/time"
 	"crypto/md5"
 	"encoding/binary"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
+
+	cp "github.com/evgenmar/barbershop-bot/contextprovider"
+	ent "github.com/evgenmar/barbershop-bot/entities"
+	cfg "github.com/evgenmar/barbershop-bot/lib/config"
+	tm "github.com/evgenmar/barbershop-bot/lib/time"
 
 	tele "gopkg.in/telebot.v3"
 )

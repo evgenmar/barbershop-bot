@@ -1,7 +1,7 @@
 package telegram
 
 import (
-	cfg "barbershop-bot/lib/config"
+	cfg "github.com/evgenmar/barbershop-bot/lib/config"
 
 	tele "gopkg.in/telebot.v3"
 	mw "gopkg.in/telebot.v3/middleware"

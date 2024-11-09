@@ -1,9 +1,9 @@
 package main
 
 import (
-	"barbershop-bot/initialization"
-	sched "barbershop-bot/scheduler"
-	tg "barbershop-bot/telegram"
+	"github.com/evgenmar/barbershop-bot/initialization"
+	sched "github.com/evgenmar/barbershop-bot/scheduler"
+	tg "github.com/evgenmar/barbershop-bot/telegram"
 )
 
 func main() {

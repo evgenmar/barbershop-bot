@@ -1,11 +1,12 @@
 package sessions
 
 import (
-	ent "barbershop-bot/entities"
-	tm "barbershop-bot/lib/time"
 	"fmt"
 	"sync"
 	"time"
+
+	ent "github.com/evgenmar/barbershop-bot/entities"
+	tm "github.com/evgenmar/barbershop-bot/lib/time"
 )
 
 type barberSession struct {

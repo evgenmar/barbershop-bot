@@ -1,10 +1,11 @@
 package entities
 
 import (
-	tm "barbershop-bot/lib/time"
 	"errors"
 	"fmt"
 	"strconv"
+
+	tm "github.com/evgenmar/barbershop-bot/lib/time"
 )
 
 type Service struct {

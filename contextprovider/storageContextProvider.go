@@ -1,8 +1,9 @@
 package contextprovider
 
 import (
-	st "barbershop-bot/repository/storage"
 	"context"
+
+	st "github.com/evgenmar/barbershop-bot/repository/storage"
 )
 
 type StorageContextProvider struct {

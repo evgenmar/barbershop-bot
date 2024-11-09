@@ -1,21 +1,22 @@
 package telegram
 
 import (
-	cp "barbershop-bot/contextprovider"
-	ent "barbershop-bot/entities"
-	cfg "barbershop-bot/lib/config"
-	"barbershop-bot/lib/e"
-	tm "barbershop-bot/lib/time"
-	rep "barbershop-bot/repository"
-	m "barbershop-bot/repository/mappers"
-	sched "barbershop-bot/scheduler"
-	sess "barbershop-bot/sessions"
 	"errors"
 	"fmt"
 	"log"
 	"strconv"
 	"strings"
 	"time"
+
+	cp "github.com/evgenmar/barbershop-bot/contextprovider"
+	ent "github.com/evgenmar/barbershop-bot/entities"
+	cfg "github.com/evgenmar/barbershop-bot/lib/config"
+	"github.com/evgenmar/barbershop-bot/lib/e"
+	tm "github.com/evgenmar/barbershop-bot/lib/time"
+	rep "github.com/evgenmar/barbershop-bot/repository"
+	m "github.com/evgenmar/barbershop-bot/repository/mappers"
+	sched "github.com/evgenmar/barbershop-bot/scheduler"
+	sess "github.com/evgenmar/barbershop-bot/sessions"
 
 	tele "gopkg.in/telebot.v3"
 )

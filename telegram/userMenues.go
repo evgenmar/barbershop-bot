@@ -1,7 +1,7 @@
 package telegram
 
 import (
-	ent "barbershop-bot/entities"
+	ent "github.com/evgenmar/barbershop-bot/entities"
 
 	tele "gopkg.in/telebot.v3"
 )

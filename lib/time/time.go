@@ -1,10 +1,11 @@
 package time
 
 import (
-	cfg "barbershop-bot/lib/config"
 	"encoding/binary"
 	"fmt"
 	"time"
+
+	cfg "github.com/evgenmar/barbershop-bot/lib/config"
 )
 
 // A Duration represents the elapsed time between two instants as an int16 minute count.

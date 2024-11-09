@@ -1,14 +1,15 @@
 package repository
 
 import (
-	ent "barbershop-bot/entities"
-	"barbershop-bot/lib/e"
-	tm "barbershop-bot/lib/time"
-	m "barbershop-bot/repository/mappers"
-	st "barbershop-bot/repository/storage"
 	"context"
 	"errors"
 	"time"
+
+	ent "github.com/evgenmar/barbershop-bot/entities"
+	"github.com/evgenmar/barbershop-bot/lib/e"
+	tm "github.com/evgenmar/barbershop-bot/lib/time"
+	m "github.com/evgenmar/barbershop-bot/repository/mappers"
+	st "github.com/evgenmar/barbershop-bot/repository/storage"
 )
 
 type Repository struct {

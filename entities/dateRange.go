@@ -1,9 +1,10 @@
 package entities
 
 import (
-	cfg "barbershop-bot/lib/config"
-	tm "barbershop-bot/lib/time"
 	"time"
+
+	cfg "github.com/evgenmar/barbershop-bot/lib/config"
+	tm "github.com/evgenmar/barbershop-bot/lib/time"
 )
 
 type DateRange struct {

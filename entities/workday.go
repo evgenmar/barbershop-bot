@@ -1,8 +1,9 @@
 package entities
 
 import (
-	tm "barbershop-bot/lib/time"
 	"time"
+
+	tm "github.com/evgenmar/barbershop-bot/lib/time"
 )
 
 type Workday struct {

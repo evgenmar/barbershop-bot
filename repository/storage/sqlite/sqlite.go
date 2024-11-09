@@ -1,17 +1,18 @@
 package sqlite
 
 import (
-	cfg "barbershop-bot/lib/config"
-	"barbershop-bot/lib/e"
-	tm "barbershop-bot/lib/time"
-	m "barbershop-bot/repository/mappers"
-	st "barbershop-bot/repository/storage"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
 	"sync"
+
+	cfg "github.com/evgenmar/barbershop-bot/lib/config"
+	"github.com/evgenmar/barbershop-bot/lib/e"
+	tm "github.com/evgenmar/barbershop-bot/lib/time"
+	m "github.com/evgenmar/barbershop-bot/repository/mappers"
+	st "github.com/evgenmar/barbershop-bot/repository/storage"
 
 	"github.com/ncruces/go-sqlite3"
 	_ "github.com/ncruces/go-sqlite3/driver"

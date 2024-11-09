@@ -1,11 +1,12 @@
 package entities
 
 import (
-	cfg "barbershop-bot/lib/config"
-	tm "barbershop-bot/lib/time"
 	"fmt"
 	"log"
 	"time"
+
+	cfg "github.com/evgenmar/barbershop-bot/lib/config"
+	tm "github.com/evgenmar/barbershop-bot/lib/time"
 
 	tele "gopkg.in/telebot.v3"
 )

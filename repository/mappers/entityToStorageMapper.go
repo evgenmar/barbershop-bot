@@ -1,12 +1,13 @@
 package mappers
 
 import (
-	ent "barbershop-bot/entities"
-	tm "barbershop-bot/lib/time"
-	st "barbershop-bot/repository/storage"
 	"database/sql"
 	"time"
 	"unicode"
+
+	ent "github.com/evgenmar/barbershop-bot/entities"
+	tm "github.com/evgenmar/barbershop-bot/lib/time"
+	st "github.com/evgenmar/barbershop-bot/repository/storage"
 
 	tele "gopkg.in/telebot.v3"
 )

@@ -1,14 +1,15 @@
 package contextprovider
 
 import (
-	ent "barbershop-bot/entities"
-	"barbershop-bot/lib/e"
+	ent "github.com/evgenmar/barbershop-bot/entities"
+	"github.com/evgenmar/barbershop-bot/lib/e"
 
-	tm "barbershop-bot/lib/time"
-	rep "barbershop-bot/repository"
-	st "barbershop-bot/repository/storage"
 	"context"
 	"time"
+
+	tm "github.com/evgenmar/barbershop-bot/lib/time"
+	rep "github.com/evgenmar/barbershop-bot/repository"
+	st "github.com/evgenmar/barbershop-bot/repository/storage"
 )
 
 const (

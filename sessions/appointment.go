@@ -1,7 +1,7 @@
 package sessions
 
 import (
-	tm "barbershop-bot/lib/time"
+	tm "github.com/evgenmar/barbershop-bot/lib/time"
 )
 
 type Appointment struct {

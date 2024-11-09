@@ -1,17 +1,18 @@
 package initialization
 
 import (
-	cp "barbershop-bot/contextprovider"
-	cfg "barbershop-bot/lib/config"
-	"barbershop-bot/lib/e"
-	st "barbershop-bot/repository/storage"
-	"barbershop-bot/repository/storage/sqlite"
-	sched "barbershop-bot/scheduler"
-	tg "barbershop-bot/telegram"
 	"log"
 	"os"
 	"strconv"
 	"sync"
+
+	cp "github.com/evgenmar/barbershop-bot/contextprovider"
+	cfg "github.com/evgenmar/barbershop-bot/lib/config"
+	"github.com/evgenmar/barbershop-bot/lib/e"
+	st "github.com/evgenmar/barbershop-bot/repository/storage"
+	"github.com/evgenmar/barbershop-bot/repository/storage/sqlite"
+	sched "github.com/evgenmar/barbershop-bot/scheduler"
+	tg "github.com/evgenmar/barbershop-bot/telegram"
 )
 
 var once sync.Once
